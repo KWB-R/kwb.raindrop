@@ -17,8 +17,15 @@ BugReports: https://github.com/KWB-R/kwb.raindrop/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+Imports: 
+    fs,
+    hdf5r,
+    kwb.utils,
+    stringr
 Suggests: 
     covr,
     knitr,
     rmarkdown
+Remotes:
+    github::kwb-r/kwb.utils
 VignetteBuilder: knitr

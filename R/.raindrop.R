@@ -10,7 +10,7 @@ path_list <- list(
   dir_output = "<root_path>/Optimierungsfall/models/output", 
   dir_target_output = "<dir_output>/<dir_target>",
   file_base = "Optimierungsfall_kurz.h5",
-  file_errors = "Fehlerprotokoll.h5",
+  file_errors_hdf5 = "Fehlerprotokoll.h5",
   file_exe = "Regenwasserbewirtschaftung.exe",
   file_results_hdf5 = "Optimierung_MuldenRigole.h5",
   file_results_txt = "Optimierung_MuldenRigole_RAINDROP.txt", 
@@ -18,6 +18,7 @@ path_list <- list(
   file_target = "<dir_target>.h5",
   path_base = "<dir_base>/<file_base>",
   path_exe = "<dir_exe>/<file_exe>",
+  path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5 = "<dir_target_output>/<file_results_hdf5>",
   path_results_txt = "<dir_target_output>/<file_results_txt>", 
   path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>", 
@@ -95,6 +96,26 @@ states_long <- purrr::map_dfr(ds_ts_groupvariable, function(nm) {
 states_long
 }
 
+
+simulation_names <- basename(fs::dir_ls(paths$dir_output))
+
+
+errors_df <- lapply(simulation_names, function(s_name) {
+  
+  paths <- kwb.utils::resolve(path_list, dir_target = s_name)
+  
+  if(fs::file_exists(paths$path_errors_hdf5)) {
+  error_hdf <- hdf5r::H5File$new(paths$path_errors_hdf5, mode = "r")
+  
+  tibble::tibble(id = i, 
+                 path = paths$path_errors_hdf5,
+                 number_of_errors = error_hdf[["AnzahlFehler"]]$read()
+                 )
+  }
+}) %>% 
+  dplyr::bind_rows()
+
+res_hdf <- hdf5r::H5File$new(paths$path_results_hdf5, mode = "r")
 
 hdf5_results <- list(
   rates = read_hdf5_timeseries(ts_groupvariable = res_hdf5[["Raten"]]),

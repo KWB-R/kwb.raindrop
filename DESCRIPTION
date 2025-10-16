@@ -5,6 +5,7 @@ Version: 0.0.0.9000
 Authors@R: c(
     person("Michael", "Rustler", , "michael.rustler@kompetenz-wasser.de", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-0647-7726")),
+    person("RAINDROP", role = "fnd"),           
     person("Kompetenzzentrum Wasser Berlin gGmbH (KWB)", role = "cph")
   )
 Description: R Package for Optimisation Simulations for Rainwater

@@ -1,11 +1,15 @@
 url: https://kwb-r.github.io/kwb.raindrop
 authors:
   Michael Rustler:
-    href: https://mrustl.de
+    href: https://www.kompetenz-wasser.de/en/ueber-uns/team/michael-rustler
+  RAINDROP:
+    href: https://www.kompetenz-wasser.de/en/forschung/projekte/raindrop
+    # html: <img src='https://climate-impetus.eu/wp-content/uploads/2021/12/horizontal.png'
+    #   alt='Project RAINDROP' width='72' />
   Kompetenzzentrum Wasser Berlin gGmbH (KWB):
     href: http://www.kompetenz-wasser.de
-    html: <img src='https://publications.kompetenz-wasser.de/img/KWB-Logo.svg' alt='KWB'
-      width='72' />
+    html: <img src='https://logos.kompetenz-wasser.io/KWB_Logo_M_Blau_RGB.svg'
+      alt='KWB' width='72' />
 template:
   bootstrap: 5
   bootswatch: cerulean

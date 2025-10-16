@@ -1,3 +1,20 @@
+---
+title: "Workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, eval = FALSE}
 library(kwb.raindrop)
 
 path_list <- list(
@@ -106,3 +123,5 @@ for(name in names(hdf5_results)) {
   
   plot(gg)
 }
+
+```

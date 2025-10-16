@@ -53,9 +53,10 @@
 #' }
 #'
 #' @export
-#' @importFrom fs dir_create file_copy path_abs
+#' @importFrom fs dir_create file_copy file_exists path_abs
 #' @importFrom hdf5r H5File
 #' @importFrom stringr str_c 
+#' @importFrom kwb.utils catAndRun resolve
 run_model <- function(
     path_exe,
     path_input,

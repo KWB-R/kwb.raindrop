@@ -7,7 +7,11 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/LICENSE-text.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/LICENSE.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/news/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_read_values.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_validate_write.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_write_values.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/pipe.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/run_model.html</loc></url>

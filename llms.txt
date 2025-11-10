@@ -34,6 +34,9 @@ remotes::install_github("KWB-R/kwb.raindrop")
   : Write (updated) values back into existing HDF5 datasets (robust)
 - [`list_h5_datasets()`](https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.md)
   : List all datasets (recursive)
+- [`plot_hpond_vs_ref()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.md)
+  : Plot the influence of single-parameter variations on pond height
+  results
 - [`read_hdf5_timeseries()`](https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.md)
   : Read HDF5 Results Time Series from HDF5 Group into a Long Tibble
 - [`run_model()`](https://kwb-r.github.io/kwb.raindrop/reference/run_model.md)

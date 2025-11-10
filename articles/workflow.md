@@ -1,5 +1,7 @@
 # Workflow
 
+### Define Paths and Scenarios
+
 ``` r
 library(kwb.raindrop)
 
@@ -31,7 +33,7 @@ path_list <- list(
 parameters <- tibble::tibble(
   para_nama_short = c("mulde_area", 
                     "mulde_height",
-                    "filter_hyraulicconductivity",
+                    "filter_hydraulicconductivity",
                     "filter_height",
                     "storage_height"
                     ),
@@ -47,10 +49,15 @@ parameters <- tibble::tibble(
             2L)
 )
 
+DT::datatable(parameters)
+```
+
+``` r
+
 
 mulde_area <- c(1,10,50,100,500,1000)
 mulde_height <- 1:10 * 100
-filter_hyraulicconductivity <- c(1,5,10,20)
+filter_hydraulicconductivity <- c(1,5,10,20)
 filter_height <- c(150, 300, 600, 900)
 storage_height <- c(150, 300, 600, 900)
 
@@ -59,17 +66,26 @@ storage_height <- c(150, 300, 600, 900)
 param_grid <- expand.grid(
   mulde_area = mulde_area,
   mulde_height = mulde_height,
-  filter_hyraulicconductivity = filter_hyraulicconductivity,
+  filter_hydraulicconductivity = filter_hydraulicconductivity,
   filter_height = filter_height,
   storage_height = storage_height
 )
 
-# Anzahl Kerne (oder automatisch)
+param_grid <- param_grid %>% 
+  dplyr::bind_cols(tibble::tibble(scenario_name = sprintf("s%05d", seq_len(nrow(param_grid)))))
+
+
+DT::datatable(param_grid)
+```
+
+### Run Model
+
+``` r
+# Number of cores for parallel processing (or: automatic)
 future::plan(future::multisession, workers = parallel::detectCores() - 1)
 
-#seq_len(nrow(param_grid))
 
-future.apply::future_lapply(1039:nrow(param_grid), function(i) {
+future.apply::future_lapply(seq_len(nrow(param_grid)), function(i) {
   
   paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i))
   
@@ -102,7 +118,7 @@ vals$`/Berechnungsparameter/Ergebnispfad` <- new_path
 # Beispiel: Pfad ändern (Scalar STRING)
 vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
 vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <-  param_grid_tmp$mulde_height
-vals$`Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hyraulicconductivity
+vals$`Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
 vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[1] <- param_grid_tmp$filter_height 
 vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[2] <- param_grid_tmp$storage_height
 
@@ -125,27 +141,54 @@ h5$close_all()
 
 ### Read results for first run
 
+paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
+
 simulation_names <- basename(fs::dir_ls(paths$dir_output))
 
-
+debug <- TRUE
 errors_df <- lapply(simulation_names, function(s_name) {
   
-  paths <- kwb.utils::resolve(path_list, dir_target = s_name)
+  s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
+  paths <- kwb.utils::resolve(path_list, dir_target = s_name, i = s_id)
   
   if(fs::file_exists(paths$path_errors_hdf5)) {
+    kwb.utils::catAndRun(messageText = sprintf("Reading error file '%s'",
+                                               paths$path_errors_hdf5),
+                         expr = {
     error_hdf <- hdf5r::H5File$new(paths$path_errors_hdf5, mode = "r")
     
-    tibble::tibble(id = i, 
+    tibble::tibble(id = s_id, 
                    path = paths$path_errors_hdf5,
                    number_of_errors = error_hdf[["AnzahlFehler"]]$read()
     )
+                         },
+    dbg = debug)
   }
 }) %>% 
   dplyr::bind_rows()
+```
+
+### Analyse Results
+
+``` r
+import_results_from_rds <- TRUE
+debug <- TRUE
+paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
+
+simulation_names <- basename(fs::dir_ls(paths$dir_output))
+
+simulation_results <- if(import_results_from_rds == FALSE) {
+  stats::setNames(lapply(simulation_names, function(s_name) {
 
 
-i <- 6
-paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i))
+s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
+
+if(file.exists(paths$path_results_hdf5)) {
+paths <- kwb.utils::resolve(path_list, dir_target = s_name, i = s_id)
+
+    kwb.utils::catAndRun(messageText = sprintf("Reading results file '%s'",
+                                               paths$path_results_hdf5),
+                         expr = {
 
 # "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen
 res_hdf5 <- hdf5r::H5File$new(paths$path_results_hdf5, mode = "r")
@@ -157,17 +200,34 @@ hdf5_results <- list(
   states = kwb.raindrop::read_hdf5_timeseries(res_hdf5[["Zustandsvariablen"]])
 )
 
+hdf5_results
+}, 
+dbg = debug)}}), nm = simulation_names)
+} else {
+  readRDS(file = "../simulation_results.Rds")
+}
+
+
+simulation_results_h_pond_list <- stats::setNames(lapply(names(simulation_results), function(s_name) {
+  
+simulation_results[[s_name]]$states %>% 
+  dplyr::filter(variable == "h_pond") %>% 
+  dplyr::summarise(h_pond_max = max(value), 
+                   h_pond_mean = mean(value)) 
+}), names(simulation_results))
+
+
+simulation_results_h_pond <- simulation_results_h_pond_list %>% 
+  dplyr::bind_rows(, .id = "scenario_name") %>% 
+  dplyr::left_join(param_grid,
+                   by = "scenario_name")
+  
 ### Plot results
 
-for(name in names(hdf5_results)) {
-  
-  gg <- hdf5_results[[name]] %>% 
-    ggplot2::ggplot(ggplot2::aes(x = time, y = value)) + 
-    ggplot2::facet_wrap(~ variable, ncol = 1, scales = "free_y") +
-    ggplot2::geom_line() +
-    ggplot2::labs(title = name) +
-    ggplot2::theme_bw() 
-  
-  plot(gg)
-}
+pdff <- "simulation_results_h_pond_max.pdf"
+kwb.utils::preparePdf(pdff)
+kwb.raindrop::plot_hpond_vs_ref(data = simulation_results_h_pond,
+                                response = "h_pond_max",
+                                diff = "abs")
+kwb.utils::finishAndShowPdf(pdff)
 ```

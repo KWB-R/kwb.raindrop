@@ -88,3 +88,50 @@ h5$close_all()
 
 kwb.raindrop::run_model(path_exe = paths$path_exe,
                         path_input = paths$path_target_input)
+
+
+
+
+parameters <- tibble::tibble(
+  para_nama_short = c("mulde_area", 
+                    "mulde_height",
+                    "filter_hyraulicconductivity",
+                    "filter_height",
+                    "storage_height"
+                    ),
+  para_name_long = c("/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe",
+                   "Bodenarten/Bodenfilter/Ks_HydraulicConductivity",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken"),
+  index = c(1L,
+            1L,
+            1L,
+            1L,
+            2L)
+)
+
+
+mulde_area <- c(1,10,50,100,500,1000)
+mulde_height <- 1:10 * 100
+filter_hyraulicconductivity <- c(1,5,10,20)
+filter_height <- c(150, 300, 600, 900)
+storage_height <- c(150, 300, 600, 900)
+
+
+# Alle Kombinationen erzeugen
+param_grid <- expand.grid(
+  mulde_area = mulde_area,
+  mulde_height = mulde_height,
+  filter_hyraulicconductivity = filter_hyraulicconductivity,
+  filter_height = filter_height,
+  storage_height = storage_height
+)
+
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche`
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe`
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Bodenarten`
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`
+vals$`/Bodenarten/Bodenfilter/Ks_HydraulicConductivity`
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[1]
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[2]

@@ -25,6 +25,8 @@ Imports:
     tibble
 Suggests: 
     covr,
+    future,
+    future.apply,
     ggplot2,
     knitr,
     rmarkdown

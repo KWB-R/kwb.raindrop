@@ -27,9 +27,53 @@ path_list <- list(
   path_target_output = "<dir_output>/<file_target>"
 )
 
-for(i in 1:100) {
+
+parameters <- tibble::tibble(
+  para_nama_short = c("mulde_area", 
+                    "mulde_height",
+                    "filter_hyraulicconductivity",
+                    "filter_height",
+                    "storage_height"
+                    ),
+  para_name_long = c("/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe",
+                   "Bodenarten/Bodenfilter/Ks_HydraulicConductivity",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken"),
+  index = c(1L,
+            1L,
+            1L,
+            1L,
+            2L)
+)
+
+
+mulde_area <- c(1,10,50,100,500,1000)
+mulde_height <- 1:10 * 100
+filter_hyraulicconductivity <- c(1,5,10,20)
+filter_height <- c(150, 300, 600, 900)
+storage_height <- c(150, 300, 600, 900)
+
+
+# Alle Kombinationen erzeugen
+param_grid <- expand.grid(
+  mulde_area = mulde_area,
+  mulde_height = mulde_height,
+  filter_hyraulicconductivity = filter_hyraulicconductivity,
+  filter_height = filter_height,
+  storage_height = storage_height
+)
+
+# Anzahl Kerne (oder automatisch)
+future::plan(future::multisession, workers = parallel::detectCores() - 1)
+
+#seq_len(nrow(param_grid))
+
+future.apply::future_lapply(1039:nrow(param_grid), function(i) {
   
   paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i))
+  
+  param_grid_tmp <- param_grid[i, ]
   
   fs::dir_create(paths$dir_input)
   fs::dir_create(paths$dir_output)
@@ -42,24 +86,41 @@ for(i in 1:100) {
   # "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen
   h5 <- hdf5r::H5File$new(paths$path_target_input, mode = "a")
   
-  h5[["/Berechnungsparameter/Ergebnispfad"]]$read()
-  
+
   new_path <- stringr::str_c(normalizePath(fs::path_abs(paths$dir_target_output)), 
                              "\\")
-  
-  h5[["/Berechnungsparameter/Ergebnispfad"]][] <- new_path
-  
-  h5[["/Berechnungsparameter/Ergebnispfad"]]$read()
-  
-  h5$flush()
-  
-  ## 2) Alle Handles schließen, sonst blockiert Windows das Umbenennen
-  gc()
-  h5$close_all()
+
+   # 2) Alle Werte lesen (als named list, Keys = absolute Pfade)
+vals <- kwb.raindrop::h5_read_values(h5)
+
+# 1) Pfade in vals sicher normalisieren
+names(vals) <- sub("^//+", "/", names(vals))
+
+
+vals$`/Berechnungsparameter/Ergebnispfad` <- new_path
+
+# Beispiel: Pfad ändern (Scalar STRING)
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <-  param_grid_tmp$mulde_height
+vals$`Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hyraulicconductivity
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[1] <- param_grid_tmp$filter_height 
+vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[2] <- param_grid_tmp$storage_height
+
+# Timeseries (2×N) als tibble?
+if (is.data.frame(vals[["/Regen/Regenganglinie"]])) {
+  vals[["/Regen/Regenganglinie"]]$value <- vals[["/Regen/Regenganglinie"]]$value * 3
+}
+
+
+# 3) Schreiben mit safe-Fallback für echte SCALAR-Fälle
+kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "error", verbose = FALSE)
+
+
+h5$close_all()
   
   kwb.raindrop::run_model(path_exe = paths$path_exe,
                           path_input = paths$path_target_input)
-}
+}, future.seed = TRUE)
 
 
 ### Read results for first run
@@ -83,11 +144,11 @@ errors_df <- lapply(simulation_names, function(s_name) {
   dplyr::bind_rows()
 
 
-i <- 1 
+i <- 6
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i))
 
 # "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen
-res_hdf <- hdf5r::H5File$new(paths$path_results_hdf5, mode = "r")
+res_hdf5 <- hdf5r::H5File$new(paths$path_results_hdf5, mode = "r")
 
 hdf5_results <- list(
   rates = kwb.raindrop::read_hdf5_timeseries(res_hdf5[["Raten"]]),

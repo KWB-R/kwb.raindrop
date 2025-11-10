@@ -95,7 +95,7 @@ kwb.raindrop::run_model(path_exe = paths$path_exe,
 parameters <- tibble::tibble(
   para_nama_short = c("mulde_area", 
                     "mulde_height",
-                    "filter_hyraulicconductivity",
+                    "filter_hydraulicconductivity",
                     "filter_height",
                     "storage_height"
                     ),
@@ -114,7 +114,7 @@ parameters <- tibble::tibble(
 
 mulde_area <- c(1,10,50,100,500,1000)
 mulde_height <- 1:10 * 100
-filter_hyraulicconductivity <- c(1,5,10,20)
+filter_hydraulicconductivity <- c(1,5,10,20)
 filter_height <- c(150, 300, 600, 900)
 storage_height <- c(150, 300, 600, 900)
 
@@ -123,7 +123,7 @@ storage_height <- c(150, 300, 600, 900)
 param_grid <- expand.grid(
   mulde_area = mulde_area,
   mulde_height = mulde_height,
-  filter_hyraulicconductivity = filter_hyraulicconductivity,
+  filter_hydraulicconductivity = filter_hydraulicconductivity,
   filter_height = filter_height,
   storage_height = storage_height
 )

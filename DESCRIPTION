@@ -17,6 +17,7 @@ BugReports: https://github.com/KWB-R/kwb.raindrop/issues
 Imports: 
     dplyr,
     fs,
+    ggplot2,
     hdf5r,
     kwb.utils,
     magrittr,

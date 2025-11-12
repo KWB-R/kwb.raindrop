@@ -51,42 +51,71 @@ parameters <- tibble::tibble(
                     "mulde_height",
                     "filter_hydraulicconductivity",
                     "filter_height",
-                    "storage_height"
+                    "storage_height",
+                    "bottom_hydraulicconductivity"
                     ),
   para_name_long = c("/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche",
                    "/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe",
                    "Bodenarten/Bodenfilter/Ks_HydraulicConductivity",
                    "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken",
-                   "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken"),
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken",
+                   "/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Endversickerungsrate"
+                   ),
   index = c(1L,
             1L,
             1L,
             1L,
-            2L)
+            2L,
+            1L)
 )
 
 DT::datatable(parameters)
 
 
 mulde_area <- c(1,10,50,100,500,1000)
-mulde_height <- 1:10 * 100
-filter_hydraulicconductivity <- c(1,5,10,20)
-filter_height <- c(150, 300, 600, 900)
-storage_height <- c(150, 300, 600, 900)
+mulde_height <- 1:5 * 100
+filter_hydraulicconductivity <- c(10,20,45,90,180,270,360)
+filter_height <- c(200, 400, 600)
+storage_height <- c(150, 300, 600, 900, 1200)
+rain_factor <- c(1,2,3)
+bottom_hydraulicconductivity <- c(1,5,10,20,45,90,180,270,360,1860,3600)
 
 
 # Alle Kombinationen erzeugen
-param_grid <- expand.grid(
+param_grid_all_combinations <- expand.grid(
   mulde_area = mulde_area,
   mulde_height = mulde_height,
   filter_hydraulicconductivity = filter_hydraulicconductivity,
   filter_height = filter_height,
-  storage_height = storage_height
+  storage_height = storage_height,
+  bottom_hydraulicconductivity = bottom_hydraulicconductivity,
+  rain_factor = rain_factor
 )
 
-param_grid <- param_grid %>% 
-  dplyr::bind_cols(tibble::tibble(scenario_name = sprintf("s%05d", seq_len(nrow(param_grid)))))
+param_grid_all_combinations <- param_grid_all_combinations %>% 
+  dplyr::bind_cols(tibble::tibble(scenario_name = sprintf("s%05d", 
+                                                          seq_len(nrow(param_grid_all_combinations)))))
 
+ref_scenario <- param_grid_all_combinations %>% 
+       dplyr::filter(mulde_area == 100, 
+                     filter_hydraulicconductivity == 90, 
+                     bottom_hydraulicconductivity == 20, 
+                     mulde_height == 300,
+                     filter_height == 200,
+                     storage_height == 150,
+                     rain_factor == 3) %>% 
+       dplyr::pull(scenario_name)
+
+stopifnot(length(ref_scenario)==1)
+
+scenarios_with_single_parameter_variation <- kwb.raindrop::find_single_param_variations(
+  data = param_grid_all_combinations,
+  ref_scenario = ref_scenario
+  ) %>% 
+  dplyr::pull(scenario_name) %>% unique()
+
+param_grid <- param_grid_all_combinations  %>% 
+  dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)
 
 DT::datatable(param_grid)
 ```
@@ -95,14 +124,13 @@ DT::datatable(param_grid)
 
 ```{r run_model, eval = FALSE}
 # Number of cores for parallel processing (or: automatic)
-future::plan(future::multisession, workers = parallel::detectCores() - 1)
+#future::plan(future::multisession, workers = parallel::detectCores() - 1)
 
-
-future.apply::future_lapply(seq_len(nrow(param_grid)), function(i) {
-  
-  paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i))
+lapply(seq_len(nrow(param_grid)), function(i) {
   
   param_grid_tmp <- param_grid[i, ]
+  
+  paths <- kwb.utils::resolve(path_list, dir_target = param_grid_tmp$scenario_name)
   
   fs::dir_create(paths$dir_input)
   fs::dir_create(paths$dir_output)
@@ -122,34 +150,26 @@ future.apply::future_lapply(seq_len(nrow(param_grid)), function(i) {
    # 2) Alle Werte lesen (als named list, Keys = absolute Pfade)
 vals <- kwb.raindrop::h5_read_values(h5)
 
-# 1) Pfade in vals sicher normalisieren
-names(vals) <- sub("^//+", "/", names(vals))
-
-
-vals$`/Berechnungsparameter/Ergebnispfad` <- new_path
-
-# Beispiel: Pfad ändern (Scalar STRING)
-vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
-vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <-  param_grid_tmp$mulde_height
-vals$`Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
-vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[1] <- param_grid_tmp$filter_height 
-vals$`/Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[2] <- param_grid_tmp$storage_height
+vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
+vals$`//Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
+vals$`//Massnahmenelemente/Optimierung_MuldenRigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <-  param_grid_tmp$mulde_height
+vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
+vals$`//Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[1] <- param_grid_tmp$filter_height 
+vals$`//Massnahmenelemente/Optimierung_MuldenRigole/Bodenschichtung/Schichtdicken`[2] <- param_grid_tmp$storage_height
+vals$`//Massnahmenelemente/Optimierung_MuldenRigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
 
 # Timeseries (2×N) als tibble?
-if (is.data.frame(vals[["/Regen/Regenganglinie"]])) {
-  vals[["/Regen/Regenganglinie"]]$value <- vals[["/Regen/Regenganglinie"]]$value * 3
+if (is.data.frame(vals[["//Regen/Regenganglinie"]])) {
+  vals[["//Regen/Regenganglinie"]]$value <- vals[["//Regen/Regenganglinie"]]$value * param_grid_tmp$rain_factor
 }
-
 
 # 3) Schreiben mit safe-Fallback für echte SCALAR-Fälle
 kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "error", verbose = FALSE)
-
-
 h5$close_all()
   
   kwb.raindrop::run_model(path_exe = paths$path_exe,
                           path_input = paths$path_target_input)
-}, future.seed = TRUE)
+})
 
 
 ### Read results for first run
@@ -157,6 +177,7 @@ h5$close_all()
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 
 simulation_names <- basename(fs::dir_ls(paths$dir_output))
+simulation_names <- scenarios_with_single_parameter_variation
 
 debug <- TRUE
 errors_df <- lapply(simulation_names, function(s_name) {
@@ -184,11 +205,12 @@ errors_df <- lapply(simulation_names, function(s_name) {
 ### Analyse Results
 
 ```{r analyse_results, eval = !is_ghactions}
-import_results_from_rds <- TRUE
+import_results_from_rds <- FALSE
 debug <- TRUE
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 
 simulation_names <- basename(fs::dir_ls(paths$dir_output))
+simulation_names <- scenarios_with_single_parameter_variation
 
 simulation_results <- if(import_results_from_rds == FALSE) {
   stats::setNames(lapply(simulation_names, function(s_name) {
@@ -221,6 +243,37 @@ dbg = debug)}}), nm = simulation_names)
 }
 
 
+pdff <- "simulation_results_per_scenario_rain-factor_3-2.pdf"
+kwb.utils::preparePdf(pdff)
+lapply(scenarios_with_single_parameter_variation, function(s_name) {
+
+selected_scenario <- param_grid %>% 
+  dplyr::filter(scenario_name == s_name)
+
+simulation_results[[s_name]]$states %>% 
+  dplyr::bind_rows(simulation_results[[s_name]]$rates) %>% 
+  dplyr::filter(variable %in% c("h_pond", 
+                                "fPI_InfiltrationRate",
+                                "fPI_InfiltrationRate_deeperLayers", 
+                                "f_Endversickerungsrate")) %>% 
+  ggplot2::ggplot(ggplot2::aes(x = time, y = value)) +
+  ggplot2::geom_point() +
+  ggplot2::facet_wrap(~ variable, nrow = 2, ncol = 2) +
+  ggplot2::labs(title = sprintf("Scenario ID: %s", 
+                                s_name),
+                subtitle = sprintf("mulde: area %d m2, height: %d mm; filter: kf: %d mm/h, height: %d mm; storage_height: %d mm, bottom_kf: %.2f mm/h; rain_factor: %.2f", 
+                                selected_scenario$mulde_area,
+                                selected_scenario$mulde_height, 
+                                selected_scenario$filter_hydraulicconductivity, 
+                                selected_scenario$filter_height, 
+                                selected_scenario$storage_height, 
+                                selected_scenario$bottom_hydraulicconductivity, 
+                                selected_scenario$rain_factor)) +
+  ggplot2::theme_bw()
+})
+kwb.utils::finishAndShowPdf(pdff)
+
+
 simulation_results_h_pond_list <- stats::setNames(lapply(names(simulation_results), function(s_name) {
   
 simulation_results[[s_name]]$states %>% 
@@ -237,10 +290,19 @@ simulation_results_h_pond <- simulation_results_h_pond_list %>%
   
 ### Plot results
 
-pdff <- "simulation_results_h_pond_max.pdf"
+pdff <- "simulation_results_h_pond_max_rain-factor_3-2.pdf"
 kwb.utils::preparePdf(pdff)
 kwb.raindrop::plot_hpond_vs_ref(data = simulation_results_h_pond,
                                 response = "h_pond_max",
+                                ref_scenario = ref_scenario,
+                                diff = "abs")
+kwb.utils::finishAndShowPdf(pdff)
+
+pdff <- "simulation_results_h_pond_mean_rain-factor_3-2.pdf"
+kwb.utils::preparePdf(pdff)
+kwb.raindrop::plot_hpond_vs_ref(data = simulation_results_h_pond,
+                                response = "h_pond_mean",
+                                ref_scenario = ref_scenario,
                                 diff = "abs")
 kwb.utils::finishAndShowPdf(pdff)
 

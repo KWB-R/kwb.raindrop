@@ -1,68 +1,76 @@
 #' Read HDF5 Results Time Series from HDF5 Group into a Long Tibble
 #'
 #' @description
-#' Extracts all **datasets** (no subgroups) from a given HDF5 group and
-#' converts each 2×N matrix into a tidy long table. It assumes the first row
+#' Extracts all datasets (no subgroups) from a given HDF5 group and converts
+#' each **2×N numeric matrix** into a tidy long table. It assumes the first row
 #' holds the time/index vector and the second row the values.
+#' Datasets that are not 2×N numeric matrices (e.g. scalar metadata like
+#' `von_Layer`, `von_Massnahmenelement`, ...) are silently ignored.
 #'
 #' @param ts_groupvariable `hdf5r::H5Group`
-#'   An open HDF5 group whose children are time-series datasets stored as 2×N
-#'   numeric matrices (`[1, ] = time/index`, `[2, ] = value`). Typically a group
-#'   like `"/Zustandsvariablen"` or similar in your model output file.
+#'   An open HDF5 group whose *time-series* children are stored as 2×N numeric
+#'   matrices (`[1, ] = time/index`, `[2, ] = value`), possibly mixed with
+#'   scalar metadata datasets.
 #'
 #' @return A `tibble` with columns:
 #' \itemize{
 #'   \item `variable` (`character`): dataset name within the group.
-#'   \item `time` (`numeric`): time or index taken from the first row.
-#'   \item `value` (`numeric`): values taken from the second row.
+#'   \item `time`     (`numeric`): time or index taken from the first row.
+#'   \item `value`    (`numeric`): values taken from the second row.
 #' }
-#'
-#' @details
-#' The function lists all child objects of `ts_groupvariable`, filters for
-#' datasets (`H5I_DATASET`), reads each dataset into memory, and stacks them
-#' into one long tibble. Datasets are expected to be **2×N**; if your storage
-#' differs (e.g., `N×2` or 1D), adapt the reading logic accordingly.
-#'
-#' @section Assumptions:
-#' - Each dataset under `ts_groupvariable` is a numeric matrix of shape 2×N.
-#' - Row 1 is the time/index vector; row 2 contains the values.
-#'
-#' @examples
-#' \dontrun{
-#' library(hdf5r)
-#' f <- H5File$new("Optimierung_MuldenRigole.h5", mode = "r")
-#' grp <- f[["Zustandsvariablen"]]
-#' ts_long <- read_hdf5_timeseries(grp)
-#' head(ts_long)
-#' f$close_all()
-#' }
-#'
-#' @seealso
-#'   \code{\link[hdf5r]{H5File}}, \code{\link[hdf5r]{H5Group}}
 #'
 #' @importFrom tibble tibble as_tibble
 #' @importFrom dplyr filter pull
 #' @importFrom purrr map_dfr
 #' @export
-
 read_hdf5_timeseries <- function(ts_groupvariable) {
   
-  # 1) Nur Datasets (keine Subgruppen) auflisten
-  ds_ts_groupvariable <- ts_groupvariable$ls() %>%
-    tibble::as_tibble() %>%
-    dplyr::filter(obj_type == "H5I_DATASET") %>%
-    dplyr::pull(name)
+  # 1) Alle Datasets (keine Subgruppen) auflisten
+  ds_tbl <- ts_groupvariable$ls() %>%
+    tibble::as_tibble()
   
-  ds_ts_groupvariable
+  ds_names <- ds_tbl %>%
+    dplyr::filter(.data$obj_type == "H5I_DATASET") %>%
+    dplyr::pull(.data$name)
   
+  if (length(ds_names) == 0L) {
+    return(tibble::tibble(
+      variable = character(),
+      time    = numeric(),
+      value   = numeric()
+    ))
+  }
   
-  # als benannte Liste mit Matrizen (2 x N)
-  states_list <- setNames(lapply(ds_ts_groupvariable, function(nm) {
-    ts_groupvariable[[nm]]$read()}), nm = ds_ts_groupvariable)
+  # 2) Alles einlesen
+  ds_list <- setNames(
+    lapply(ds_names, function(nm) ts_groupvariable[[nm]]$read()),
+    nm = ds_names
+  )
   
-  # oder direkt als langes tibble (time/value angenommen: 1. Zeile = Zeit, 2. Zeile = Wert)
-  states_long <- purrr::map_dfr(ds_ts_groupvariable, function(nm) {
-    m <- ts_groupvariable[[nm]]$read()
+  # 3) Nur echte 2×N-Zeitreihen behalten (numeric Matrix mit 2 Zeilen)
+  valid_names <- names(ds_list)[vapply(
+    ds_list,
+    FUN.VALUE = logical(1),
+    FUN = function(m) {
+      is.matrix(m) &&
+        is.numeric(m) &&
+        nrow(m) == 2 &&
+        ncol(m) >= 1
+    }
+  )]
+  
+  if (length(valid_names) == 0L) {
+    # Keine passenden 2×N-Datasets → leeres Tibble
+    return(tibble::tibble(
+      variable = character(),
+      time    = numeric(),
+      value   = numeric()
+    ))
+  }
+  
+  # 4) In langes Tibble konvertieren
+  states_long <- purrr::map_dfr(valid_names, function(nm) {
+    m <- ds_list[[nm]]
     tibble::tibble(
       variable = nm,
       time  = as.numeric(m[1, ]),

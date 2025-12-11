@@ -8,48 +8,22 @@ read_hdf5_timeseries(ts_groupvariable)
 }
 \arguments{
 \item{ts_groupvariable}{\code{hdf5r::H5Group}
-An open HDF5 group whose children are time-series datasets stored as 2×N
-numeric matrices (\verb{[1, ] = time/index}, \verb{[2, ] = value}). Typically a group
-like \code{"/Zustandsvariablen"} or similar in your model output file.}
+An open HDF5 group whose \emph{time-series} children are stored as 2×N numeric
+matrices (\verb{[1, ] = time/index}, \verb{[2, ] = value}), possibly mixed with
+scalar metadata datasets.}
 }
 \value{
 A \code{tibble} with columns:
 \itemize{
 \item \code{variable} (\code{character}): dataset name within the group.
-\item \code{time} (\code{numeric}): time or index taken from the first row.
-\item \code{value} (\code{numeric}): values taken from the second row.
+\item \code{time}     (\code{numeric}): time or index taken from the first row.
+\item \code{value}    (\code{numeric}): values taken from the second row.
 }
 }
 \description{
-Extracts all \strong{datasets} (no subgroups) from a given HDF5 group and
-converts each 2×N matrix into a tidy long table. It assumes the first row
+Extracts all datasets (no subgroups) from a given HDF5 group and converts
+each \strong{2×N numeric matrix} into a tidy long table. It assumes the first row
 holds the time/index vector and the second row the values.
-}
-\details{
-The function lists all child objects of \code{ts_groupvariable}, filters for
-datasets (\code{H5I_DATASET}), reads each dataset into memory, and stacks them
-into one long tibble. Datasets are expected to be \strong{2×N}; if your storage
-differs (e.g., \verb{N×2} or 1D), adapt the reading logic accordingly.
-}
-\section{Assumptions}{
-
-\itemize{
-\item Each dataset under \code{ts_groupvariable} is a numeric matrix of shape 2×N.
-\item Row 1 is the time/index vector; row 2 contains the values.
-}
-}
-
-\examples{
-\dontrun{
-library(hdf5r)
-f <- H5File$new("Optimierung_MuldenRigole.h5", mode = "r")
-grp <- f[["Zustandsvariablen"]]
-ts_long <- read_hdf5_timeseries(grp)
-head(ts_long)
-f$close_all()
-}
-
-}
-\seealso{
-\code{\link[hdf5r]{H5File}}, \code{\link[hdf5r]{H5Group}}
+Datasets that are not 2×N numeric matrices (e.g. scalar metadata like
+\code{von_Layer}, \code{von_Massnahmenelement}, ...) are silently ignored.
 }

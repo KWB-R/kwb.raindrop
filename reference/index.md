@@ -14,6 +14,10 @@
   : List all datasets (recursive)
 - [`plot_hpond_vs_ref()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.md)
   : Plot the influence of single-parameter variations on a response
+- [`read_hdf5_connections()`](https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_connections.md)
+  : Read surface-water connections from an HDF5 results file
+- [`read_hdf5_scalars()`](https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_scalars.md)
+  : Read scalar datasets from an HDF5 group
 - [`read_hdf5_timeseries()`](https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.md)
   : Read HDF5 Results Time Series from HDF5 Group into a Long Tibble
 - [`run_model()`](https://kwb-r.github.io/kwb.raindrop/reference/run_model.md)

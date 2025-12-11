@@ -2,6 +2,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/404.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_v2.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/authors.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/LICENSE-text.html</loc></url>
@@ -15,6 +16,8 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/pipe.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_connections.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_scalars.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/run_model.html</loc></url>
 </urlset>

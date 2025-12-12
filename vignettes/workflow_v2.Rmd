@@ -105,7 +105,7 @@ param_grid_all_combinations <- param_grid_all_combinations %>%
                                                           seq_len(nrow(param_grid_all_combinations)))))
 
 ref_scenario <- param_grid_all_combinations %>% 
-       dplyr::filter(connected_area == 1,
+       dplyr::filter(connected_area == 100,
                      mulde_area == 1, 
                      filter_hydraulicconductivity == 90, 
                      bottom_hydraulicconductivity == 20, 
@@ -131,7 +131,7 @@ DT::datatable(param_grid)
 
 ### Run Model
 
-```{r run_model, eval = FALSE}
+```{r run_model, eval = TRUE}
 # Number of cores for parallel processing (or: automatic)
 #future::plan(future::multisession, workers = parallel::detectCores() - 1)
 
@@ -160,12 +160,21 @@ lapply(seq_len(nrow(param_grid)), function(i) {
 vals <- kwb.raindrop::h5_read_values(h5)
 
 vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
+vals$`//Berechnungsparameter/R-Plots` <- 0
 vals$`//Massnahmenelemente/Flaeche_1/Allgemein/Flaeche` <- param_grid_tmp$connected_area
 vals$`//Massnahmenelemente/Element_1/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
 vals$`//Massnahmenelemente/Element_1/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <-  param_grid_tmp$mulde_height
 vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
-vals$`//Massnahmenelemente/Element_1/Bodenschichtung/Schichtdicken`[1] <- param_grid_tmp$filter_height 
-vals$`//Massnahmenelemente/Element_1/Bodenschichtung/Schichtdicken`[2] <- param_grid_tmp$storage_height
+### set oberboden to same values as Bodenfilter number of soil layers cannot be reduced without causing errors 
+vals$`//Bodenarten/Oberboden/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
+vals$`//Bodenarten/Oberboden/Psi_Saugspannung_CapillarySuction` <- vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction`
+vals$`//Bodenarten/Oberboden/thetaFC_MoistureAtFieldCapacity` <- vals$`//Bodenarten/Bodenfilter/thetaFC_MoistureAtFieldCapacity`
+vals$`//Bodenarten/Oberboden/thetaS_MoistureAtSaturation` <- vals$`//Bodenarten/Bodenfilter/thetaS_MoistureAtSaturation`
+vals$`//Bodenarten/Oberboden/thetaWP_MoistureAtWiltingPoint` <- vals$`//Bodenarten/Bodenfilter/thetaWP_MoistureAtWiltingPoint`
+vals$`//Massnahmenelemente/Element_1/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.09, 0.09, 0)
+vals$`//Massnahmenelemente/Element_1/Bodenschichtung/Schichtdicken` <- c(param_grid_tmp$filter_height/2,
+                                                                         param_grid_tmp$filter_height/2, 
+                                                                         param_grid_tmp$storage_height)
 vals$`//Massnahmenelemente/Element_1/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
 
 # Timeseries (2×N) als tibble?
@@ -173,7 +182,13 @@ if (is.data.frame(vals[["//Kurven/Regen"]])) {
   vals[["//Kurven/Regen"]]$value <- vals[["//Kurven/Regen"]]$value * param_grid_tmp$rain_factor
 }
 
-# 3) Schreiben mit safe-Fallback für echte SCALAR-Fälle
+
+#### completey "seal" connected area 
+#vals$`//Massnahmenelemente/Flaeche_1/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <-
+vals$`//Massnahmenelemente/Flaeche_1/Bodenschichtung/Schichtdicken` <- 10
+vals$`//Massnahmenelemente/Flaeche_1/Allgemein/Endversickerungsrate` <- 0
+
+
 kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "error", verbose = FALSE)
 h5$close_all()
   
@@ -193,7 +208,7 @@ debug <- TRUE
 errors_df <- lapply(simulation_names, function(s_name) {
   
   s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
-  paths <- kwb.utils::resolve(path_list, dir_target = s_name, i = s_id)
+  paths <- kwb.utils::resolve(path_list, dir_target = s_name)
   
   if(fs::file_exists(paths$path_errors_hdf5)) {
     kwb.utils::catAndRun(messageText = sprintf("Reading error file '%s'",
@@ -223,6 +238,12 @@ simulation_names <- basename(fs::dir_ls(paths$dir_output))
 simulation_names <- scenarios_with_single_parameter_variation
 
 simulation_results <- if(import_results_from_rds == FALSE) {
+  
+message(sprintf("Reading results files ('%s') for %d model runs",
+                                               paste0(c(paths$file_results_hdf5_element, paths$file_results_hdf5_flaeche, 
+                                                        stringr::str_replace(paths$file_results_hdf5_verschaltungen, 
+                                                                             "[0-9]+", "xxxxx")), collapse = "|"),
+                                                      length(simulation_names)))
   stats::setNames(lapply(simulation_names, function(s_name) {
 
 
@@ -234,8 +255,10 @@ if(all(file.exists(c(paths$path_results_hdf5_verschaltungen,
                  paths$path_results_hdf5_element, 
                  paths$path_results_hdf5_flaeche)))) {
 
-    kwb.utils::catAndRun(messageText = sprintf("Reading results file '%s'",
-                                               paths$path_results_hdf5),
+    kwb.utils::catAndRun(messageText = sprintf("(%d/%d)) Reading results files for model run %s",
+                                               which(simulation_names == s_name),
+                                               length(simulation_names),
+                                               paths$dir_target_output),
                          expr = {
 
 # "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen

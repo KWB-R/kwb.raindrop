@@ -2,28 +2,37 @@
 % Please edit documentation in R/read_hdf5_timeseries.R
 \name{read_hdf5_timeseries}
 \alias{read_hdf5_timeseries}
-\title{Read HDF5 Results Time Series from HDF5 Group into a Long Tibble}
+\title{Read HDF5 time series datasets from a group (supports deeperLayers)}
 \usage{
-read_hdf5_timeseries(ts_groupvariable)
+read_hdf5_timeseries(
+  ts_groupvariable,
+  deeper_layers_pattern = "deeperLayers|deeper_layers"
+)
 }
 \arguments{
-\item{ts_groupvariable}{\code{hdf5r::H5Group}
-An open HDF5 group whose \emph{time-series} children are stored as 2×N numeric
-matrices (\verb{[1, ] = time/index}, \verb{[2, ] = value}), possibly mixed with
-scalar metadata datasets.}
+\item{ts_groupvariable}{\code{hdf5r::H5Group}}
+
+\item{deeper_layers_pattern}{regex to detect deeper-layers datasets}
 }
 \value{
-A \code{tibble} with columns:
-\itemize{
-\item \code{variable} (\code{character}): dataset name within the group.
-\item \code{time}     (\code{numeric}): time or index taken from the first row.
-\item \code{value}    (\code{numeric}): values taken from the second row.
-}
+tibble::tibble(variable, time, value)
 }
 \description{
-Extracts all datasets (no subgroups) from a given HDF5 group and converts
-each \strong{2×N numeric matrix} into a tidy long table. It assumes the first row
-holds the time/index vector and the second row the values.
-Datasets that are not 2×N numeric matrices (e.g. scalar metadata like
-\code{von_Layer}, \code{von_Massnahmenelement}, ...) are silently ignored.
+Reads all datasets in an HDF5 group and returns a long tibble with
+columns: variable, time, value.
+}
+\details{
+Supported dataset layouts:
+\itemize{
+\item k x N   (rows):   \link{1, } = time, \link{2..k, } = values (series)
+\item N x k   (cols):   \link{, 1} = time, \link{, 2..k} = values (series)
+}
+
+Special handling for names containing "deeperLayers"/"deeper_layers":
+\itemize{
+\item The value series represent layers below layer 1.
+\item Output variable names get suffixed with the layer-id:
+\if{html}{\out{<name>}}_2, \if{html}{\out{<name>}}_3, ...
+\item If the dataset contains only time (no value series), it returns 0 rows.
+}
 }

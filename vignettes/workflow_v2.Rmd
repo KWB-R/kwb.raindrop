@@ -204,7 +204,7 @@ h5$close_all()
 
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 
-simulation_names <- basename(fs::dir_ls(paths$dir_output))
+#simulation_names <- basename(fs::dir_ls(paths$dir_output))
 simulation_names <- scenarios_with_single_parameter_variation
 
 debug <- TRUE
@@ -237,7 +237,7 @@ import_results_from_rds <- FALSE
 debug <- TRUE
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 
-simulation_names <- basename(fs::dir_ls(paths$dir_output))
+#simulation_names <- basename(fs::dir_ls(paths$dir_output))
 simulation_names <- scenarios_with_single_parameter_variation
 
 simulation_results <- if(import_results_from_rds == FALSE) {
@@ -252,7 +252,7 @@ message(sprintf("Reading results files ('%s') for %d model runs",
 
 s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
 
-paths <- kwb.utils::resolve(path_list, dir_target = s_name, i = s_id)
+paths <- kwb.utils::resolve(path_list, dir_target = s_name)
 
 if(all(file.exists(c(paths$path_results_hdf5_verschaltungen, 
                  paths$path_results_hdf5_element, 
@@ -305,12 +305,12 @@ selected_scenario <- param_grid %>%
 simulation_results[[s_name]]$element$states %>% 
   dplyr::bind_rows(simulation_results[[s_name]]$element$rates) %>% 
   dplyr::filter(variable %in% c("h_pond", 
-                                "fPI_InfiltrationRate",
-                                #"fPI_InfiltrationRate_deeperLayers", 
-                                "f_Endversickerungsrate")) %>% 
+                                "fPI_InfiltrationRate", 
+                                "f_Endversickerungsrate"),
+                stringr::str_starts(variable, pattern = "fPI_InfiltrationRate_deeperLayers")) %>% 
   ggplot2::ggplot(ggplot2::aes(x = time, y = value)) +
   ggplot2::geom_point() +
-  ggplot2::facet_wrap(~ variable, nrow = 2, ncol = 2, scales = "free_y") +
+  ggplot2::facet_wrap(~ variable, nrow = 3, ncol = 2, scales = "free_y") +
   ggplot2::labs(title = sprintf("Scenario ID: %s", 
                                 s_name),
                 subtitle = sprintf("connected area: %d m2, mulde: area %d m2, height: %d mm; filter: kf: %d mm/h, height: %d mm;\nstorage_height: %d mm, bottom_kf: %.2f mm/h; rain_factor: %.2f", 

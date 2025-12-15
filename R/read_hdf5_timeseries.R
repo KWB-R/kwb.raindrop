@@ -1,82 +1,145 @@
-#' Read HDF5 Results Time Series from HDF5 Group into a Long Tibble
+#' Read HDF5 time series datasets from a group (supports deeperLayers)
 #'
-#' @description
-#' Extracts all datasets (no subgroups) from a given HDF5 group and converts
-#' each **2×N numeric matrix** into a tidy long table. It assumes the first row
-#' holds the time/index vector and the second row the values.
-#' Datasets that are not 2×N numeric matrices (e.g. scalar metadata like
-#' `von_Layer`, `von_Massnahmenelement`, ...) are silently ignored.
+#' Reads all datasets in an HDF5 group and returns a long tibble with
+#' columns: variable, time, value.
+#'
+#' Supported dataset layouts:
+#' - k x N   (rows):   [1, ] = time, [2..k, ] = values (series)
+#' - N x k   (cols):   [, 1] = time, [, 2..k] = values (series)
+#'
+#' Special handling for names containing "deeperLayers"/"deeper_layers":
+#' - The value series represent layers below layer 1.
+#' - Output variable names get suffixed with the layer-id:
+#'     <name>_2, <name>_3, ...
+#' - If the dataset contains only time (no value series), it returns 0 rows.
 #'
 #' @param ts_groupvariable `hdf5r::H5Group`
-#'   An open HDF5 group whose *time-series* children are stored as 2×N numeric
-#'   matrices (`[1, ] = time/index`, `[2, ] = value`), possibly mixed with
-#'   scalar metadata datasets.
-#'
-#' @return A `tibble` with columns:
-#' \itemize{
-#'   \item `variable` (`character`): dataset name within the group.
-#'   \item `time`     (`numeric`): time or index taken from the first row.
-#'   \item `value`    (`numeric`): values taken from the second row.
-#' }
-#'
-#' @importFrom tibble tibble as_tibble
-#' @importFrom dplyr filter pull
-#' @importFrom purrr map_dfr
+#' @param deeper_layers_pattern regex to detect deeper-layers datasets
+#' @return tibble::tibble(variable, time, value)
 #' @export
-read_hdf5_timeseries <- function(ts_groupvariable) {
+read_hdf5_timeseries <- function(
+    ts_groupvariable,
+    deeper_layers_pattern = "deeperLayers|deeper_layers"
+) {
   
-  # 1) Alle Datasets (keine Subgruppen) auflisten
-  ds_tbl <- ts_groupvariable$ls() %>%
-    tibble::as_tibble()
+  stopifnot(inherits(ts_groupvariable, "H5Group"))
   
-  ds_names <- ds_tbl %>%
+  ls_tbl <- ts_groupvariable$ls()
+  ls_tbl <- tibble::as_tibble(ls_tbl)
+  
+  ds_names <- ls_tbl %>%
     dplyr::filter(.data$obj_type == "H5I_DATASET") %>%
     dplyr::pull(.data$name)
   
   if (length(ds_names) == 0L) {
-    return(tibble::tibble(
-      variable = character(),
-      time    = numeric(),
-      value   = numeric()
-    ))
+    return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
   }
   
-  # 2) Alles einlesen
+  # read datasets
   ds_list <- setNames(
     lapply(ds_names, function(nm) ts_groupvariable[[nm]]$read()),
-    nm = ds_names
+    ds_names
   )
   
-  # 3) Nur echte 2×N-Zeitreihen behalten (numeric Matrix mit 2 Zeilen)
-  valid_names <- names(ds_list)[vapply(
-    ds_list,
-    FUN.VALUE = logical(1),
-    FUN = function(m) {
-      is.matrix(m) &&
-        is.numeric(m) &&
-        nrow(m) == 2 &&
-        ncol(m) >= 1
+  # Helper: turn a single dataset matrix into a long tibble
+  read_one <- function(m, nm) {
+    is_deeper <- grepl(deeper_layers_pattern, nm)
+    
+    # Allow vector (sometimes returned for 1 x N or N x 1)
+    if (is.vector(m) && is.numeric(m)) {
+      # time-only for deeperLayers => no values
+      if (is_deeper) {
+        return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
+      }
+      # otherwise ambiguous -> ignore
+      return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
     }
-  )]
-  
-  if (length(valid_names) == 0L) {
-    # Keine passenden 2×N-Datasets → leeres Tibble
-    return(tibble::tibble(
-      variable = character(),
-      time    = numeric(),
-      value   = numeric()
-    ))
+    
+    if (!is.matrix(m) || !is.numeric(m)) {
+      return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
+    }
+    
+    nr <- nrow(m)
+    nc <- ncol(m)
+    
+    # time-only matrix cases for deeperLayers
+    if (is_deeper) {
+      if ((nr == 1L && nc >= 2L) || (nc == 1L && nr >= 2L)) {
+        # Only a time vector stored, no deeper layers defined
+        return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
+      }
+    }
+    
+    # Need at least time + one value series
+    if ((nr < 2L && nc < 2L)) {
+      return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
+    }
+    
+    # Decide orientation
+    # Prefer the orientation where time is the first row when nr <= nc
+    # otherwise treat time as the first column.
+    if (nr <= nc) {
+      # k x N, time in first row
+      time <- as.numeric(m[1, ])
+      values_mat <- m[-1, , drop = FALSE]  # (k-1) x N
+      n_series <- nrow(values_mat)
+      
+      if (n_series < 1L) {
+        return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
+      }
+      
+      out <- purrr::map_dfr(seq_len(n_series), function(j) {
+        var_name <- if (is_deeper) {
+          paste0(nm, "_", j + 1L)  # layers start at 2
+        } else if (n_series == 1L) {
+          nm
+        } else {
+          paste0(nm, "_", j)
+        }
+        
+        tibble::tibble(
+          variable = var_name,
+          time     = time,
+          value    = as.numeric(values_mat[j, ])
+        )
+      })
+      
+      return(out)
+      
+    } else {
+      # N x k, time in first column
+      time <- as.numeric(m[, 1])
+      values_mat <- m[, -1, drop = FALSE]  # N x (k-1)
+      n_series <- ncol(values_mat)
+      
+      if (n_series < 1L) {
+        return(tibble::tibble(variable = character(), time = numeric(), value = numeric()))
+      }
+      
+      out <- purrr::map_dfr(seq_len(n_series), function(j) {
+        var_name <- if (is_deeper) {
+          paste0(nm, "_", j + 1L)
+        } else if (n_series == 1L) {
+          nm
+        } else {
+          paste0(nm, "_", j)
+        }
+        
+        tibble::tibble(
+          variable = var_name,
+          time     = time,
+          value    = as.numeric(values_mat[, j])
+        )
+      })
+      
+      return(out)
+    }
   }
   
-  # 4) In langes Tibble konvertieren
-  states_long <- purrr::map_dfr(valid_names, function(nm) {
-    m <- ds_list[[nm]]
-    tibble::tibble(
-      variable = nm,
-      time  = as.numeric(m[1, ]),
-      value = as.numeric(m[2, ])
-    )
+  # Keep only numeric matrices (and handle edge cases inside read_one)
+  out <- purrr::map_dfr(names(ds_list), function(nm) {
+    read_one(ds_list[[nm]], nm)
   })
   
-  states_long
+  out
 }

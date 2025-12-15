@@ -127,6 +127,9 @@ param_grid <- param_grid_all_combinations  %>%
   dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)
 
 DT::datatable(param_grid)
+
+htmlwidgets::saveWidget(DT::datatable(parameters), "parameters.html")
+htmlwidgets::saveWidget(DT::datatable(param_grid), "param_grid.html")
 ```
 
 ### Run Model
@@ -310,7 +313,7 @@ simulation_results[[s_name]]$element$states %>%
   ggplot2::facet_wrap(~ variable, nrow = 2, ncol = 2, scales = "free_y") +
   ggplot2::labs(title = sprintf("Scenario ID: %s", 
                                 s_name),
-                subtitle = sprintf("connected area: %d m2, mulde: area %d m2, height: %d mm; filter: kf: %d mm/h, height: %d mm; storage_height: %d mm, bottom_kf: %.2f mm/h; rain_factor: %.2f", 
+                subtitle = sprintf("connected area: %d m2, mulde: area %d m2, height: %d mm; filter: kf: %d mm/h, height: %d mm;\nstorage_height: %d mm, bottom_kf: %.2f mm/h; rain_factor: %.2f", 
                                 selected_scenario$connected_area,
                                 selected_scenario$mulde_area,
                                 selected_scenario$mulde_height, 

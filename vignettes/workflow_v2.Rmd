@@ -304,10 +304,7 @@ selected_scenario <- param_grid %>%
 
 simulation_results[[s_name]]$element$states %>% 
   dplyr::bind_rows(simulation_results[[s_name]]$element$rates) %>% 
-  dplyr::filter(variable %in% c("h_pond", 
-                                "fPI_InfiltrationRate", 
-                                "f_Endversickerungsrate"),
-                stringr::str_starts(variable, pattern = "fPI_InfiltrationRate_deeperLayers")) %>% 
+  dplyr::filter(variable %in% c("h_pond", "fPI_InfiltrationRate", "f_Endversickerungsrate") | stringr::str_starts(variable, pattern = "fPI_InfiltrationRate_deeperLayers")) %>% 
   ggplot2::ggplot(ggplot2::aes(x = time, y = value)) +
   ggplot2::geom_point() +
   ggplot2::facet_wrap(~ variable, nrow = 3, ncol = 2, scales = "free_y") +

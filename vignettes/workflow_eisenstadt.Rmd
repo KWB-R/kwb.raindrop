@@ -1,8 +1,8 @@
 ---
-title: "Workflow 120min_40mm"
+title: "Workflow Eisenstadt 2005"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Workflow 120min_40mm}
+  %\VignetteIndexEntry{Workflow Eisenstadt 2005}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,10 +25,10 @@ path_list <- list(
   root_path = "C:/kwb/projects/raindrop/2025-12-19_Raindrop_Daten",
   dir_base = "<root_path>/Optimierungsfall",
   dir_exe = "<root_path>/Berechnungskern",
-  dir_input = "<root_path>/Optimierungsfall/models/120min_40mm/input",
-  dir_output = "<root_path>/Optimierungsfall/models/120min_40mm/output", 
+  dir_input = "<root_path>/Optimierungsfall/models/eisenstadt/input",
+  dir_output = "<root_path>/Optimierungsfall/models/eisenstadt/output", 
   dir_target_output = "<dir_output>/<dir_target>",
-  file_base = "120min_40mm.h5",
+  file_base = "Eisenstadt_2005.h5",
   file_errors_hdf5 = "Fehlerprotokoll.h5",
   file_exe = "Regenwasserbewirtschaftung.exe",
   file_results_hdf5_element = "Mulde_Rigole.h5",

@@ -304,19 +304,45 @@ dbg = debug)}}), nm = simulation_names)
 
 
 simulation_results_optimisation <- stats::setNames(lapply(names(simulation_results), function(s_name) {
-  message(s_name)
 
-wb_element <- simulation_results[[s_name]]$element$water_balance %>% 
-    dplyr::mutate(variable = sprintf("element.%s_", variable), 
-                  value_percent = round(100*abs(value)/abs(min(value)), 2)) %>% 
-    dplyr::select(- value) %>% 
-    tidyr::pivot_wider(names_from = "variable", values_from = "value_percent")
+# --- element: Prozent korrekt auf (Regen + Zufluss aus Verschaltungen) ----
+wb_el_raw <- simulation_results[[s_name]]$element$water_balance
 
-wb_connectedarea <- simulation_results[[s_name]]$connected_area$water_balance %>% 
-    dplyr::mutate(variable = sprintf("connectedarea.%s_", variable), 
-                  value_percent = round(100*abs(value)/abs(max(value)), 2)) %>% 
-    dplyr::select(- value) %>% 
-    tidyr::pivot_wider(names_from = "variable", values_from = "value_percent")
+# denom = Regen + |Verschaltungen| (beide skalar aus der WB ziehen)
+denom_element <- wb_el_raw %>%
+  tidyr::pivot_wider(names_from = variable, values_from = value) %>%
+  dplyr::transmute(denom = WB_Regen + abs(WB_Oberflaechenablauf_Verschaltungen)) %>%
+  dplyr::pull(denom)
+
+wb_element <- wb_el_raw %>%
+  dplyr::mutate(
+    variable = sprintf("element.%s_", variable),
+    value_percent = round(100 * value / denom_element, 2)   # <-- SIGN behalten!
+  ) %>%
+  dplyr::select(-value) %>%
+  tidyr::pivot_wider(names_from = "variable", values_from = "value_percent")
+
+# --- connected_area: Prozent korrekt (Basis = Regen; keine Rückkopplung) ----
+wb_ca_raw <- simulation_results[[s_name]]$connected_area$water_balance
+
+denom_connectedarea <- wb_ca_raw %>%
+  tidyr::pivot_wider(names_from = variable, values_from = value) %>%
+  dplyr::transmute(
+    denom = dplyr::if_else(
+      !is.na(WB_Regen) & WB_Regen != 0,
+      WB_Regen,
+      abs(WB_Oberflaechenablauf_Verschaltungen)  # Fallback
+    )
+  ) %>%
+  dplyr::pull(denom)
+
+wb_connectedarea <- wb_ca_raw %>%
+  dplyr::mutate(
+    variable = sprintf("connectedarea.%s_", variable),
+    value_percent = round(100 * value / denom_connectedarea, 2)  # SIGN behalten
+  ) %>%
+  dplyr::select(-value) %>%
+  tidyr::pivot_wider(names_from = "variable", values_from = "value_percent")
   
 xx <- simulation_results[[s_name]]$element$rates %>% 
   dplyr::filter(variable == "Oberflaechenablauf_Ueberlauf", 
@@ -357,7 +383,8 @@ htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
                                       filter = "top",
                                       options = list(pageLength = 25, 
                                                      autoWidth = TRUE)), 
-                        "simulation_results_optimisation.html")
+                        "simulation_results_optimisation.html",
+                        title = "RAINDROP - Solution Space")
 
 ### Plot results
 
@@ -387,30 +414,40 @@ htmlwidgets::saveWidget(
   selfcontained = TRUE,
   title = "RAINDROP - Main Effects"
 )
-print(gg)
+gg
 kwb.utils::finishAndShowPdf(pdff)
 
 
 pdff <- "simulation_results_optimisation_design-space_mulde-area_vs_parameters.pdf"
 kwb.utils::preparePdf(pdfFile = pdff)
-for(y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
-p <- kwb.raindrop::plot_valid_design_space(param_grid = param_grid,
-                                      sim_results = simulation_results_optimisation,
-                                      x = "mulde_area", 
-                                      y = y)
 
-plotly_p <- plotly::ggplotly(p, tooltip = "text")
+for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
 
-htmlwidgets::saveWidget(
-  widget = plotly_p,
-  file = sprintf("simulation_results_optimisation_design-space_mulde-area_vs_%s.html",
-                 y),
-  selfcontained = TRUE,
-  title = sprintf("Design Space: mulde_area vs. %s", y)
-)
+  p <- kwb.raindrop::plot_valid_design_space(
+    param_grid = param_grid,
+    sim_results = simulation_results_optimisation,
+    x = "mulde_area",
+    y = y,
+    valid_max = 1,
+    jitter = TRUE,
+    alpha_mode = "duplicates",
+    alpha_min = 0.25,
+    alpha_max = 1,
+    drop_overflow_gt_valid_max = TRUE,
+    keep_param_grid_limits = TRUE
+  )
 
-print(p)
+  # interaktiv als HTML
+  plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  htmlwidgets::saveWidget(
+    widget = plotly_p,
+    file = sprintf("simulation_results_optimisation_design-space_mulde-area_vs_%s.html", y),
+    selfcontained = TRUE,
+    title = sprintf("Design Space: mulde_area vs. %s", y)
+  )
 
+  # statisch ins PDF (WICHTIG!)
+  suppressWarnings(print(p))
 }
 
 kwb.utils::finishAndShowPdf(pdff)

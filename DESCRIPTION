@@ -20,8 +20,10 @@ Imports:
     fs,
     ggplot2,
     hdf5r,
+    kwb.event,
     kwb.utils,
     magrittr,
+    plotly,
     purrr, 
     stringr,
     tibble
@@ -36,6 +38,7 @@ Suggests:
 VignetteBuilder: 
     knitr
 Remotes:
+    github::kwb-r/kwb.event
     github::kwb-r/kwb.utils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

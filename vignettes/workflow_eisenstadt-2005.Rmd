@@ -1,8 +1,8 @@
 ---
-title: "Workflow 120min_40mm"
+title: "Workflow Eisenstadt 2005"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Workflow 120min_40mm}
+  %\VignetteIndexEntry{Workflow Eisenstadt 2005}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 is_ghactions <- identical(Sys.getenv("CI"), "true")
-
+#is_ghactions <- FALSE
 ```
 
 ### Define Paths and Scenarios
@@ -150,6 +150,7 @@ psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh/25.4)^(-0.328)) * 25.4
 ### Run Model
 
 ```{r run_model, eval = TRUE}
+debug <- TRUE
 #Number of cores for parallel processing (or: automatic)
 future::plan(future::multisession, workers = parallel::detectCores())
 

@@ -22,6 +22,7 @@ Imports:
     hdf5r,
     kwb.event,
     kwb.utils,
+    lubridate,
     magrittr,
     plotly,
     purrr, 
@@ -32,7 +33,6 @@ Suggests:
     DT,
     future,
     future.apply,
-    ggplot2,
     knitr,
     rmarkdown
 VignetteBuilder: 

@@ -12,8 +12,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-is_ghactions <- identical(Sys.getenv("CI"), "true")
-#is_ghactions <- FALSE
+#is_ghactions <- identical(Sys.getenv("CI"), "true")
+is_ghactions <- FALSE
 ```
 
 ### Define Paths and Scenarios
@@ -292,11 +292,20 @@ params <- c(
 )
 
 pdff <- "simulation_results_optimisation_main-effects.pdf"
-kwb.utils::preparePdf(pdfFile = pdff)
-gg <- kwb.raindrop::plot_main_effects(df = simulation_results_optimisation,
-                                      y = "n_overflows", 
-                                      params = params)
 
+gg <- kwb.raindrop::plot_main_effects(
+  df = simulation_results_optimisation,
+  y = "n_overflows",
+  params = params
+)
+
+# --- 1) Statisch ins PDF: kein Plotly dazwischen!
+kwb.utils::preparePdf(pdfFile = pdff)
+print(gg)
+dev.off()
+#kwb.utils::finishAndShowPdf(pdff)
+
+# --- 2) Interaktiv als HTML: nach dem PDF
 plotly_gg <- plotly::ggplotly(gg)
 
 htmlwidgets::saveWidget(
@@ -305,8 +314,7 @@ htmlwidgets::saveWidget(
   selfcontained = TRUE,
   title = "RAINDROP - Main Effects"
 )
-gg
-kwb.utils::finishAndShowPdf(pdff)
+
 
 
 pdff <- "simulation_results_optimisation_design-space_mulde-area_vs_parameters.pdf"
@@ -340,8 +348,8 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
   # statisch ins PDF (WICHTIG!)
   suppressWarnings(print(p))
 }
-
-kwb.utils::finishAndShowPdf(pdff)
+dev.off()
+#kwb.utils::finishAndShowPdf(pdff)
 
 pdff <- "simulation_results_optimisation_water-balance.pdf"
 kwb.utils::preparePdf(pdfFile = pdff)
@@ -364,6 +372,7 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
 
   # statisch ins PDF (WICHTIG!)
   suppressWarnings(print(p))  
-kwb.utils::finishAndShowPdf(pdff)
+dev.off()
+#kwb.utils::finishAndShowPdf(pdff)
 
 ```

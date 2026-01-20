@@ -12,11 +12,11 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true"
-is_ci <- tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
-
-is_ghactions <- is_ghactions || is_ci
-#is_ghactions <- FALSE
+# is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true"
+# is_ci <- tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
+# 
+# is_ghactions <- is_ghactions || is_ci
+is_ghactions <- TRUE
 ```
 
 ### Define Paths and Scenarios

@@ -12,10 +12,11 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true"
-is_ci <- tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
-
-is_ghactions <- is_ghactions || is_ci
+# is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true"
+# is_ci <- tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
+# 
+# is_ghactions <- is_ghactions || is_ci
+is_ghactions <- TRUE
 
 ```
 
@@ -125,7 +126,7 @@ DT::datatable(param_grid)
 
 ### Run Model
 
-```{r run_model, eval = FALSE}
+```{r run_model, eval = !is_ghactions}
 # Number of cores for parallel processing (or: automatic)
 #future::plan(future::multisession, workers = parallel::detectCores() - 1)
 

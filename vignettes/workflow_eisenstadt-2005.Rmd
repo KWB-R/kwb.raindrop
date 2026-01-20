@@ -12,8 +12,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-#is_ghactions <- identical(Sys.getenv("CI"), "true")
-is_ghactions <- FALSE
+is_ghactions <- identical(Sys.getenv("CI"), "true")
+#is_ghactions <- FALSE
 ```
 
 ### Define Paths and Scenarios
@@ -149,7 +149,7 @@ psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh/25.4)^(-0.328)) * 25.4
 
 ### Run Model
 
-```{r run_model, eval = TRUE}
+```{r run_model, eval =  !is_ghactions}
 debug <- TRUE
 #Number of cores for parallel processing (or: automatic)
 future::plan(future::multisession, workers = parallel::detectCores())

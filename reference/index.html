@@ -19,6 +19,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/workflow.html">Workflow</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_120min_40mm.html">Workflow 120min_40mm</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_v2.html">Workflow V2</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -48,10 +50,24 @@
 
       <dl><dt>
 
+          <code><a href="add_overflow_events_and_waterbalance.html">add_overflow_events_and_waterbalance()</a></code>
+
+        </dt>
+        <dd>Add overflow-event metrics and water-balance shares (percent) to simulation results</dd>
+
+        <dt>
+
           <code><a href="find_single_param_variations.html">find_single_param_variations()</a></code>
 
         </dt>
         <dd>Find scenarios that differ from a reference in exactly one parameter</dd>
+
+        <dt>
+
+          <code><a href="get_simulation_results_optim.html">get_simulation_results_optim()</a></code>
+
+        </dt>
+        <dd>Read Raindrop optimisation simulation results from HDF5</dd>
 
         <dt>
 
@@ -90,6 +106,27 @@
 
         <dt>
 
+          <code><a href="plot_main_effects.html">plot_main_effects()</a></code>
+
+        </dt>
+        <dd>Plot main effects of multiple parameters on an outcome (violin/box/jitter)</dd>
+
+        <dt>
+
+          <code><a href="plot_valid_design_space.html">plot_valid_design_space()</a></code>
+
+        </dt>
+        <dd>Valid solutions in design space (mulde_area × storage_height) with tooltip labels</dd>
+
+        <dt>
+
+          <code><a href="plot_wb_tradeoff_overflows.html">plot_wb_tradeoff_overflows()</a></code>
+
+        </dt>
+        <dd>Trade-off-Plot: Infiltration vs. Evapotranspiration (farbcodiert nach Overflows)</dd>
+
+        <dt>
+
           <code><a href="read_hdf5_connections.html">read_hdf5_connections()</a></code>
 
         </dt>
@@ -107,7 +144,7 @@
           <code><a href="read_hdf5_timeseries.html">read_hdf5_timeseries()</a></code>
 
         </dt>
-        <dd>Read HDF5 Results Time Series from HDF5 Group into a Long Tibble</dd>
+        <dd>Read HDF5 time series datasets from a group (supports deeperLayers)</dd>
 
         <dt>
 

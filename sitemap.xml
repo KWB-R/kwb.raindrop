@@ -1,14 +1,20 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/404.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/parameters.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/param_grid.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_120min_40mm.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_v2.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/authors.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/LICENSE-text.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/LICENSE.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/news/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_read_values.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_validate_write.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_write_values.html</loc></url>
@@ -16,6 +22,9 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/pipe.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_main_effects.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_valid_design_space.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_wb_tradeoff_overflows.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_connections.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_scalars.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.html</loc></url>

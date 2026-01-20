@@ -17,7 +17,7 @@
 Source:
 [`DESCRIPTION`](https://github.com/KWB-R/kwb.raindrop/blob/main/DESCRIPTION)
 
-Rustler M (2025). *kwb.raindrop: R Package for Optimisation Simulations
+Rustler M (2026). *kwb.raindrop: R Package for Optimisation Simulations
 for Rainwater Management Simulations Performed with Calculation Engine
 Provided by Tandler*. R package version 0.0.0.9000,
 <https://github.com/KWB-R/kwb.raindrop>.
@@ -25,7 +25,7 @@ Provided by Tandler*. R package version 0.0.0.9000,
     @Manual{,
       title = {kwb.raindrop: R Package for Optimisation Simulations for Rainwater Management Simulations Performed with Calculation Engine Provided by Tandler},
       author = {Michael Rustler},
-      year = {2025},
+      year = {2026},
       note = {R package version 0.0.0.9000},
       url = {https://github.com/KWB-R/kwb.raindrop},
     }

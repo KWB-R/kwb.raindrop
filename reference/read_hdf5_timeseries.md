@@ -1,15 +1,15 @@
-# Read HDF5 Results Time Series from HDF5 Group into a Long Tibble
+# Read HDF5 time series datasets from a group (supports deeperLayers)
 
-Extracts all datasets (no subgroups) from a given HDF5 group and
-converts each **2×N numeric matrix** into a tidy long table. It assumes
-the first row holds the time/index vector and the second row the values.
-Datasets that are not 2×N numeric matrices (e.g. scalar metadata like
-`von_Layer`, `von_Massnahmenelement`, ...) are silently ignored.
+Reads all datasets in an HDF5 group and returns a long tibble with
+columns: variable, time, value.
 
 ## Usage
 
 ``` r
-read_hdf5_timeseries(ts_groupvariable)
+read_hdf5_timeseries(
+  ts_groupvariable,
+  deeper_layers_pattern = "deeperLayers|deeper_layers"
+)
 ```
 
 ## Arguments
@@ -17,16 +17,28 @@ read_hdf5_timeseries(ts_groupvariable)
 - ts_groupvariable:
 
   [`hdf5r::H5Group`](http://hhoeflin.github.io/hdf5r/reference/H5Group-class.md)
-  An open HDF5 group whose *time-series* children are stored as 2×N
-  numeric matrices (`[1, ] = time/index`, `[2, ] = value`), possibly
-  mixed with scalar metadata datasets.
+
+- deeper_layers_pattern:
+
+  regex to detect deeper-layers datasets
 
 ## Value
 
-A `tibble` with columns:
+tibble::tibble(variable, time, value)
 
-- `variable` (`character`): dataset name within the group.
+## Details
 
-- `time` (`numeric`): time or index taken from the first row.
+Supported dataset layouts:
 
-- `value` (`numeric`): values taken from the second row.
+- k x N (rows): 1, = time, 2..k, = values (series)
+
+- N x k (cols): , 1 = time, , 2..k = values (series)
+
+Special handling for names containing "deeperLayers"/"deeper_layers":
+
+- The value series represent layers below layer 1.
+
+- Output variable names get suffixed with the layer-id: \_2, \_3, ...
+
+- If the dataset contains only time (no value series), it returns 0
+  rows.

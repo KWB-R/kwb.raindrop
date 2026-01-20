@@ -3,6 +3,7 @@
 export("%>%")
 export(add_overflow_events_and_waterbalance)
 export(find_single_param_variations)
+export(get_simulation_results_all)
 export(get_simulation_results_optim)
 export(h5_read_values)
 export(h5_validate_write)

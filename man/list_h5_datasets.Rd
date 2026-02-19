@@ -15,9 +15,3 @@ A tibble with columns: \code{path}, \code{obj_type}, \code{dims}, \code{maxdims}
 \description{
 List all datasets (recursive)
 }
-\examples{
-\dontrun{
-h5 <- hdf5r::H5File$new("file.h5", mode = "r")
-list_h5_datasets(h5)
-}
-}

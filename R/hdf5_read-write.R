@@ -6,33 +6,151 @@ NULL
 # ====================== Helpers ======================
 
 # Robust writer: try multiple possible argument names across hdf5r variants
-.dwrite <- function(dset, x) {
+.dwrite <- function(dset, x, args = NULL) {
   tries <- list(
-    list(value = x),
-    list(obj   = x),
-    list(data  = x),
-    list(buf   = x),
-    list(object= x),
+    list(args = args, value = x),
+    list(args = args, obj   = x),
+    list(args = args, data  = x),
+    list(args = args, buf   = x),
+    list(args = args, object= x),
     list(x)               # positional as very last resort
   )
-  for (args in tries) {
-    ok <- try(do.call(dset$write, args), silent = TRUE)
+  for (a in tries) {
+    ok <- try(do.call(dset$write, a), silent = TRUE)
     if (!inherits(ok, "try-error")) return(invisible(TRUE))
   }
-  stop("Failed to write dataset: none of the write() signatures (value/obj/data/buf/object/positional) worked.")
+  stop("Failed to write dataset: none of the write() signatures worked.", call. = FALSE)
 }
 
-# Coerce value roughly to dataset's existing R type (from a small probe read)
-.coerce_like_dataset <- function(val, dset) {
-  got <- try(dset$read(), silent = TRUE)
-  if (!inherits(got, "try-error")) {
-    if (is.character(got)) return(as.character(val))
-    if (is.integer(got))   return(as.integer(val))
-    if (is.numeric(got))   return(as.numeric(val))
-    if (is.logical(got))   return(as.logical(val))
-  }
-  val
+# human readable try-error
+.err_text <- function(x) if (inherits(x, "try-error")) as.character(x) else paste0(x)
+
+# parse dims from ls() "2 x 10" or "2x10"
+.parse_dims <- function(s) {
+  if (is.na(s) || !nzchar(s)) return(integer(0))
+  as.integer(strsplit(gsub("\\s", "", s), "x", fixed = TRUE)[[1]])
 }
+
+# Infer HDF5 dims from value
+.infer_dims_from_value <- function(v, ts_cols = c("time","value")) {
+  if (is.data.frame(v) && ncol(v) == 2L) {
+    # we treat TS as Nx2 in R, but will write as 2xN in HDF5
+    n <- nrow(v)
+    return(c(2L, as.integer(n)))
+  }
+  if (!is.null(dim(v))) return(as.integer(dim(v)))
+  as.integer(length(v))
+}
+
+# Best-effort coercion to existing dataset type
+.dataset_target_kind <- function(dset) {
+  got <- try(dset$read(), silent = TRUE)
+  if (inherits(got, "try-error")) return("unknown")
+  if (is.character(got)) "character" else if (is.integer(got)) "integer"
+  else if (is.double(got) || is.numeric(got)) "double"
+  else if (is.logical(got)) "logical" else "unknown"
+}
+
+.normalize_for_dataset <- function(dset, x) {
+  k <- .dataset_target_kind(dset)
+  if (k == "character") return(enc2utf8(as.character(if (is.factor(x)) as.character(x) else x)))
+  if (k == "integer")   return(as.integer(x))
+  if (k == "double")    return(as.numeric(x))
+  if (k == "logical")   return(as.logical(x))
+  x
+}
+
+.shape_for_dataset <- function(x, target_dims, dset) {
+  x <- .normalize_for_dataset(dset, x)
+  if (length(target_dims) == 0L) {
+    if (is.list(x) && length(x) == 1L) x <- x[[1L]]
+    if (length(x) != 1L) stop(sprintf("SCALAR expects length 1, got %d.", length(x)), call. = FALSE)
+    return(x)
+  }
+  if (length(target_dims) == 1L) {
+    if (is.null(dim(x))) {
+      if (length(x) != target_dims[1]) stop(sprintf("Length mismatch: %d vs %d", length(x), target_dims[1]), call. = FALSE)
+      return(as.vector(x))
+    }
+    if (prod(dim(x)) != target_dims[1]) stop(sprintf("Length mismatch: %d vs %d", prod(dim(x)), target_dims[1]), call. = FALSE)
+    return(as.vector(x))
+  }
+  # ND
+  if (is.null(dim(x))) {
+    if (length(x) != prod(target_dims)) stop(sprintf("Size mismatch: %d vs %d", length(x), prod(target_dims)), call. = FALSE)
+    return(array(x, dim = target_dims))
+  }
+  if (!identical(as.integer(dim(x)), as.integer(target_dims))) {
+    if (prod(dim(x)) != prod(target_dims)) {
+      stop(sprintf("Dim mismatch: dim(x)=%s vs target=%s",
+                   paste(dim(x), collapse = "x"), paste(target_dims, collapse = "x")), call. = FALSE)
+    }
+    return(array(as.vector(x), dim = target_dims))
+  }
+  x
+}
+
+# Ranked write helper (handles hdf5r variants that require explicit 'args')
+#' @keywords internal
+.dwrite_ranked <- function(dset, x, rank = NULL, dims = NULL) {
+  # Backward compatible: old callers pass only `dims=...`
+  if (is.null(rank)) {
+    if (!is.null(dims)) {
+      rank <- length(dims)
+    } else {
+      # fall back to dataset space rank
+      ext <- dset$get_space()$get_simple_extent_dims()
+      rank <- if (!is.null(ext$rank)) as.integer(ext$rank) else 0L
+    }
+  }
+  rank <- as.integer(rank)
+  
+  # This hdf5r build requires an `args` argument.
+  # For full write:
+  # rank 0 (scalar): args = list()
+  # rank k: args = rep(list(NULL), k)
+  args_full <- if (rank <= 0L) list() else rep(list(NULL), rank)
+  
+  tries <- list(
+    list(args = args_full, value = x),
+    list(args = args_full, obj   = x),
+    list(args = args_full, data  = x),
+    list(args = args_full, buf   = x),
+    list(args = args_full, object= x),
+    list(args_full, x)  # positional (args, value)
+  )
+  
+  errs <- character(0)
+  for (a in tries) {
+    res <- try(do.call(dset$write, a), silent = TRUE)
+    if (!inherits(res, "try-error")) return(invisible(TRUE))
+    errs <- c(errs, as.character(res))
+  }
+  
+  # some builds accept scalar with args=1
+  if (rank <= 0L) {
+    for (a in list(
+      list(args = 1L, value = x),
+      list(args = 1L, obj   = x),
+      list(args = 1L, data  = x),
+      list(1L, x)
+    )) {
+      res <- try(do.call(dset$write, a), silent = TRUE)
+      if (!inherits(res, "try-error")) return(invisible(TRUE))
+      errs <- c(errs, as.character(res))
+    }
+  }
+  
+  stop(
+    paste0(
+      "write() failed. First: ", errs[1],
+      if (length(errs) > 1) paste0("\nLast: ", utils::tail(errs, 1)) else ""
+    ),
+    call. = FALSE
+  )
+}
+
+
 
 # ====================== 1) List ======================
 
@@ -40,11 +158,6 @@ NULL
 #'
 #' @param h5 An open \code{hdf5r::H5File}.
 #' @return A tibble with columns: \code{path}, \code{obj_type}, \code{dims}, \code{maxdims}.
-#' @examples
-#' \dontrun{
-#' h5 <- hdf5r::H5File$new("file.h5", mode = "r")
-#' list_h5_datasets(h5)
-#' }
 #' @importFrom tibble tibble
 #' @export
 list_h5_datasets <- function(h5) {
@@ -63,12 +176,15 @@ list_h5_datasets <- function(h5) {
 # ====================== 2) Read ======================
 
 #' Read values of all (or selected) datasets
-#' @param h5 An open `hdf5r::H5File`
-#' @param paths character vector; if NULL read all
-#' @param simplify_scalars logical: simplify H5S_SCALAR to length-1 atom
-#' @param timeseries_as_tibble logical: convert 2xN / Nx2 to tibble(time,value)
-#' @param ts_names character(2): names for time/value columns
-#' @return named list
+#'
+#' @param h5 An open \code{hdf5r::H5File}.
+#' @param paths character vector; if NULL read all.
+#' @param simplify_scalars logical: simplify scalar datasets to length-1 atoms.
+#' @param timeseries_as_tibble logical: convert 2xN / Nx2 arrays to tibble(time,value).
+#' @param ts_names character(2): names for time/value columns.
+#' @return Named list.
+#' @importFrom stats setNames
+#' @importFrom tibble tibble
 #' @export
 h5_read_values <- function(h5,
                            paths = NULL,
@@ -91,12 +207,12 @@ h5_read_values <- function(h5,
     } else if (d[2] == 2L) {
       tibble::tibble(!!names[1] := as.vector(x[, 1]),
                      !!names[2] := as.vector(x[, 2]))
-    } else stop("Not 2xN or Nx2.")
+    } else stop("Not 2xN or Nx2.", call. = FALSE)
   }
   
   for (p in paths) {
     dset <- h5[[p]]
-    if (!inherits(dset, "H5D")) stop(sprintf("Not a dataset: %s", p))
+    if (!inherits(dset, "H5D")) stop(sprintf("Not a dataset: %s", p), call. = FALSE)
     val <- dset$read()
     
     if (simplify_scalars && length(val) == 1L && !is.array(val)) {
@@ -104,250 +220,287 @@ h5_read_values <- function(h5,
       out[[p]] <- val
       next
     }
+    
     if (timeseries_as_tibble && is.array(val) && length(dim(val)) == 2L) {
       d <- dim(val)
       if (2L %in% d) { out[[p]] <- .as_ts_tibble(val, ts_names); next }
     }
+    
     out[[p]] <- val
   }
+  
   out
 }
 
+# ====================== 3) Write ======================
 
-# --- helpers ---
-
-#' @keywords internal
-.parse_dims <- function(s) {
-  if (is.na(s) || !nzchar(s)) return(integer(0))
-  as.integer(strsplit(gsub("\\s", "", s), "x", fixed = TRUE)[[1]])
-}
-
-#' @keywords internal
-.err_text <- function(x) if (inherits(x, "try-error")) as.character(x) else paste0(x)
-
-#' @keywords internal
-#' @importFrom utils tail
-.dwrite_diag <- function(dset, x) {
-  tries <- list(
-    list(args = list(), value  = x),
-    list(args = list(), obj    = x),
-    list(args = NULL,  value   = x),
-    list(args = NULL,  obj     = x),
-    list(value = x),
-    list(obj    = x),
-    list(x)
-  )
-  errs <- character(0)
-  for (a in tries) {
-    res <- try(do.call(dset$write, a), silent = TRUE)
-    if (!inherits(res, "try-error")) return(invisible(TRUE))
-    errs <- c(errs, .err_text(res))
-  }
-  stop(paste0("write() failed. First: ", errs[1], if (length(errs)>1) paste0("\nLast: ", utils::tail(errs,1)) else ""), call. = FALSE)
-}
-
-#' @keywords internal
-.dataset_target_kind <- function(dset) {
-  got <- try(dset$read(), silent = TRUE)
-  if (inherits(got, "try-error")) return("unknown")
-  if (is.character(got)) "character" else if (is.integer(got)) "integer"
-  else if (is.double(got) || is.numeric(got)) "double"
-  else if (is.logical(got)) "logical" else "unknown"
-}
-
-#' @keywords internal
-.normalize_for_dataset <- function(dset, x) {
-  k <- .dataset_target_kind(dset)
-  if (k == "character") return(enc2utf8(as.character(if (is.factor(x)) as.character(x) else x)))
-  if (k == "integer")   return(as.integer(x))
-  if (k == "double")    return(as.numeric(x))
-  if (k == "logical")   return(as.logical(x))
-  x
-}
-
-#' @keywords internal
-.shape_for_dataset <- function(x, target_dims, dset) {
-  x <- .normalize_for_dataset(dset, x)
-  if (length(target_dims) == 0L) { # SCALAR
-    if (is.list(x) && length(x) == 1L) x <- x[[1L]]
-    if (length(x) != 1L) stop(sprintf("SCALAR expects length 1, got %d.", length(x)), call. = FALSE)
-    return(x)
-  }
-  if (length(target_dims) == 1L) { # 1D
-    if (is.null(dim(x))) {
-      if (length(x) != target_dims[1]) stop(sprintf("Length mismatch: %d vs. %d", length(x), target_dims[1]), call. = FALSE)
-      return(as.vector(x))
-    } else {
-      if (prod(dim(x)) != target_dims[1]) stop(sprintf("Length mismatch: %d vs. %d", prod(dim(x)), target_dims[1]), call. = FALSE)
-      return(as.vector(x))
-    }
-  }
-  # 2D+
-  if (is.null(dim(x))) {
-    if (length(x) != prod(target_dims)) stop(sprintf("Size mismatch: %d vs. %d", length(x), prod(target_dims)), call. = FALSE)
-    return(array(x, dim = target_dims))
-  } else {
-    if (!identical(as.integer(dim(x)), as.integer(target_dims))) {
-      if (prod(dim(x)) != prod(target_dims)) {
-        stop(sprintf("Dim/product mismatch: dim(x)=%s vs. target=%s",
-                     paste(dim(x), collapse="x"), paste(target_dims, collapse="x")), call. = FALSE)
-      }
-      return(array(as.vector(x), dim = target_dims))
-    }
-    return(x)
-  }
-}
-
-#' @keywords internal
-.infer_dims_from_value <- function(v, ts_cols = c("time","value")) {
-  if (is.data.frame(v) && ncol(v) == 2L) {
-    n <- max(NROW(v[[ ts_cols[1] ]]), NROW(v[[ ts_cols[2] ]]))
-    return(c(2L, as.integer(n)))          # 2 × N
-  }
-  if (!is.null(dim(v))) return(as.integer(dim(v)))
-  as.integer(length(v))                    # 1D Länge
-}
-
-
-# ====================== 3) Read ======================
-
-#' Write (updated) values back into existing HDF5 datasets (robust)
+#' Write (updated) values back into existing HDF5 datasets (robust for your hdf5r build)
 #'
-#' Writes scalars, vectors, matrices/arrays, and 2-column data frames/tibbles (treated
-#' as time series) into existing HDF5 datasets. If the dataset reports SCALAR incorrectly,
-#' the function can infer target dimensions from the supplied value and resize accordingly.
+#' - Scalars: write with required `args` (args=list() or args=1L fallback).
+#' - 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5 (RAINDROP style),
+#'   using explicit hyperslab args=list(1:2, 1:N) to avoid empty selections.
+#' - If TS length changes and dataset maxdims blocks resize, the dataset is deleted via
+#'   parent$link_delete(name) and recreated with dims=2xN (fixed), then written.
+#'   (No maxdims argument used; compatible with your create_dataset signature.)
 #'
-#' @param h5 An open \code{hdf5r::H5File} (e.g., \code{mode = "r+"}).
-#' @param values Named \code{list}: names are absolute dataset paths, values are R objects to write.
-#' @param resize Logical. If \code{TRUE}, resize datasets via \code{set_extent()} when shapes differ.
-#' @param strict Logical. If \code{TRUE}, stop on first error; otherwise warn and skip.
-#' @param prefer_rows Logical(1) or \code{NA}. For 2-column time series:
-#'   \code{NA} keeps dataset orientation (2xN if first dim == 2), \code{TRUE} forces 2xN,
-#'   \code{FALSE} forces Nx2.
-#' @param ts_cols Character(2). Column names to pull from time-series data frames (default \code{c("time","value")}).
-#' @param scalar_strategy One of \code{"error"}, \code{"first"}, \code{"collapse"}. Controls how non-length-1 values
-#'   are handled for true SCALAR datasets.
-#' @param collapse_sep Character. Separator used when \code{scalar_strategy = "collapse"}.
-#' @param verbose Logical. If \code{TRUE}, prints per-path dimension info.
-#'
-#' @return Invisibly returns the character vector of written dataset paths.
-#' @examples
-#' \dontrun{
-#' vals <- h5_read_values(h5)
-#' vals[["/Parameters/OutputPath"]] <- "C:/temp/out.h5"
-#' h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "first", verbose = TRUE)
-#' }
-#' @importFrom stats setNames
+#' @param h5 Open hdf5r::H5File.
+#' @param values Named list; names are dataset paths (leading // allowed).
+#' @param resize Logical. If TRUE tries set_extent() where possible.
+#' @param strict Logical. If TRUE stop on first error else warn and continue.
+#' @param ts_cols Character(2). Column names for TS (default time/value).
+#' @param scalar_strategy "error"|"first"|"collapse".
+#' @param collapse_sep Separator for collapse.
+#' @param ts_dtype Either an H5T object or one of "double","float","integer","logical".
+#' @param verbose Logical.
+#' @return Invisibly, written paths.
 #' @export
 h5_write_values <- function(h5, values,
                             resize = TRUE,
                             strict = TRUE,
-                            prefer_rows = NA,
                             ts_cols = c("time","value"),
                             scalar_strategy = c("error","first","collapse"),
                             collapse_sep = ";",
+                            ts_dtype = "double",
                             verbose = FALSE) {
+  
   scalar_strategy <- match.arg(scalar_strategy)
   stopifnot(inherits(h5, "H5File"))
   stopifnot(is.list(values), !is.null(names(values)), all(nzchar(names(values))))
+  stopifnot(is.character(ts_cols), length(ts_cols) == 2L)
   
-  # Pfade normalisieren
+  bail <- function(msg) {
+    if (strict) stop(msg, call. = FALSE)
+    warning(msg, call. = FALSE)
+    NULL
+  }
+  
+  # normalize // -> /
   names(values) <- sub("^//+", "/", names(values))
   
-  # ls()-Dims als Fallback
-  lst <- list_h5_datasets(h5)
-  dims_hint <- setNames(lapply(lst$dims, .parse_dims), lst$path)
+  # ---- helpers ----
   
+  .err_text <- function(x) if (inherits(x, "try-error")) as.character(x) else paste0(x)
+  
+  .is_unlimited <- function(x) is.na(x) || is.infinite(x) || x < 0
+  
+  .get_dims_maxdims <- function(dset) {
+    ext <- dset$get_space()$get_simple_extent_dims()
+    dims <- suppressWarnings(as.integer(ext$dims))
+    if (length(dims) == 0L) dims <- suppressWarnings(as.integer(ext$size))
+    maxdims <- ext$maxdims
+    if (length(maxdims) == 0L) maxdims <- ext$max_size
+    list(dims = dims, maxdims = maxdims, rank = ext$rank)
+  }
+  
+  .as_h5_dtype <- function(dtype) {
+    if (inherits(dtype, "H5T")) return(dtype)
+    if (is.null(dtype)) return(hdf5r::h5types$H5T_NATIVE_DOUBLE)
+    if (!is.character(dtype) || length(dtype) != 1L) {
+      stop("ts_dtype must be an H5T object or a length-1 character like 'double'.", call. = FALSE)
+    }
+    d <- tolower(dtype)
+    if (d %in% c("double","float64","numeric")) return(hdf5r::h5types$H5T_NATIVE_DOUBLE)
+    if (d %in% c("float","float32"))           return(hdf5r::h5types$H5T_NATIVE_FLOAT)
+    if (d %in% c("integer","int","int32"))     return(hdf5r::h5types$H5T_NATIVE_INT)
+    if (d %in% c("logical","bool","boolean"))  return(hdf5r::h5types$H5T_NATIVE_HBOOL)
+    stop(sprintf("Unknown ts_dtype '%s'. Use 'double','float','integer','logical' or H5T.", dtype), call. = FALSE)
+  }
+  
+  # Robust write for your build: requires args, and value name varies
+  .write_with_args <- function(dset, args, x) {
+    tries <- list(
+      list(args = args, value  = x),
+      list(args = args, obj    = x),
+      list(args = args, data   = x),
+      list(args = args, buf    = x),
+      list(args = args, object = x),
+      list(args, x) # positional (args, value)
+    )
+    errs <- character(0)
+    for (a in tries) {
+      res <- try(do.call(dset$write, a), silent = TRUE)
+      if (!inherits(res, "try-error")) return(invisible(TRUE))
+      errs <- c(errs, .err_text(res))
+    }
+    stop(paste0("write() failed. First: ", errs[1], if (length(errs) > 1) paste0("\nLast: ", utils::tail(errs,1)) else ""), call. = FALSE)
+  }
+  
+  .delete_dataset <- function(h5, path) {
+    path <- sub("^//+", "/", path)
+    parent_path <- dirname(path)
+    if (identical(parent_path, ".")) parent_path <- "/"
+    name <- basename(path)
+    parent <- h5[[parent_path]]  # H5Group
+    ok <- try(parent$link_delete(name), silent = TRUE)
+    if (inherits(ok, "try-error")) {
+      stop(sprintf("Cannot delete '%s' via %s$link_delete('%s'): %s",
+                   path, parent_path, name, .err_text(ok)),
+           call. = FALSE)
+    }
+    invisible(TRUE)
+  }
+  
+  # Recreate TS as fixed 2xN (no maxdims) – compatible with your create_dataset signature
+  .recreate_ts_2xN <- function(h5, path, n, dtype) {
+    if (h5$exists(path)) .delete_dataset(h5, path)
+    h5$create_dataset(path, dtype = dtype, dims = c(2L, as.integer(n)))
+    invisible(TRUE)
+  }
+  
+  .same_matrix <- function(a, b) {
+    if (!is.matrix(a) && !is.array(a)) return(FALSE)
+    if (!is.matrix(b) && !is.array(b)) return(FALSE)
+    if (!identical(as.integer(dim(a)), as.integer(dim(b)))) return(FALSE)
+    if (is.numeric(a) && is.numeric(b)) return(isTRUE(all.equal(a, b, tolerance = 0)))
+    identical(a, b)
+  }
+  
+  # ---- main ----
   written <- character(0)
-  bail <- function(msg) if (strict) stop(msg, call. = FALSE) else { warning(msg, call. = FALSE); NULL }
+  ts_h5t <- .as_h5_dtype(ts_dtype)
   
   for (p in names(values)) {
     v <- values[[p]]
+    
     dset <- try(h5[[p]], silent = TRUE)
-    if (inherits(dset, "try-error") || !inherits(dset, "H5D")) { bail(sprintf("No dataset: %s", p)); next }
-    
-    ext <- dset$get_space()$get_simple_extent_dims()
-    cur_size <- as.numeric(ext$size)
-    inferred_from_value <- FALSE
-    
-    # Fallback 1: ls() Dims
-    if (length(cur_size) == 0L) {
-      hint <- dims_hint[[p]]
-      if (length(hint)) cur_size <- hint
-    }
-    # Fallback 2: aus dem Wert inferieren (Fix für „falsch-SCALAR“)
-    if (length(cur_size) == 0L) {
-      cur_size <- .infer_dims_from_value(v, ts_cols)
-      inferred_from_value <- length(cur_size) > 0L
+    if (inherits(dset, "try-error") || !inherits(dset, "H5D")) {
+      bail(sprintf("No dataset: %s", p)); next
     }
     
-    max_size <- suppressWarnings(as.numeric(ext$max_size))
-    if (verbose) cat(sprintf("-> %s | dims=%s%s\n", p,
-                             if (length(cur_size)) paste(cur_size, collapse="x") else "SCALAR",
-                             if (isTRUE(inferred_from_value)) " (inferred)" else ""))
-    
-    # --- 2-spaltige Timeseries ---
-    if (is.data.frame(v) && ncol(v) == 2L) {
-      time  <- if (all(ts_cols %in% names(v))) v[[ ts_cols[1] ]] else v[[1]]
-      value <- if (all(ts_cols %in% names(v))) v[[ ts_cols[2] ]] else v[[2]]
-      n <- length(time); if (length(value) != n) { bail(sprintf("%s: `time` and `value` length differ.", p)); next }
+    # =========================
+    # TS: 2 columns in R (Nx2) -> HDF5 2xN (write transpose with explicit args)
+    # =========================
+    if (is.data.frame(v)) {
+      if (ncol(v) != 2L) { bail(sprintf("%s: TS must have exactly 2 columns.", p)); next }
       
-      # Orientierung (Default: 2xN, außer explizit oder vorhandene 1. Dim != 2)
-      if (isTRUE(prefer_rows) || (is.na(prefer_rows) && length(cur_size) == 2L && cur_size[1] == 2L)) {
-        new_size <- c(2L, n); mat <- rbind(time, value)
+      col1 <- if (all(ts_cols %in% names(v))) v[[ts_cols[1]]] else v[[1]]
+      col2 <- if (all(ts_cols %in% names(v))) v[[ts_cols[2]]] else v[[2]]
+      n <- length(col1)
+      if (length(col2) != n) { bail(sprintf("%s: TS columns differ in length.", p)); next }
+      
+      mat_r  <- cbind(col1, col2)  # n x 2
+      mat_h5 <- t(mat_r)           # 2 x n (matches HDF5 dataset layout)
+      target_h5 <- c(2L, as.integer(n))
+      
+      info <- .get_dims_maxdims(dset)
+      dims_h5 <- as.integer(info$dims)
+      maxdims_h5 <- info$maxdims
+      
+      # skip if dims same and content same
+      if (length(dims_h5) == 2L && identical(dims_h5, target_h5)) {
+        cur <- try(dset$read(), silent = TRUE)
+        if (!inherits(cur, "try-error") && .same_matrix(cur, mat_h5)) {
+          next
+        }
+      }
+      
+      # Decide if we can resize or must recreate (blocked by fixed maxdims or wrong structure)
+      structure_ok <- (length(dims_h5) == 2L && dims_h5[1] == 2L)
+      
+      blocked <- FALSE
+      if (structure_ok && length(maxdims_h5) == 2L) {
+        md2 <- maxdims_h5[2]
+        if (!.is_unlimited(md2) && is.finite(md2) && target_h5[2] > as.integer(md2)) blocked <- TRUE
+      }
+      
+      if (!structure_ok || blocked) {
+        if (verbose) message(sprintf("[h5] recreate TS %s (dims=%s max=%s) -> dims=%s",
+                                     p,
+                                     if (length(dims_h5)) paste(dims_h5, collapse="x") else "NA",
+                                     if (length(maxdims_h5)==2L) paste(maxdims_h5, collapse="x") else "NA",
+                                     paste(target_h5, collapse="x")))
+        .recreate_ts_2xN(h5, p, n = n, dtype = ts_h5t)
+        dset <- h5[[p]]
+        dims_h5 <- target_h5
       } else {
-        new_size <- c(n, 2L); mat <- cbind(time, value)
+        if (!identical(dims_h5, target_h5)) {
+          if (!resize) { bail(sprintf("%s: dims %s -> %s (set resize=TRUE).", p, paste(dims_h5, collapse="x"), paste(target_h5, collapse="x"))); next }
+          dset$set_extent(target_h5)
+        }
       }
       
-      if (length(cur_size) == 0L || !all(cur_size == new_size)) {
-        if (!resize) { bail(sprintf("%s: dims %s -> %s. Set resize=TRUE.",
-                                    p, if (length(cur_size)) paste(cur_size, collapse="x") else "SCALAR",
-                                    paste(new_size, collapse="x"))); next }
-        dset$set_extent(new_size)
-      }
+      # Explicit args for full selection to avoid "expected 0"
+      args_full <- list(1:2, seq_len(n))
+      res <- try(.write_with_args(dset, args_full, mat_h5), silent = TRUE)
+      if (inherits(res, "try-error")) { bail(sprintf("write() failed for %s: %s", p, .err_text(res))); next }
       
-      obj <- .shape_for_dataset(mat, new_size, dset)
-      .dwrite_diag(dset, obj)
       written <- c(written, p)
       next
     }
     
-    # --- echte SCALAR (nur wenn nicht aus Wert inferiert) ---
-    if (length(cur_size) == 0L && !isTRUE(inferred_from_value)) {
+    # =========================
+    # Scalars / ND
+    # =========================
+    info <- .get_dims_maxdims(dset)
+    cur_dims <- as.integer(info$dims)
+    
+    # SCALAR dataset
+    if (length(cur_dims) == 0L) {
       val2 <- v
       if (is.list(val2) && length(val2) == 1L) val2 <- val2[[1L]]
+      
       if (length(val2) != 1L) {
         if (scalar_strategy == "first") {
           val2 <- val2[1L]
         } else if (scalar_strategy == "collapse") {
-          if (!is.character(val2)) { bail(sprintf("%s: collapse only for character vectors.", p)); next }
+          if (!is.character(val2)) { bail(sprintf("%s: collapse only for character.", p)); next }
           val2 <- paste(val2, collapse = collapse_sep)
         } else {
           bail(sprintf("%s: SCALAR expects length 1, got %d.", p, length(val2))); next
         }
       }
-      obj <- .shape_for_dataset(val2, integer(0), dset)
-      .dwrite_diag(dset, obj)
+      
+      cur <- try(dset$read(), silent = TRUE)
+      if (!inherits(cur, "try-error") && length(cur) == 1L && isTRUE(all.equal(cur, val2, tolerance = 0))) {
+        next
+      }
+      
+      # scalar write: args=list() (fallback args=1L handled here)
+      ok <- try(.write_with_args(dset, list(), val2), silent = TRUE)
+      if (inherits(ok, "try-error")) {
+        ok2 <- try(.write_with_args(dset, 1L, val2), silent = TRUE)
+        if (inherits(ok2, "try-error")) { bail(sprintf("write() failed for %s: %s", p, .err_text(ok2))); next }
+      }
+      
       written <- c(written, p)
       next
     }
     
-    # --- Vektor/Matrix/Array ---
-    if (is.data.frame(v)) { bail(sprintf("%s: data.frame with %d cols unsupported (only 2-col timeseries).", p, ncol(v))); next }
+    # ND dataset (non-TS, non-scalar)
+    if (is.data.frame(v)) { bail(sprintf("%s: data.frame unsupported (only 2-col TS).", p)); next }
     
-    new_size <- if (is.null(dim(v))) as.integer(length(v)) else as.integer(dim(v))
+    new_dims <- if (is.null(dim(v))) as.integer(length(v)) else as.integer(dim(v))
     
-    if (length(cur_size) == 0L || !all(cur_size == new_size)) {
-      if (!resize) {
-        bail(sprintf("%s: dims %s -> %s. Set resize=TRUE.",
-                     p, if (length(cur_size)) paste(cur_size, collapse="x") else "SCALAR",
-                     paste(new_size, collapse="x"))); next
+    # Skip if dims and values equal
+    if (identical(cur_dims, new_dims)) {
+      cur <- try(dset$read(), silent = TRUE)
+      if (!inherits(cur, "try-error")) {
+        same <- if (is.numeric(cur) && is.numeric(v)) isTRUE(all.equal(cur, v, tolerance = 0)) else identical(cur, v)
+        if (isTRUE(same)) next
       }
-      dset$set_extent(new_size)
     }
     
-    obj <- .shape_for_dataset(v, new_size, dset)
-    .dwrite_diag(dset, obj)
+    if (!identical(cur_dims, new_dims)) {
+      if (!resize) { bail(sprintf("%s: dims %s -> %s (set resize=TRUE).", p, paste(cur_dims, collapse="x"), paste(new_dims, collapse="x"))); next }
+      dset$set_extent(new_dims)
+    }
+    
+    # Full selection args: list(NULL,...,NULL) can be empty-selection in your build,
+    # so for rank 1/2 we set explicit indices; for rank>2 fallback to NULL selection.
+    rank <- length(new_dims)
+    if (rank == 1L) {
+      args_full <- list(seq_len(new_dims[1]))
+      ok <- try(.write_with_args(dset, args_full, as.vector(v)), silent = TRUE)
+    } else if (rank == 2L) {
+      args_full <- list(seq_len(new_dims[1]), seq_len(new_dims[2]))
+      ok <- try(.write_with_args(dset, args_full, v), silent = TRUE)
+    } else {
+      args_full <- rep(list(NULL), rank)  # best effort
+      ok <- try(.write_with_args(dset, args_full, v), silent = TRUE)
+    }
+    
+    if (inherits(ok, "try-error")) { bail(sprintf("write() failed for %s: %s", p, .err_text(ok))); next }
+    
     written <- c(written, p)
   }
   
@@ -357,85 +510,175 @@ h5_write_values <- function(h5, values,
 
 #' Validate what would be written where (pre-flight check)
 #'
-#' Checks a named list of values against an open HDF5 file and summarizes,
-#' per dataset path, the current dimensions (with a fallback via `h5$ls()`),
-#' the length/column count of the supplied value, and a suggested handling
-#' (`SCALAR`/`1D`/`ND` or `TS(2-col)` for 2-column time series).
+#' Summarizes for each path:
+#' - current dataset dims/maxdims (HDF5 order)
+#' - intended value shape (R order)
+#' - intended write shape (HDF5 order; for TS always 2xN)
+#' - decision: SKIP / WRITE / RESIZE / NEED_RECREATE / ERROR
 #'
-#' @param h5 An open \code{hdf5r::H5File} (e.g., opened with \code{mode = "r+"}).
-#' @param values A named \code{list}. Names are absolute dataset paths (starting
-#'   with \code{"/"}); values are the R objects to be written (scalar, vector,
-#'   matrix/array, or a 2-column \code{data.frame}/\code{tibble} for time series).
+#' Notes:
+#' - 2-column data.frames/tibbles are treated as Nx2 in R and mapped to 2xN in HDF5.
+#' - Many RAINDROP files store time series as HDF5 dims 2xN (appearing as Nx2 in R).
 #'
-#' @return A \code{tibble} with columns:
-#' \itemize{
-#'   \item \code{path} – dataset path (after normalizing \code{"//"} → \code{"/"}).
-#'   \item \code{cur_dims} – detected dims as \code{"2x4"} or \code{"SCALAR"}.
-#'   \item \code{val_len} – length of the supplied value (for data frames: \code{nrow}).
-#'   \item \code{df_cols} – number of columns (for data frames/tibbles; otherwise \code{NA}).
-#'   \item \code{decision} – heuristic label: \code{"SCALAR"}, \code{"1D"}, \code{"ND"}, or \code{"TS(2-col)"}.
-#'   \item \code{note} – additional note (e.g., \code{"not found"}).
-#' }
-#'
-#' @details
-#' If \code{get_simple_extent_dims()} incorrectly reports a dataset as \emph{SCALAR},
-#' the function falls back to dimensions derived from \code{list_h5_datasets(h5)}
-#' (i.e., \code{h5$ls(recursive = TRUE)}). Names in \code{values} are normalized so
-#' that multiple leading slashes collapse to a single leading slash.
-#'
-#' @examples
-#' \dontrun{
-#' library(hdf5r)
-#' h5 <- H5File$new("input.h5", mode = "r+")
-#'
-#' vals <- list(
-#'   "/Parameters/OutputPath" = "C:/temp/out.h5",
-#'   "/Rain/Hyetograph" = tibble::tibble(time = c(0, 10, 20, 30),
-#'                                       value = c(0, 5, 12, 0)),
-#'   "/Measures/.../LayerThickness" = c(150L, 150L)
-#' )
-#'
-#' h5_validate_write(h5, vals)
-#' }
-#'
-#' @seealso \code{\link{list_h5_datasets}}, \code{hdf5r}, and a matching writer like \code{h5_write_values()}.
-#'
-#' @importFrom tibble tibble
-#' @importFrom dplyr bind_rows
-#' @importFrom stats setNames
+#' @param h5 An open \code{hdf5r::H5File}.
+#' @param values Named list of values to write (names are HDF5 paths).
+#' @param ts_cols Character(2). Column names for TS (default time/value).
+#' @return tibble
 #' @export
-h5_validate_write <- function(h5, values) {
-  stopifnot(inherits(h5, "H5File"), is.list(values))
-  names_norm <- sub("^//+", "/", names(values))
-  lst <- list_h5_datasets(h5)
-  dims_hint <- setNames(lapply(lst$dims, .parse_dims), lst$path)
+h5_validate_write <- function(h5, values, ts_cols = c("time","value")) {
+  stopifnot(inherits(h5, "H5File"), is.list(values), !is.null(names(values)))
   
-  rows <- lapply(seq_along(values), function(i) {
-    p <- names_norm[i]; v <- values[[i]]
+  # normalize // -> /
+  paths <- sub("^//+", "/", names(values))
+  
+  # helper: get dims/maxdims reliably from dataset space
+  .get_dims_maxdims <- function(dset) {
+    ext <- dset$get_space()$get_simple_extent_dims()
+    dims <- suppressWarnings(as.integer(ext$dims))
+    if (length(dims) == 0L) dims <- suppressWarnings(as.integer(ext$size))
+    maxdims <- ext$maxdims
+    if (length(maxdims) == 0L) maxdims <- ext$max_size
+    list(dims = dims, maxdims = maxdims)
+  }
+  
+  .is_unlimited <- function(x) is.na(x) || is.infinite(x) || x < 0
+  
+  rows <- lapply(seq_along(paths), function(i) {
+    p <- paths[i]
+    v <- values[[i]]
+    
     dset <- try(h5[[p]], silent = TRUE)
     if (inherits(dset, "try-error") || !inherits(dset, "H5D")) {
-      return(tibble::tibble(path = p, cur_dims = NA, 
-                            val_len = length(v),
-                            df_cols = if (is.data.frame(v)) ncol(v) else NA_integer_,
-                            decision = "SKIP (no dataset)", 
-                            note = "not found"))
+      return(tibble::tibble(
+        path = p,
+        exists = FALSE,
+        cur_dims_h5 = NA_character_,
+        cur_maxdims_h5 = NA_character_,
+        val_kind = if (is.data.frame(v)) "data.frame" else class(v)[1],
+        target_dims_r = NA_character_,
+        target_dims_h5 = NA_character_,
+        decision = "ERROR",
+        note = "dataset not found"
+      ))
     }
-    ext <- dset$get_space()$get_simple_extent_dims()
-    cur <- as.numeric(ext$size)
-    if (length(cur) == 0L) { # fallback per ls()
-      hint <- dims_hint[[p]]
-      if (length(hint)) cur <- hint
+    
+    info <- .get_dims_maxdims(dset)
+    dims_h5 <- info$dims
+    maxdims_h5 <- info$maxdims
+    
+    cur_dims_chr <- if (length(dims_h5)) paste(dims_h5, collapse="x") else "SCALAR"
+    cur_max_chr  <- if (length(maxdims_h5)==length(dims_h5) && length(dims_h5)) {
+      paste(ifelse(.is_unlimited(maxdims_h5), "Inf", as.character(maxdims_h5)), collapse="x")
+    } else if (length(dims_h5)==0L) "SCALAR" else NA_character_
+    
+    # defaults
+    target_r <- NA_character_
+    target_h5 <- NA_character_
+    decision <- "WRITE"
+    note <- NA_character_
+    
+    if (is.data.frame(v)) {
+      if (ncol(v) != 2L) {
+        return(tibble::tibble(
+          path = p, exists = TRUE,
+          cur_dims_h5 = cur_dims_chr, cur_maxdims_h5 = cur_max_chr,
+          val_kind = sprintf("data.frame(%d cols)", ncol(v)),
+          target_dims_r = NA_character_, target_dims_h5 = NA_character_,
+          decision = "ERROR",
+          note = "TS must have exactly 2 columns"
+        ))
+      }
+      col1 <- if (all(ts_cols %in% names(v))) v[[ts_cols[1]]] else v[[1]]
+      col2 <- if (all(ts_cols %in% names(v))) v[[ts_cols[2]]] else v[[2]]
+      n <- length(col1)
+      if (length(col2) != n) {
+        return(tibble::tibble(
+          path = p, exists = TRUE,
+          cur_dims_h5 = cur_dims_chr, cur_maxdims_h5 = cur_max_chr,
+          val_kind = "TS(2-col)",
+          target_dims_r = NA_character_, target_dims_h5 = NA_character_,
+          decision = "ERROR",
+          note = "TS columns have different lengths"
+        ))
+      }
+      
+      # intended shapes: R Nx2, HDF5 2xN
+      target_r  <- paste(c(n, 2L), collapse="x")
+      target_h5 <- paste(c(2L, n), collapse="x")
+      
+      # can we reach 2xN by resize?
+      if (length(dims_h5) != 2L) {
+        decision <- "NEED_RECREATE"
+        note <- "dataset rank != 2"
+      } else if (dims_h5[1] != 2L) {
+        decision <- "NEED_RECREATE"
+        note <- "TS expects HDF5 dims 2xN"
+      } else {
+        # maxdims check in N direction (second dim)
+        md2 <- if (length(maxdims_h5)==2L) maxdims_h5[2] else NA
+        if (!.is_unlimited(md2) && is.finite(md2) && n > md2) {
+          decision <- "NEED_RECREATE"
+          note <- sprintf("target N=%d exceeds maxdims N=%s", n, md2)
+        } else if (dims_h5[2] != n) {
+          decision <- "RESIZE+WRITE"
+          note <- "resize N then write"
+        } else {
+          decision <- "WRITE_or_SKIP"
+          note <- "dims match; can skip if values equal"
+        }
+      }
+      
+    } else if (length(dims_h5) == 0L) {
+      # scalar dataset
+      len <- length(v)
+      target_r <- "1"
+      target_h5 <- "SCALAR"
+      if (len != 1L) {
+        decision <- "ERROR"
+        note <- sprintf("scalar dataset but value length=%d", len)
+      } else {
+        decision <- "WRITE_or_SKIP"
+        note <- "scalar; can skip if equal"
+      }
+      
+    } else {
+      # ND: compare dims if possible
+      new_dims <- if (is.null(dim(v))) as.integer(length(v)) else as.integer(dim(v))
+      target_r <- paste(new_dims, collapse="x")
+      target_h5 <- target_r
+      
+      md <- maxdims_h5
+      if (length(md)==length(new_dims)) {
+        too_big <- any(!.is_unlimited(md) & is.finite(md) & new_dims > md)
+        if (too_big) {
+          decision <- "ERROR"
+          note <- sprintf("target dims %s exceed maxdims %s", target_h5, cur_max_chr)
+        } else if (!identical(as.integer(dims_h5), as.integer(new_dims))) {
+          decision <- "RESIZE+WRITE"
+          note <- "resize then write"
+        } else {
+          decision <- "WRITE_or_SKIP"
+          note <- "dims match; can skip if equal"
+        }
+      } else {
+        decision <- "WRITE_or_SKIP"
+        note <- "maxdims unknown; can attempt write"
+      }
     }
-    is_df <- is.data.frame(v)
-    decision <- if (is_df && ncol(v) == 2L) "TS(2-col)" else if (length(cur) == 0L) "SCALAR" else if (length(cur) == 1L) "1D" else "ND"
+    
     tibble::tibble(
       path = p,
-      cur_dims = if (length(cur)) paste(cur, collapse="x") else "SCALAR",
-      val_len = if (is_df) nrow(v) else length(v),
-      df_cols = if (is_df) ncol(v) else NA_integer_,
+      exists = TRUE,
+      cur_dims_h5 = cur_dims_chr,
+      cur_maxdims_h5 = cur_max_chr,
+      val_kind = if (is.data.frame(v) && ncol(v)==2L) "TS(2-col)" else class(v)[1],
+      target_dims_r = target_r,
+      target_dims_h5 = target_h5,
       decision = decision,
-      note = NA_character_
+      note = note
     )
   })
+  
   dplyr::bind_rows(rows)
 }
+

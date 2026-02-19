@@ -2,54 +2,49 @@
 % Please edit documentation in R/hdf5_read-write.R
 \name{h5_write_values}
 \alias{h5_write_values}
-\title{Write (updated) values back into existing HDF5 datasets (robust)}
+\title{Write (updated) values back into existing HDF5 datasets (robust for your hdf5r build)}
 \usage{
 h5_write_values(
   h5,
   values,
   resize = TRUE,
   strict = TRUE,
-  prefer_rows = NA,
   ts_cols = c("time", "value"),
   scalar_strategy = c("error", "first", "collapse"),
   collapse_sep = ";",
+  ts_dtype = "double",
   verbose = FALSE
 )
 }
 \arguments{
-\item{h5}{An open \code{hdf5r::H5File} (e.g., \code{mode = "r+"}).}
+\item{h5}{Open hdf5r::H5File.}
 
-\item{values}{Named \code{list}: names are absolute dataset paths, values are R objects to write.}
+\item{values}{Named list; names are dataset paths (leading // allowed).}
 
-\item{resize}{Logical. If \code{TRUE}, resize datasets via \code{set_extent()} when shapes differ.}
+\item{resize}{Logical. If TRUE tries set_extent() where possible.}
 
-\item{strict}{Logical. If \code{TRUE}, stop on first error; otherwise warn and skip.}
+\item{strict}{Logical. If TRUE stop on first error else warn and continue.}
 
-\item{prefer_rows}{Logical(1) or \code{NA}. For 2-column time series:
-\code{NA} keeps dataset orientation (2xN if first dim == 2), \code{TRUE} forces 2xN,
-\code{FALSE} forces Nx2.}
+\item{ts_cols}{Character(2). Column names for TS (default time/value).}
 
-\item{ts_cols}{Character(2). Column names to pull from time-series data frames (default \code{c("time","value")}).}
+\item{scalar_strategy}{"error"|"first"|"collapse".}
 
-\item{scalar_strategy}{One of \code{"error"}, \code{"first"}, \code{"collapse"}. Controls how non-length-1 values
-are handled for true SCALAR datasets.}
+\item{collapse_sep}{Separator for collapse.}
 
-\item{collapse_sep}{Character. Separator used when \code{scalar_strategy = "collapse"}.}
+\item{ts_dtype}{Either an H5T object or one of "double","float","integer","logical".}
 
-\item{verbose}{Logical. If \code{TRUE}, prints per-path dimension info.}
+\item{verbose}{Logical.}
 }
 \value{
-Invisibly returns the character vector of written dataset paths.
+Invisibly, written paths.
 }
 \description{
-Writes scalars, vectors, matrices/arrays, and 2-column data frames/tibbles (treated
-as time series) into existing HDF5 datasets. If the dataset reports SCALAR incorrectly,
-the function can infer target dimensions from the supplied value and resize accordingly.
-}
-\examples{
-\dontrun{
-vals <- h5_read_values(h5)
-vals[["/Parameters/OutputPath"]] <- "C:/temp/out.h5"
-h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "first", verbose = TRUE)
+\itemize{
+\item Scalars: write with required \code{args} (args=list() or args=1L fallback).
+\item 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5 (RAINDROP style),
+using explicit hyperslab args=list(1:2, 1:N) to avoid empty selections.
+\item If TS length changes and dataset maxdims blocks resize, the dataset is deleted via
+parent$link_delete(name) and recreated with dims=2xN (fixed), then written.
+(No maxdims argument used; compatible with your create_dataset signature.)
 }
 }

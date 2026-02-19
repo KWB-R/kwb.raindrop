@@ -4,54 +4,31 @@
 \alias{h5_validate_write}
 \title{Validate what would be written where (pre-flight check)}
 \usage{
-h5_validate_write(h5, values)
+h5_validate_write(h5, values, ts_cols = c("time", "value"))
 }
 \arguments{
-\item{h5}{An open \code{hdf5r::H5File} (e.g., opened with \code{mode = "r+"}).}
+\item{h5}{An open \code{hdf5r::H5File}.}
 
-\item{values}{A named \code{list}. Names are absolute dataset paths (starting
-with \code{"/"}); values are the R objects to be written (scalar, vector,
-matrix/array, or a 2-column \code{data.frame}/\code{tibble} for time series).}
+\item{values}{Named list of values to write (names are HDF5 paths).}
+
+\item{ts_cols}{Character(2). Column names for TS (default time/value).}
 }
 \value{
-A \code{tibble} with columns:
-\itemize{
-\item \code{path} – dataset path (after normalizing \code{"//"} → \code{"/"}).
-\item \code{cur_dims} – detected dims as \code{"2x4"} or \code{"SCALAR"}.
-\item \code{val_len} – length of the supplied value (for data frames: \code{nrow}).
-\item \code{df_cols} – number of columns (for data frames/tibbles; otherwise \code{NA}).
-\item \code{decision} – heuristic label: \code{"SCALAR"}, \code{"1D"}, \code{"ND"}, or \code{"TS(2-col)"}.
-\item \code{note} – additional note (e.g., \code{"not found"}).
-}
+tibble
 }
 \description{
-Checks a named list of values against an open HDF5 file and summarizes,
-per dataset path, the current dimensions (with a fallback via \code{h5$ls()}),
-the length/column count of the supplied value, and a suggested handling
-(\code{SCALAR}/\verb{1D}/\code{ND} or \code{TS(2-col)} for 2-column time series).
+Summarizes for each path:
+\itemize{
+\item current dataset dims/maxdims (HDF5 order)
+\item intended value shape (R order)
+\item intended write shape (HDF5 order; for TS always 2xN)
+\item decision: SKIP / WRITE / RESIZE / NEED_RECREATE / ERROR
+}
 }
 \details{
-If \code{get_simple_extent_dims()} incorrectly reports a dataset as \emph{SCALAR},
-the function falls back to dimensions derived from \code{list_h5_datasets(h5)}
-(i.e., \code{h5$ls(recursive = TRUE)}). Names in \code{values} are normalized so
-that multiple leading slashes collapse to a single leading slash.
+Notes:
+\itemize{
+\item 2-column data.frames/tibbles are treated as Nx2 in R and mapped to 2xN in HDF5.
+\item Many RAINDROP files store time series as HDF5 dims 2xN (appearing as Nx2 in R).
 }
-\examples{
-\dontrun{
-library(hdf5r)
-h5 <- H5File$new("input.h5", mode = "r+")
-
-vals <- list(
-  "/Parameters/OutputPath" = "C:/temp/out.h5",
-  "/Rain/Hyetograph" = tibble::tibble(time = c(0, 10, 20, 30),
-                                      value = c(0, 5, 12, 0)),
-  "/Measures/.../LayerThickness" = c(150L, 150L)
-)
-
-h5_validate_write(h5, vals)
-}
-
-}
-\seealso{
-\code{\link{list_h5_datasets}}, \code{hdf5r}, and a matching writer like \code{h5_write_values()}.
 }

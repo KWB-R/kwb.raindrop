@@ -13,18 +13,18 @@ h5_read_values(
 )
 }
 \arguments{
-\item{h5}{An open \code{hdf5r::H5File}}
+\item{h5}{An open \code{hdf5r::H5File}.}
 
-\item{paths}{character vector; if NULL read all}
+\item{paths}{character vector; if NULL read all.}
 
-\item{simplify_scalars}{logical: simplify H5S_SCALAR to length-1 atom}
+\item{simplify_scalars}{logical: simplify scalar datasets to length-1 atoms.}
 
-\item{timeseries_as_tibble}{logical: convert 2xN / Nx2 to tibble(time,value)}
+\item{timeseries_as_tibble}{logical: convert 2xN / Nx2 arrays to tibble(time,value).}
 
-\item{ts_names}{character(2): names for time/value columns}
+\item{ts_names}{character(2): names for time/value columns.}
 }
 \value{
-named list
+Named list.
 }
 \description{
 Read values of all (or selected) datasets

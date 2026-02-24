@@ -312,15 +312,19 @@ run_one <- function(i,
       invisible(NULL)
 }
 
-kwb.raindrop::run_scenarios(indices = 1:8,
+n_cores <- parallel::detectCores()
+
+system.time(expr = {
+kwb.raindrop::run_scenarios(indices = seq_len(nrow(param_grid)),
                             run_one_scenario = run_one,
                             timestep_hours = 0.1,
                             debug = FALSE,
                             parallel = TRUE,
-                            workers = parallel::detectCores(),
+                            workers = n_cores,
                             show_progress = TRUE
                             )
-
+}
+)
 
 ### Read results for first run
 if(FALSE) {
@@ -332,7 +336,7 @@ simulation_names <- scenarios_with_single_parameter_variation
 simulation_names <- param_grid$scenario_nam
 simulation_names <- simulation_names[1:8]
 
-debug <- TRUE
+debug <- TRUEn_cores
 errors_df <- kwb.raindrop::read_raindrop_errors(simulation_names, path_list)
 x <- tidyr::unnest(errors_df, errors) 
 x$Fehlerbeschreibung
@@ -343,15 +347,12 @@ x$Fehlerbeschreibung
 ### Analyse Results
 
 ```{r analyse_results, eval = !is_ghactions}
-
-#simulation_names <- basename(fs::dir_ls(paths$dir_output))
-simulation_names <- param_grid$scenario_name
-simulation_names <- simulation_names[1:8]
-
 system.time(
-simulation_results <- kwb.raindrop::get_simulation_results_optim(paths = paths, 
-                                                                 path_list = path_list,
-                                                                 simulation_names = simulation_names)
+simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
+  paths = paths, 
+  path_list = path_list,
+  simulation_names = param_grid$scenario_name,
+  debug = FALSE)
 )
 
 system.time(
@@ -366,13 +367,17 @@ simulation_results_optimisation <- param_grid %>%
                    by = c("scenario_name" = "s_name")) %>% 
   dplyr::relocate(scenario_name, .before = connected_area)
 
-readr::write_csv(simulation_results_optimisation, file = "simulation_results_optimisation.csv")
+readr::write_csv(simulation_results_optimisation, 
+                 file = sprintf("simulation_results_optimisation_%s.csv",
+                                paths$modelname)
+                 )
 
 htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
                                       filter = "top",
                                       options = list(pageLength = 25, 
                                                      autoWidth = TRUE)), 
-                        "simulation_results_optimisation.html",
+                        file = sprintf("simulation_results_optimisation_%s.html",
+                                       paths$modelname),
                         title = "RAINDROP - Solution Space")
 
 ### Plot results
@@ -389,7 +394,8 @@ params <- c(
   #"rain_factor"
 )
 
-pdff <- "simulation_results_optimisation_main-effects.pdf"
+pdff <- sprintf("simulation_results_optimisation_%s_main-effects.pdf",
+                paths$modelname)
 
 gg <- kwb.raindrop::plot_main_effects(
   df = simulation_results_optimisation,
@@ -408,14 +414,16 @@ plotly_gg <- plotly::ggplotly(gg)
 
 htmlwidgets::saveWidget(
   widget = plotly_gg,
-  file = "simulation_results_optimisation_main-effects.html",
+  file = sprintf("simulation_results_optimisation_%s_main-effects.html",
+                 paths$modelname),
   selfcontained = TRUE,
   title = "RAINDROP - Main Effects"
 )
 
 
 
-pdff <- "simulation_results_optimisation_design-space_mulde-area_vs_parameters.pdf"
+pdff <- sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_parameters.pdf",
+                paths$modelname)
 kwb.utils::preparePdf(pdfFile = pdff)
 
 for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
@@ -438,7 +446,9 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
   htmlwidgets::saveWidget(
     widget = plotly_p,
-    file = sprintf("simulation_results_optimisation_design-space_mulde-area_vs_%s.html", y),
+    file = sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_%s.html", 
+                   paths$modelname,
+                   y),
     selfcontained = TRUE,
     title = sprintf("Design Space: mulde_area vs. %s", y)
   )
@@ -449,7 +459,8 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
 dev.off()
 #kwb.utils::finishAndShowPdf(pdff)
 
-pdff <- "simulation_results_optimisation_water-balance.pdf"
+pdff <- sprintf("simulation_results_optimisation_%s_water-balance.pdf",
+                paths$modelname)
 kwb.utils::preparePdf(pdfFile = pdff)
 
 p <- kwb.raindrop::plot_wb_tradeoff_overflows(
@@ -463,7 +474,8 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
   htmlwidgets::saveWidget(
     widget = plotly_p,
-    file = "simulation_results_optimisation_water-balance.html",
+    file = sprintf("simulation_results_optimisation_%s_water-balance.html",
+                   paths$modelname),
     selfcontained = TRUE,
     title = "Water balance vs overflows"
   )

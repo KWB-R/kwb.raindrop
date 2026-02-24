@@ -12,7 +12,8 @@ get_simulation_results_optim_parallel(
   debug = TRUE,
   workers = NULL,
   show_progress = TRUE,
-  future_seed = TRUE
+  future_seed = TRUE,
+  progress_handler = progressr::handler_txtprogressbar
 )
 }
 \arguments{
@@ -36,12 +37,15 @@ a temporary \code{future::multisession} plan is set.}
 \item{show_progress}{Logical (default TRUE).}
 
 \item{future_seed}{Passed to \code{future.apply::future_lapply()}.}
+
+\item{progress_handler}{A progressr handler function (default:
+\code{progressr::handler_txtprogressbar}). If NULL, no handler is set.}
 }
 \value{
 Named list (see \code{\link{get_simulation_results_optim}}).
 }
 \description{
 Parallel variant of \code{get_simulation_results_optim()} using
-\code{future.apply::future_lapply()} including progress reporting
-via \code{progressr}.
+\code{future.apply::future_lapply()} including optional progress reporting
+via \pkg{progressr}.
 }

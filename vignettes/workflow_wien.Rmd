@@ -29,14 +29,15 @@ path_list <- list(
   dir_base = "<root_path>/Optimierungsfall",
   dir_data = "<dir_base>/data",
   dir_exe = "<root_path>/Berechnungskern",
-  dir_input = "<root_path>/Optimierungsfall/models/wien/input",
-  dir_output = "<root_path>/Optimierungsfall/models/wien/output", 
+  modelname = "Wien",
+  dir_input = "<root_path>/Optimierungsfall/models/<modelname>/input",
+  dir_output = "<root_path>/Optimierungsfall/models/<modelname>/output", 
   dir_target_output = "<dir_output>/<dir_target>",
-  file_base = "Wien.h5",
+  file_base = "<modelname>.h5",
   file_errors_hdf5 = "Fehlerprotokoll.h5",
-  file_exe = "Regenwasserbewirtschaftung.exe",
+  file_exe = "Regenwasserbewirtschaftung_2026-01-22.exe", #"Regenwasserbewirtschaftung_2025-12-10.exe",
   file_et = "<modelname>_ET0_2011-2025.csv",
-  file_rain = "<modelname>_rain-mm_2011-2025.csv",
+  file_rain = "<modelname>_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv",
   file_results_hdf5_element = "Mulde_Rigole.h5",
   file_results_hdf5_flaeche = "Dach.h5",
   file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
@@ -155,24 +156,26 @@ htmlwidgets::saveWidget(DT::datatable(param_grid,
 psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh/25.4)^(-0.328)) * 25.4
 
 
-modelname <- stringr::str_remove(path_list$file_base, pattern = "\\..*") %>%
-  stringr::str_replace_all("_", " ") %>% 
-  stringr::str_to_title() %>% 
-  stringr::str_remove_all(" ")
-
-paths <- kwb.utils::resolve(path_list, modelname = modelname)
+paths <- kwb.utils::resolve(path_list)
 
 timeseries_et <- readr::read_delim(paths$path_et, delim = ";", col_types = "cd") %>% 
   dplyr::mutate(date = lubridate::dmy(date),
                 time = difftime(date, min(date), units = "hours") %>%  as.integer()) %>% 
   dplyr::select(-date) %>% 
+  dplyr::filter(!is.na(value)) %>% 
   dplyr::relocate(time,.before = value)
 
-timeseries_rain <- readr::read_delim(paths$path_rain, delim = ";", col_types = "cd") %>% 
-  dplyr::mutate(datetime = lubridate::dmy_hm(datetime),
-                time = difftime(datetime, min(datetime), units = "secs") %>%  as.double()/3600) %>% 
-  dplyr::select(-datetime) %>% 
+timeseries_et$time[nrow(timeseries_et)] <- ceiling(timeseries_et$time[nrow(timeseries_et)])
+
+timeseries_rain <- readr::read_csv(paths$path_rain) %>% 
+    dplyr::rename(datetime = time,
+                  value = rr) %>% 
+  dplyr::mutate(time = difftime(datetime, min(datetime), units = "secs") %>%  as.double()/3600) %>%
+  dplyr::filter(!is.na(value)) %>% 
+  dplyr::select(-datetime, -station) %>% 
   dplyr::relocate(time,.before = value)
+
+timeseries_rain$time[nrow(timeseries_rain)] <- ceiling(timeseries_rain$time[nrow(timeseries_rain)])
 
 timeseries_et <- if(max(timeseries_rain$time) > max(timeseries_et$time)) {
   
@@ -216,22 +219,47 @@ timeseries_rain <- if(max(timeseries_et$time) > max(timeseries_rain$time)) {
   timeseries_rain
 }
 
+txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Regenmenge: %f mm/a)\n",
+        paths$path_rain,
+        100*sum(is.na(timeseries_rain$value))/nrow(timeseries_rain),
+        100*sum(timeseries_rain$value == 0, na.rm = TRUE)/nrow(timeseries_rain),
+        sum(timeseries_rain$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
+
+message(txt)
+
+txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
+        paths$path_et,
+        100*sum(is.na(timeseries_et$value))/nrow(timeseries_et),
+        100*sum(timeseries_et$value == 0, na.rm = TRUE)/nrow(timeseries_et),
+        sum(timeseries_et$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
+
+message(txt)
+
+
+### Convert rain from mm to mm/h
+period <- c(diff(timeseries_rain$time), mean(diff(timeseries_rain$time)))
+timeseries_rain$value <- timeseries_rain$value / period
+
+
+#openxlsx::write.xlsx(list(regen = timeseries_rain, et = timeseries_et), "timeseries.xlsx")
+
 ```
 
 ### Run Model
 
 ```{r run_model, eval =  !is_ghactions}
 debug <- TRUE
+timestep_hours <- 0.1
 #Number of cores for parallel processing (or: automatic)
-#future::plan(future::multisession, workers = parallel::detectCores())
+future::plan(future::multisession, workers = parallel::detectCores())
 #seq_len(nrow(param_grid)
 system.time(
-  lapply(1:8, function(i) {
+  future.apply::future_lapply(1:8, function(i) {
+#   lapply(1:8, function(i) {  
   
   param_grid_tmp <- param_grid[i, ]
   
   paths <- kwb.utils::resolve(path_list,
-                              modelname = modelname,
                               dir_target = param_grid_tmp$scenario_name)
   
   fs::dir_create(paths$dir_input, recurse = TRUE)
@@ -243,37 +271,54 @@ system.time(
                 overwrite = TRUE)
   
   # "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen
-  h5 <- hdf5r::H5File$new(paths$path_target_input, mode = "a")
-  
+h5 <- hdf5r::H5File$new(paths$path_target_input, mode = "a")
 
   new_path <- stringr::str_c(normalizePath(fs::path_abs(paths$dir_target_output)), 
                              "\\")
 
-   # 2) Alle Werte lesen (als named list, Keys = absolute Pfade)
+# 2) Alle Werte lesen (als named list, Keys = absolute Pfade)
 vals <- kwb.raindrop::h5_read_values(h5)
 
+#jsonlite::write_json(vals, "vals_org.json")
+
 vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
+
+vals$`//Berechnungsparameter/Zeitschritt_Infiltration` <- timestep_hours 
+vals$`//Berechnungsparameter/Zeitschritt_ET` <- timestep_hours 
+vals$`//Berechnungsparameter/Zeitschritt_Verschaltungen` <- timestep_hours 
 vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- 0
 vals$`//Berechnungsparameter/R-Plots` <- 0
 vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung" # "komplett" "Optimierung"
 vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
 vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+vals$`//Massnahmenelemente/Dach/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- 100
 vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
 vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
 vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
 vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <-  param_grid_tmp$mulde_height
 vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
 vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <- psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
-#vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
+vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
 vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(param_grid_tmp$filter_height,
-                                                                            param_grid_tmp$storage_height)
+                                                                             param_grid_tmp$storage_height)
 vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
 
 # Timeseries (2×N) als tibble?
 vals$`//Kurven/ET0` <- timeseries_et
-#vals$`//Kurven/Regen` <- timeseries_rain
+vals$`//Kurven/Regen` <- timeseries_rain
+vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
+vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
+
+# time_end <- 10000
+# vals$`//Kurven/ET0`$time[2] <- time_end
+# vals$`//Kurven/Regen`$time[nrow(vals$`//Kurven/Regen`)] <- time_end
+# vals$`//Kurven/Growth_1`$time[2] <- time_end
+# vals$`//Kurven/Shading_1`$time[2] <- time_end
 
 
+#jsonlite::write_json(vals, "vals_modified.json")
+
+# 4) alle Werte schreiben / aktualisieren
 kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "error", verbose = FALSE)
 h5$close_all()
   
@@ -284,50 +329,36 @@ h5$close_all()
 
 
 ### Read results for first run
-
-paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
+if(FALSE) {
+paths <- kwb.utils::resolve(path_list, 
+                            dir_target = sprintf("s%05d", i = 1))
 
 #simulation_names <- basename(fs::dir_ls(paths$dir_output))
 simulation_names <- scenarios_with_single_parameter_variation
 simulation_names <- param_grid$scenario_nam
+simulation_names <- simulation_names[1:8]
 
 debug <- TRUE
-errors_df <- lapply(simulation_names[1], function(s_name) {
-  
-  s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
-  paths <- kwb.utils::resolve(path_list, dir_target = s_name)
-  
-  if(fs::file_exists(paths$path_errors_hdf5)) {
-    kwb.utils::catAndRun(messageText = sprintf("Reading error file '%s'",
-                                               paths$path_errors_hdf5),
-                         expr = {
-    error_hdf <- hdf5r::H5File$new(paths$path_errors_hdf5, mode = "r")
-    
-    tibble::tibble(id = s_id, 
-                   path = paths$path_errors_hdf5,
-                   number_of_errors = error_hdf[["AnzahlFehler"]]$read()
-    )
-                         },
-    dbg = debug)
-  }
-}) %>% 
-  dplyr::bind_rows()
+errors_df <- kwb.raindrop::read_raindrop_errors(simulation_names, path_list)
+x <- tidyr::unnest(errors_df, errors) 
+x$Fehlerbeschreibung
+}
+
 ```
 
 ### Analyse Results
 
 ```{r analyse_results, eval = !is_ghactions}
-paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 
 #simulation_names <- basename(fs::dir_ls(paths$dir_output))
 simulation_names <- param_grid$scenario_name
+simulation_names <- simulation_names[1:8]
 
 system.time(
 simulation_results <- kwb.raindrop::get_simulation_results_optim(paths = paths, 
                                                                  path_list = path_list,
                                                                  simulation_names = simulation_names)
 )
-
 
 system.time(
 simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(

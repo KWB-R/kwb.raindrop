@@ -18,21 +18,23 @@ Imports:
     dplyr,
     forcats,
     fs,
+    future,
+    future.apply,
     ggplot2,
     hdf5r,
     kwb.event,
     kwb.utils,
     lubridate,
     magrittr,
+    parallel,
     plotly,
+    progressr,
     purrr, 
     stringr,
     tibble
 Suggests: 
     covr,
     DT,
-    future,
-    future.apply,
     knitr,
     rmarkdown
 VignetteBuilder: 

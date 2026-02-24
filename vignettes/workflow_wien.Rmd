@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 # is_ci <- tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
 # 
 # is_ghactions <- is_ghactions || is_ci
-is_ghactions <- FALSE
+is_ghactions <- TRUE
 ```
 
 ### Define Paths and Scenarios
@@ -379,8 +379,9 @@ htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
                                                      autoWidth = TRUE)), 
                         file = sprintf("simulation_results_optimisation_%s.html",
                                        paths$modelname),
-                        title = "RAINDROP - Solution Space")
-
+                        title = sprintf("RAINDROP - '%s': Solution Space",
+                                        paths$modelname)
+)
 ### Plot results
 
 
@@ -418,7 +419,8 @@ htmlwidgets::saveWidget(
   file = sprintf("simulation_results_optimisation_%s_main-effects.html",
                  paths$modelname),
   selfcontained = TRUE,
-  title = "RAINDROP - Main Effects"
+  title = sprintf("RAINDROP - '%s': Main Effects",
+                  paths$modelname)
 )
 
 
@@ -451,7 +453,9 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
                    paths$modelname,
                    y),
     selfcontained = TRUE,
-    title = sprintf("Design Space: mulde_area vs. %s", y)
+    title = sprintf("'%s' - Design Space: mulde_area vs. %s", 
+                    paths$modelname, 
+                    y)
   )
 
   # statisch ins PDF (WICHTIG!)
@@ -478,7 +482,8 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
     file = sprintf("simulation_results_optimisation_%s_water-balance.html",
                    paths$modelname),
     selfcontained = TRUE,
-    title = "Water balance vs overflows"
+    title = sprintf("'%s' - Water balance vs overflows", 
+                    paths$modelname)
   )
 
   # statisch ins PDF (WICHTIG!)

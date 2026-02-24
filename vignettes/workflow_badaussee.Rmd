@@ -1,8 +1,8 @@
 ---
-title: "Workflow Wien (2011 - 2025)"
+title: "Workflow Bad Aussee (2011 - 2025)"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Workflow Wien (2011 - 2025)}
+  %\VignetteIndexEntry{Workflow Bad Aussee (2011 - 2025)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -29,7 +29,7 @@ path_list <- list(
   dir_base = "<root_path>/Optimierungsfall",
   dir_data = "<dir_base>/data",
   dir_exe = "<root_path>/Berechnungskern",
-  modelname = "Wien",
+  modelname = "BadAussee",
   dir_input = "<root_path>/Optimierungsfall/models/<modelname>/input",
   dir_output = "<root_path>/Optimierungsfall/models/<modelname>/output", 
   dir_target_output = "<dir_output>/<dir_target>",
@@ -172,7 +172,7 @@ timeseries_rain <- readr::read_csv(paths$path_rain) %>%
                   value = rr) %>% 
   dplyr::mutate(time = difftime(datetime, min(datetime), units = "secs") %>%  as.double()/3600) %>%
   dplyr::filter(!is.na(value)) %>% 
-  dplyr::select(-datetime, -station) %>% 
+  dplyr::select(-datetime, -station, -substation) %>% 
   dplyr::relocate(time,.before = value)
 
 timeseries_rain$time[nrow(timeseries_rain)] <- ceiling(timeseries_rain$time[nrow(timeseries_rain)])

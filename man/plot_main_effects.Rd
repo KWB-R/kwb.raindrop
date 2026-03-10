@@ -9,6 +9,7 @@ plot_main_effects(
   y = "n_overflows",
   params,
   max_levels = 25,
+  ylim_lower = 0,
   lang = c("de", "en")
 )
 }
@@ -24,6 +25,10 @@ consider.}
 
 \item{max_levels}{Integer. Parameters with more than \code{max_levels}
 distinct values are dropped to keep the plot readable. Defaults to 25.}
+
+\item{ylim_lower}{Numeric scalar or \code{NULL}. Optional lower display limit
+for the y-axis. Uses \code{ggplot2::coord_cartesian()}, so data are not
+removed before computing violin and boxplots. Defaults to \code{0}.}
 
 \item{lang}{Character. Plot language: \code{"de"} or \code{"en"}.}
 }
@@ -43,28 +48,4 @@ parameters, where a single 2D scatter plot is not informative.
 The plot language can be switched via \code{lang = "de"} or
 \code{lang = "en"}. This affects the title, y-axis label, and selected
 parameter labels.
-}
-\examples{
-\dontrun{
-library(readr)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(forcats)
-
-df <- read_csv("simulation_results_optimisation.csv", show_col_types = FALSE)
-params <- c("connected_area", "mulde_area", "mulde_height",
-            "filter_hydraulicconductivity", "filter_height",
-            "storage_height", "bottom_hydraulicconductivity", "rain_factor")
-
-p <- plot_main_effects(
-  df = df,
-  y = "n_overflows",
-  params = params,
-  max_levels = 20,
-  lang = "de"
-)
-p
-}
-
 }

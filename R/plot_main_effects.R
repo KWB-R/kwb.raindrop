@@ -20,38 +20,17 @@
 #'   consider.
 #' @param max_levels Integer. Parameters with more than \code{max_levels}
 #'   distinct values are dropped to keep the plot readable. Defaults to 25.
+#' @param ylim_lower Numeric scalar or \code{NULL}. Optional lower display limit
+#'   for the y-axis. Uses \code{ggplot2::coord_cartesian()}, so data are not
+#'   removed before computing violin and boxplots. Defaults to \code{0}.
 #' @param lang Character. Plot language: \code{"de"} or \code{"en"}.
 #'
 #' @return A ggplot object with facetted violin, boxplot, and jitter layers.
-#'
-#' @examples
-#' \dontrun{
-#' library(readr)
-#' library(dplyr)
-#' library(tidyr)
-#' library(ggplot2)
-#' library(forcats)
-#'
-#' df <- read_csv("simulation_results_optimisation.csv", show_col_types = FALSE)
-#' params <- c("connected_area", "mulde_area", "mulde_height",
-#'             "filter_hydraulicconductivity", "filter_height",
-#'             "storage_height", "bottom_hydraulicconductivity", "rain_factor")
-#'
-#' p <- plot_main_effects(
-#'   df = df,
-#'   y = "n_overflows",
-#'   params = params,
-#'   max_levels = 20,
-#'   lang = "de"
-#' )
-#' p
-#' }
-#'
 #' @export
 #' @importFrom dplyr %>% select all_of group_by summarise left_join mutate n_distinct
 #' @importFrom tidyr pivot_longer
 #' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot geom_jitter facet_wrap
-#'   theme_bw theme labs element_text
+#'   theme_bw theme labs element_text coord_cartesian
 #' @importFrom forcats fct_reorder
 #' @importFrom stats median
 #' @importFrom rlang .data
@@ -59,6 +38,7 @@ plot_main_effects <- function(df,
                               y = "n_overflows",
                               params,
                               max_levels = 25,
+                              ylim_lower = 0,
                               lang = c("de", "en")) {
   
   lang <- match.arg(lang)
@@ -117,7 +97,7 @@ plot_main_effects <- function(df,
       values_to = "value"
     ) %>%
     dplyr::mutate(
-      value = as.factor(value)
+      value = as.factor(.data$value)
     )
   
   eff <- dl %>%
@@ -139,7 +119,7 @@ plot_main_effects <- function(df,
       parameter_label = forcats::fct_reorder(.data$parameter_label, .data$effect, .desc = TRUE)
     )
   
-  ggplot2::ggplot(dl, ggplot2::aes(x = .data$value, y = .data[[y]])) +
+  p <- ggplot2::ggplot(dl, ggplot2::aes(x = .data$value, y = .data[[y]])) +
     ggplot2::geom_violin(trim = FALSE) +
     ggplot2::geom_boxplot(width = 0.18, outlier.alpha = 0) +
     ggplot2::geom_jitter(width = 0.15, alpha = 0.15, size = 1) +
@@ -153,4 +133,10 @@ plot_main_effects <- function(df,
       y = txt$y_lab(y),
       title = sprintf(txt$title, txt$y_lab(y))
     )
+  
+  if (!is.null(ylim_lower)) {
+    p <- p + ggplot2::coord_cartesian(ylim = c(ylim_lower, NA))
+  }
+  
+  p
 }

@@ -4,32 +4,45 @@
 \alias{plot_main_effects}
 \title{Plot main effects of multiple parameters on an outcome (violin/box/jitter)}
 \usage{
-plot_main_effects(df, y = "n_overflows", params, max_levels = 25)
+plot_main_effects(
+  df,
+  y = "n_overflows",
+  params,
+  max_levels = 25,
+  lang = c("de", "en")
+)
 }
 \arguments{
-\item{df}{A data.frame (or tibble) containing the outcome column \code{y} and the
-parameter columns listed in \code{params}.}
+\item{df}{A data.frame or tibble containing the outcome column \code{y} and
+the parameter columns listed in \code{params}.}
 
 \item{y}{Character scalar. Name of the outcome column to plot on the y-axis.
 Defaults to \code{"n_overflows"}.}
 
-\item{params}{Character vector of parameter column names in \code{df} to consider.}
+\item{params}{Character vector of parameter column names in \code{df} to
+consider.}
 
-\item{max_levels}{Integer. Parameters with more than \code{max_levels} distinct
-values are dropped to keep the plot readable. Defaults to 25.}
+\item{max_levels}{Integer. Parameters with more than \code{max_levels}
+distinct values are dropped to keep the plot readable. Defaults to 25.}
+
+\item{lang}{Character. Plot language: \code{"de"} or \code{"en"}.}
 }
 \value{
-A ggplot object (facetted violin + boxplot + jitter).
+A ggplot object with facetted violin, boxplot, and jitter layers.
 }
 \description{
 Creates a facetted overview plot showing the distribution of an outcome
-(e.g., \code{n_overflows}) across the tested levels of multiple (varied) parameters.
-Parameters are sorted by a simple effect-size proxy: the range of median outcome
-values across parameter levels.
+(for example \code{n_overflows}) across the tested levels of multiple varied
+parameters. Parameters are sorted by a simple effect-size proxy: the range of
+median outcome values across parameter levels.
 }
 \details{
-The function is intended for optimisation / sensitivity grids with many
+The function is intended for optimisation or sensitivity grids with many
 parameters, where a single 2D scatter plot is not informative.
+
+The plot language can be switched via \code{lang = "de"} or
+\code{lang = "en"}. This affects the title, y-axis label, and selected
+parameter labels.
 }
 \examples{
 \dontrun{
@@ -44,7 +57,13 @@ params <- c("connected_area", "mulde_area", "mulde_height",
             "filter_hydraulicconductivity", "filter_height",
             "storage_height", "bottom_hydraulicconductivity", "rain_factor")
 
-p <- plot_main_effects(df, y = "n_overflows", params = params, max_levels = 20)
+p <- plot_main_effects(
+  df = df,
+  y = "n_overflows",
+  params = params,
+  max_levels = 20,
+  lang = "de"
+)
 p
 }
 

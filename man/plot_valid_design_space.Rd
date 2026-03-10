@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_valid_design_space.R
 \name{plot_valid_design_space}
 \alias{plot_valid_design_space}
-\title{Valid solutions in design space (mulde_area × storage_height) with tooltip labels}
+\title{Valid solutions in design space (x × y) with overflow-threshold discrete color scale}
 \usage{
 plot_valid_design_space(
   param_grid,
@@ -24,70 +24,120 @@ plot_valid_design_space(
   alpha_mode = c("none", "duplicates"),
   alpha_min = 0.2,
   alpha_max = 1,
-  keep_param_grid_limits = TRUE
+  keep_param_grid_limits = TRUE,
+  lang = c("de", "en"),
+  title = NULL,
+  subtitle = NULL,
+  legend_position = "top"
 )
 }
 \arguments{
-\item{param_grid}{A data.frame/tibble containing the scenario id (\code{id_col}) and parameters.}
+\item{param_grid}{A data.frame/tibble containing the scenario id
+(\code{id_col}) and parameters.}
 
-\item{sim_results}{A data.frame/tibble containing the scenario id (\code{id_col}) and \code{overflow_col}.}
+\item{sim_results}{A data.frame/tibble containing the scenario id
+(\code{id_col}) and \code{overflow_col}.}
 
-\item{id_col}{Character. Join key (scenario id), default \code{"scenario_name"}.}
+\item{id_col}{Character. Join key (scenario id), default
+\code{"scenario_name"}.}
 
-\item{overflow_col}{Character. Overflow outcome column, default \code{"n_overflows"}.}
+\item{overflow_col}{Character. Overflow outcome column, default
+\code{"n_overflows"}.}
 
-\item{valid_max}{Numeric. Validity threshold: \code{overflow_col <= valid_max}.}
+\item{valid_max}{Numeric. Validity threshold:
+\code{overflow_col <= valid_max}. Also used as the orange breakpoint in
+the color scale.}
 
-\item{x}{Character. Name of the x-axis column (default \code{"mulde_area"}).}
+\item{x}{Character. Name of the x-axis column, default
+\code{"mulde_area"}.}
 
-\item{y}{Character. Name of the y-axis column (default \code{"mulde_height"}).}
+\item{y}{Character. Name of the y-axis column, default
+\code{"mulde_height"}.}
 
-\item{max_levels}{Integer. Parameter columns with more than \code{max_levels} distinct values
-are ignored in the tooltip list. Default 50.}
+\item{max_levels}{Integer. Parameter columns with more than
+\code{max_levels} distinct values are ignored in the tooltip list.
+Default 50.}
 
-\item{alpha_invalid}{Numeric. Extra alpha multiplier for invalid solutions (background layer).}
+\item{alpha_invalid}{Numeric. Extra alpha multiplier for invalid solutions
+(background layer).}
 
 \item{size}{Numeric. Base point size.}
 
 \item{digits}{Integer. Significant digits for numeric tooltip values.}
 
-\item{drop_overflow_gt_valid_max}{Logical. If \code{TRUE}, scenarios with \code{overflow_col > valid_max}
-are not plotted at all. Default \code{FALSE}.}
+\item{drop_overflow_gt_valid_max}{Logical. If \code{TRUE}, scenarios with
+\code{overflow_col > valid_max} are not plotted at all. Default
+\code{FALSE}.}
 
-\item{jitter}{Logical. If \code{TRUE}, apply jitter (useful when many points share identical x/y).}
+\item{jitter}{Logical. If \code{TRUE}, apply jitter, useful when many
+points share identical x/y.}
 
-\item{jitter_width}{Numeric or \code{NULL}. Jitter width in data units; if \code{NULL} defaults from x-range.}
+\item{jitter_width}{Numeric or \code{NULL}. Jitter width in data units. If
+\code{NULL}, defaults from x-range.}
 
-\item{jitter_height}{Numeric or \code{NULL}. Jitter height in data units; if \code{NULL} defaults from y-range.}
+\item{jitter_height}{Numeric or \code{NULL}. Jitter height in data units. If
+\code{NULL}, defaults from y-range.}
 
-\item{jitter_factor}{Numeric. Factor to derive default jitter width/height from x/y ranges. Default 0.005.}
+\item{jitter_factor}{Numeric. Factor used to derive default jitter
+width/height from x/y ranges. Default 0.005.}
 
-\item{alpha_mode}{Character. Either \code{"none"} (fixed alpha) or \code{"duplicates"} (vary alpha by
-number of scenarios sharing the same x/y). Default \code{"none"}.}
+\item{alpha_mode}{Character. Either \code{"none"} for fixed alpha or
+\code{"duplicates"} to vary alpha by the number of scenarios sharing the
+same x/y. Default \code{"none"}.}
 
-\item{alpha_min}{Numeric. Minimum alpha used when \code{alpha_mode="duplicates"}. Default 0.20.}
+\item{alpha_min}{Numeric. Minimum alpha used when
+\code{alpha_mode = "duplicates"}. Default 0.20.}
 
-\item{alpha_max}{Numeric. Maximum alpha used when \code{alpha_mode="duplicates"}. Default 1.00.}
+\item{alpha_max}{Numeric. Maximum alpha used when
+\code{alpha_mode = "duplicates"}. Default 1.00.}
 
 \item{keep_param_grid_limits}{Logical. If \code{TRUE} and
-\code{drop_overflow_gt_valid_max = TRUE}, the x/y axis limits are fixed to the
-full range (or full set of levels) found in \code{param_grid}, so the design-space
-axes do not shrink after filtering. Default \code{TRUE}.}
+\code{drop_overflow_gt_valid_max = TRUE}, the x/y axis limits are fixed to
+the full range or full set of levels found in \code{param_grid}, so the
+design-space axes do not shrink after filtering. Default \code{TRUE}.}
+
+\item{lang}{Character. Plot language: \code{"de"} or \code{"en"}.}
+
+\item{title}{Character or \code{NULL}. Plot title. If \code{NULL}, a
+language-specific default title is used.}
+
+\item{subtitle}{Character or \code{NULL}. Plot subtitle. If \code{NULL}, a
+language-specific default subtitle is used.}
+
+\item{legend_position}{Character. Legend position, e.g. \code{"top"},
+\code{"bottom"}, \code{"left"}, or \code{"right"}. Default \code{"top"}.}
 }
 \value{
 A ggplot object. Tooltip text is mapped via \code{aes(text = ...)}.
 }
 \description{
-Visualises model results in a 2D design space (by default \code{mulde_area} vs.
-\code{storage_height}) and highlights valid solutions (by default \code{n_overflows <= 1}).
-The function also creates an HTML tooltip string via \code{aes(text = ...)} listing all
-other varied parameters from \code{param_grid} (excluding \code{x} and \code{y}), making
-the plot directly usable with \code{plotly::ggplotly(..., tooltip="text")}.
+Visualises model results in a 2D design space (by default \code{mulde_area}
+vs. \code{mulde_height}) and highlights valid solutions (by default
+\code{n_overflows <= valid_max}). The plot is prepared for direct use with
+\code{plotly::ggplotly(..., tooltip = "text")} by mapping an HTML tooltip via
+\code{aes(text = ...)} that lists all other varied parameters from
+\code{param_grid}, excluding \code{x} and \code{y}.
 }
 \details{
-Varied parameters are detected automatically as columns in \code{param_grid} with more than
-one distinct value. Optionally, scenarios with \code{overflow_col > valid_max} can be removed
-entirely (\code{drop_overflow_gt_valid_max = TRUE}). To help identify multiple scenarios that
-share identical \code{x}/\code{y} coordinates but differ in other parameters, optional jitter
-and/or variable transparency can be applied.
+Varied parameters are detected automatically as columns in \code{param_grid}
+with more than one distinct value. Optionally, scenarios with
+\code{overflow_col > valid_max} can be removed entirely
+(\code{drop_overflow_gt_valid_max = TRUE}). To help identify multiple
+scenarios that share identical \code{x}/\code{y} coordinates but differ in
+other parameters, optional jitter and/or variable transparency can be
+applied.
+
+Discrete color mapping (threshold-style):
+\itemize{
+\item \strong{dark green} at \code{n_overflows = 0}
+\item a discrete palette from dark green to yellow-green for integer
+levels \code{1..(valid_max-1)}
+\item \strong{orange} at \code{n_overflows = valid_max}
+\item \strong{red} for \code{n_overflows > valid_max}, shown as level
+\code{">valid_max"}
+}
+
+The plot language can be switched via \code{lang = "de"} or
+\code{lang = "en"}. This affects title, subtitle, legend title, tooltip
+labels, and selected axis labels.
 }

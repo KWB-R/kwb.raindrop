@@ -2,56 +2,93 @@
 % Please edit documentation in R/plot_wb_tradeoff_overflows.R
 \name{plot_wb_tradeoff_overflows}
 \alias{plot_wb_tradeoff_overflows}
-\title{Trade-off-Plot: Infiltration vs. Evapotranspiration (farbcodiert nach Overflows)}
+\title{Trade-off plot: Infiltration vs. Evapotranspiration (discrete colors by overflow threshold)}
 \usage{
 plot_wb_tradeoff_overflows(
   simulation_results_optimisation,
   param_grid,
-  filter_n_gt1 = TRUE,
+  x = 1,
+  filter_n_gtx = FALSE,
   use_jitter = TRUE,
   jitter_width = 0.15,
   jitter_height = 0.15,
   jitter_seed = 1L,
   digits = 2L,
-  digits_params = 4L
+  digits_params = 4L,
+  lang = c("de", "en"),
+  title = NULL,
+  lab_x = NULL,
+  lab_y = NULL,
+  legend_position = "top"
 )
 }
 \arguments{
-\item{simulation_results_optimisation}{Data frame mit Simulationsergebnissen.
-Benötigte Spalten (mindestens): \code{scenario_name}, \code{n_overflows}, \code{sum_overflows},
-\code{element.WB_InfiltrationNetto_}, \code{element.WB_Evapotranspiration_},
+\item{simulation_results_optimisation}{Data frame with simulation results.
+Required columns are \code{scenario_name}, \code{n_overflows},
+\code{sum_overflows}, \code{element.WB_InfiltrationNetto_},
+\code{element.WB_Evapotranspiration_}, and
 \code{element.WB_Oberflaechenablauf_Ueberlauf_}.}
 
-\item{param_grid}{Data frame mit Parametergrid; muss \code{scenario_name} enthalten.}
+\item{param_grid}{Data frame with parameter grid. Must contain
+\code{scenario_name}.}
 
-\item{filter_n_gt1}{Logical; wenn TRUE werden Szenarien mit \code{n_overflows > 1} entfernt.}
+\item{x}{Numeric, typically integer. Threshold for overflow coloring. Values
+greater than or equal to \code{x} are mapped to the red category
+\code{">=x"}.}
 
-\item{use_jitter}{Logical; wenn TRUE wird ein leichter Jitter gegen Overplotting genutzt.}
+\item{filter_n_gtx}{Logical. If \code{TRUE}, scenarios with
+\code{n_overflows >= x} are removed before plotting.}
 
-\item{jitter_width, jitter_height}{Numerisch; Jitter-Stärke in x/y (nur wenn \code{use_jitter = TRUE}).}
+\item{use_jitter}{Logical. If \code{TRUE}, slight jitter is applied to reduce
+overplotting.}
 
-\item{jitter_seed}{Integer; Seed für reproduzierbaren Jitter.}
+\item{jitter_width, jitter_height}{Numeric. Jitter strength in x- and y-
+direction, only used if \code{use_jitter = TRUE}.}
 
-\item{digits}{Integer; Rundungsstellen im Tooltip für Wasserbilanzwerte.}
+\item{jitter_seed}{Integer. Seed for reproducible jitter.}
 
-\item{digits_params}{Integer; Rundungsstellen im Tooltip für Parameterwerte (numerisch).}
+\item{digits}{Integer. Number of digits used for rounding water balance
+values in the tooltip.}
+
+\item{digits_params}{Integer. Number of digits used for rounding numeric
+parameter values in the tooltip.}
+
+\item{lang}{Character. Plot language: \code{"de"} or \code{"en"}.}
+
+\item{title}{Character or \code{NULL}. Plot title. If \code{NULL}, a
+language-specific default title is used.}
+
+\item{lab_x}{Character or \code{NULL}. X-axis label. If \code{NULL}, a
+language-specific default label is used.}
+
+\item{lab_y}{Character or \code{NULL}. Y-axis label. If \code{NULL}, a
+language-specific default label is used.}
+
+\item{legend_position}{Character. Legend position, e.g. \code{"top"},
+\code{"bottom"}, \code{"left"}, or \code{"right"}. Default \code{"top"}.}
 }
 \value{
-Ein \code{plotly}-Objekt (interaktiv).
+A \code{ggplot} object.
 }
 \description{
-Erstellt einen interaktiven Scatter-Plot (plotly) aus Optimierungsergebnissen:
-x = Element-Infiltration \link{\%}, y = Element-Evapotranspiration \link{\%}, Farbe = n_overflows (0/1),
-Tooltip enthält zusätzlich die variierenden Parameter aus \code{param_grid}.
+Creates a scatter plot from optimisation results with element infiltration on
+the x-axis and element evapotranspiration on the y-axis.
 }
-\examples{
-\dontrun{
-p <- plot_wb_tradeoff_overflows(
-  simulation_results_optimisation = simulation_results_optimisation,
-  param_grid = param_grid,
-  filter_n_gt1 = TRUE,
-  use_jitter = TRUE
-)
-p
+\details{
+Coloring is \emph{discrete} based on \code{n_overflows} and a threshold
+\code{x}:
+\itemize{
+\item \strong{dark green} for \code{n_overflows = 0}
+\item a discrete palette from dark green to yellow-green for integer
+levels \code{1..(x-1)}
+\item \strong{red} for \code{n_overflows >= x}, shown as category
+\code{">=x"}
 }
+
+The plot language can be switched via \code{lang = "de"} or
+\code{lang = "en"}. This affects title, axis labels, legend title, and
+tooltip labels unless custom labels are supplied explicitly.
+
+Tooltip text additionally includes all parameters from \code{param_grid} that
+vary across scenarios, excluding \code{scenario_name}.
 }

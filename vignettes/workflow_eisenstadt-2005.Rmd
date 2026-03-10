@@ -253,7 +253,7 @@ paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 simulation_names <- param_grid$scenario_name
 
 system.time(
-simulation_results <- kwb.raindrop::get_simulation_results_optim(paths = paths, 
+simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(paths = paths, 
                                                                  path_list = path_list,
                                                                  simulation_names = simulation_names)
 )
@@ -286,24 +286,27 @@ htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
 params <- c(
   #"connected_area",
   "mulde_area",
-  "mulde_height",
-  "filter_hydraulicconductivity",
+  "mulde_height"#,
+  #"filter_hydraulicconductivity",
   #"filter_height",
-  "storage_height"#,
+  #"storage_height"#,
   #"bottom_hydraulicconductivity",
   #"rain_factor"
 )
+
+lang <- "de"
+max_n_overflows <- 5
 
 pdff <- "simulation_results_optimisation_main-effects.pdf"
 
 gg <- kwb.raindrop::plot_main_effects(
   df = simulation_results_optimisation,
   y = "n_overflows",
-  params = params
+  params = params,
+  lang = lang
 )
 
-# --- 1) Statisch ins PDF: kein Plotly dazwischen!
-kwb.utils::preparePdf(pdfFile = pdff)
+grDevices::pdf(pdff, width = 9, height = 3, onefile = TRUE)
 print(gg)
 dev.off()
 #kwb.utils::finishAndShowPdf(pdff)
@@ -319,9 +322,35 @@ htmlwidgets::saveWidget(
 )
 
 
+pdff <- "simulation_results_optimisation_design-space_mulde-area_vs_mulde-height_single.pdf"
+# kwb.utils::preparePdf(pdfFile = pdff)
+# on.exit(dev.off(), add = TRUE)
+grDevices::pdf(pdff, width = 9, height = 3, onefile = TRUE)
+
+  p <- kwb.raindrop::plot_valid_design_space(
+    param_grid = param_grid,
+    sim_results = simulation_results_optimisation,
+    x = "mulde_area",
+    y = "mulde_height",
+    valid_max = max_n_overflows,
+    jitter = TRUE,
+    alpha_mode = "duplicates",
+    alpha_min = 0.25,
+    alpha_max = 1,
+    drop_overflow_gt_valid_max = TRUE,
+    keep_param_grid_limits = TRUE,
+    lang = lang,
+    subtitle = ""
+  )
+
+  suppressWarnings(print(p))
+
+dev.off()
+
 
 pdff <- "simulation_results_optimisation_design-space_mulde-area_vs_parameters.pdf"
 kwb.utils::preparePdf(pdfFile = pdff)
+on.exit(dev.off(), add = TRUE)
 
 for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
 
@@ -330,39 +359,40 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
     sim_results = simulation_results_optimisation,
     x = "mulde_area",
     y = y,
-    valid_max = 1,
+    valid_max = max_n_overflows,
     jitter = TRUE,
     alpha_mode = "duplicates",
     alpha_min = 0.25,
     alpha_max = 1,
     drop_overflow_gt_valid_max = TRUE,
-    keep_param_grid_limits = TRUE
+    keep_param_grid_limits = TRUE,
+    lang = lang
   )
 
-  # interaktiv als HTML
-  plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
-  htmlwidgets::saveWidget(
-    widget = plotly_p,
-    file = sprintf("simulation_results_optimisation_design-space_mulde-area_vs_%s.html", y),
-    selfcontained = TRUE,
-    title = sprintf("Design Space: mulde_area vs. %s", y)
-  )
+  # plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  # htmlwidgets::saveWidget(
+  #   widget = plotly_p,
+  #   file = sprintf("simulation_results_optimisation_design-space_mulde-area_vs_%s.html", y),
+  #   selfcontained = TRUE,
+  #   title = sprintf("Design Space: mulde_area vs. %s", y)
+  # )
 
-  # statisch ins PDF (WICHTIG!)
   suppressWarnings(print(p))
 }
-dev.off()
-#kwb.utils::finishAndShowPdf(pdff)
 
-pdff <- "simulation_results_optimisation_water-balance.pdf"
-kwb.utils::preparePdf(pdfFile = pdff)
+dev.off()
+
+#kwb.utils::finishAndShowPdf(pdff)
 
 p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   simulation_results_optimisation = simulation_results_optimisation,
   param_grid = param_grid,
-  filter_n_gt1 = TRUE,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
   use_jitter = TRUE
-  )
+)
+
+plotly_p <- plotly::ggplotly(p, tooltip = "text")
 
   # interaktiv als HTML
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
@@ -373,9 +403,12 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
     title = "Water balance vs overflows"
   )
 
-  # statisch ins PDF (WICHTIG!)
-  suppressWarnings(print(p))  
+  
+pdff <- "simulation_results_optimisation_water-balance.pdf"
+grDevices::pdf(file = pdff, width = 12, height = 8)
+print(p)
 dev.off()
+
 #kwb.utils::finishAndShowPdf(pdff)
 
 ```

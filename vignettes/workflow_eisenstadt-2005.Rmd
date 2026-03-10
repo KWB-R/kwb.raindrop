@@ -325,7 +325,7 @@ htmlwidgets::saveWidget(
 pdff <- "simulation_results_optimisation_design-space_mulde-area_vs_mulde-height_single.pdf"
 # kwb.utils::preparePdf(pdfFile = pdff)
 # on.exit(dev.off(), add = TRUE)
-grDevices::pdf(pdff, width = 9, height = 3, onefile = TRUE)
+grDevices::pdf(pdff, width = 9, height = 4, onefile = TRUE)
 
   p <- kwb.raindrop::plot_valid_design_space(
     param_grid = param_grid,
@@ -337,7 +337,7 @@ grDevices::pdf(pdff, width = 9, height = 3, onefile = TRUE)
     alpha_mode = "duplicates",
     alpha_min = 0.25,
     alpha_max = 1,
-    drop_overflow_gt_valid_max = TRUE,
+    drop_overflow_gt_valid_max = FALSE,
     keep_param_grid_limits = TRUE,
     lang = lang,
     subtitle = ""

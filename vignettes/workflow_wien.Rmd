@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 # is_ci <- tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
 # 
 # is_ghactions <- is_ghactions || is_ci
-is_ghactions <- TRUE
+is_ghactions <- FALSE
 ```
 
 ### Define Paths and Scenarios
@@ -242,10 +242,7 @@ timeseries_rain$value <- timeseries_rain$value / period
 
 
 #openxlsx::write.xlsx(list(regen = timeseries_rain, et = timeseries_et), "timeseries.xlsx")
-
 ```
-
-### Run Model
 
 ```{r run_model, eval =  !is_ghactions}
 run_one <- function(i,
@@ -333,16 +330,13 @@ paths <- kwb.utils::resolve(path_list,
                             dir_target = sprintf("s%05d", i = 1))
 
 #simulation_names <- basename(fs::dir_ls(paths$dir_output))
-simulation_names <- scenarios_with_single_parameter_variation
-simulation_names <- param_grid$scenario_nam
-simulation_names <- simulation_names[1:8]
+simulation_names <- param_grid$scenario_name
 
 debug <- TRUEn_cores
 errors_df <- kwb.raindrop::read_raindrop_errors(simulation_names, path_list)
 x <- tidyr::unnest(errors_df, errors) 
 x$Fehlerbeschreibung
 }
-
 ```
 
 ### Analyse Results
@@ -391,10 +385,13 @@ params <- c(
   "mulde_height",
   "filter_hydraulicconductivity",
   #"filter_height",
-  "storage_height"#,
+  "storage_height"
   #"bottom_hydraulicconductivity",
   #"rain_factor"
 )
+
+lang <- "de"
+max_n_overflows <- 5
 
 pdff <- sprintf("simulation_results_optimisation_%s_main-effects.pdf",
                 paths$modelname)
@@ -402,14 +399,44 @@ pdff <- sprintf("simulation_results_optimisation_%s_main-effects.pdf",
 gg <- kwb.raindrop::plot_main_effects(
   df = simulation_results_optimisation,
   y = "n_overflows",
-  params = params
+  params = params,
+  lang = lang,
+  ylim_lower = 0
 )
 
-# --- 1) Statisch ins PDF: kein Plotly dazwischen!
-kwb.utils::preparePdf(pdfFile = pdff)
+grDevices::pdf(pdff, width = 9, height = 3, onefile = TRUE)
 print(gg)
 dev.off()
 #kwb.utils::finishAndShowPdf(pdff)
+
+
+pdff <- sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_mulde-height_single.pdf",
+                paths$modelname)
+
+# kwb.utils::preparePdf(pdfFile = pdff)
+# on.exit(dev.off(), add = TRUE)
+grDevices::pdf(pdff, width = 9, height = 4, onefile = TRUE)
+
+  p <- kwb.raindrop::plot_valid_design_space(
+    param_grid = param_grid,
+    sim_results = simulation_results_optimisation,
+    x = "mulde_area",
+    y = "mulde_height",
+    valid_max = max_n_overflows,
+    jitter = TRUE,
+    alpha_mode = "duplicates",
+    alpha_min = 0.25,
+    alpha_max = 1,
+    drop_overflow_gt_valid_max = FALSE,
+    keep_param_grid_limits = TRUE,
+    lang = lang,
+    subtitle = ""
+  )
+
+  suppressWarnings(print(p))
+
+dev.off()
+
 
 # --- 2) Interaktiv als HTML: nach dem PDF
 plotly_gg <- plotly::ggplotly(gg)
@@ -436,12 +463,12 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
     sim_results = simulation_results_optimisation,
     x = "mulde_area",
     y = y,
-    valid_max = 1,
+    valid_max = max_n_overflows,
     jitter = TRUE,
     alpha_mode = "duplicates",
     alpha_min = 0.25,
     alpha_max = 1,
-    drop_overflow_gt_valid_max = TRUE,
+    drop_overflow_gt_valid_max = FALSE,
     keep_param_grid_limits = TRUE
   )
 
@@ -470,8 +497,9 @@ kwb.utils::preparePdf(pdfFile = pdff)
 
 p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   simulation_results_optimisation = simulation_results_optimisation,
-  param_grid = param_grid,
-  filter_n_gt1 = TRUE,
+    param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
   use_jitter = TRUE
   )
 

@@ -33,7 +33,7 @@ A tibble with one row per scenario containing:
 }
 \description{
 Computes (i) overflow event statistics from the element outflow time series and
-(ii) water-balance components as \emph{percent shares} for both \code{element} and
+(ii) water-balance components as percent shares for both \code{element} and
 \code{connected_area} per scenario.
 }
 \details{
@@ -45,13 +45,17 @@ Water-balance percentages are computed with sign preserved (\code{value / denom}
 }
 
 Overflow events are derived from positive \code{Oberflaechenablauf_Ueberlauf} values
-using \code{kwb.event::hsEvents()}. Event separation is controlled via
-\code{event_separation_hours} (converted to seconds).
+using \code{kwb.event::hsEvents()}. If the overflow rate is given in \code{mm/h},
+event sums are integrated over time by multiplying with the model time step
+in hours.
 }
 \examples{
 \dontrun{
 out <- add_overflow_events_and_waterbalance(simulation_results)
-out <- add_overflow_events_and_waterbalance(simulation_results, event_separation_hours = 6)
+out <- add_overflow_events_and_waterbalance(
+  simulation_results,
+  event_separation_hours = 6
+)
 }
 
 }

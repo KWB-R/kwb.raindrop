@@ -45,9 +45,12 @@ Water-balance percentages are computed with sign preserved (\code{value / denom}
 }
 
 Overflow events are derived from positive \code{Oberflaechenablauf_Ueberlauf} values
-using \code{kwb.event::hsEvents()}. If the overflow rate is given in \code{mm/h},
-event sums are integrated over time by multiplying with the model time step
-in hours.
+using \code{kwb.event::hsEvents()}. Assuming the overflow rate is in \code{mm/h}, event
+sums (in \code{mm}) are obtained by integrating each sample over its \strong{local}
+time step (\code{time[i+1] - time[i]}; the last sample inherits the previous
+step). A warning is emitted if the time step is non-uniform, and
+\code{sum_overflows} is returned as \code{NA} if it cannot be determined (single
+sample).
 }
 \examples{
 \dontrun{

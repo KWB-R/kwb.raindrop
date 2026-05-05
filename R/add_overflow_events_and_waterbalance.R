@@ -10,9 +10,12 @@
 #'   `abs(WB_Oberflaechenablauf_Verschaltungen)` if `WB_Regen` is `NA` or `0`)
 #'
 #' Overflow events are derived from positive `Oberflaechenablauf_Ueberlauf` values
-#' using `kwb.event::hsEvents()`. If the overflow rate is given in `mm/h`,
-#' event sums are integrated over time by multiplying with the model time step
-#' in hours.
+#' using `kwb.event::hsEvents()`. Assuming the overflow rate is in `mm/h`, event
+#' sums (in `mm`) are obtained by integrating each sample over its **local**
+#' time step (`time[i+1] - time[i]`; the last sample inherits the previous
+#' step). A warning is emitted if the time step is non-uniform, and
+#' `sum_overflows` is returned as `NA` if it cannot be determined (single
+#' sample).
 #'
 #' @param simulation_results Named list of scenario results. Each entry is expected
 #'   to contain:
@@ -94,13 +97,36 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     rates_all <- simulation_results[[s_name]]$element$rates %>%
       dplyr::filter(variable == "Oberflaechenablauf_Ueberlauf") %>%
       dplyr::arrange(time)
-    
-    dt_hours <- if (nrow(rates_all) >= 2) {
-      stats::median(diff(rates_all$time), na.rm = TRUE)
+
+    n_rates <- nrow(rates_all)
+
+    # Per-row time step (h): each rate sample represents the interval to the
+    # next sample (left-rectangle integration). The last sample inherits the
+    # previous step so the vector lines up with `rates_all`.
+    if (n_rates >= 2) {
+      dt_vec <- diff(rates_all$time)
+
+      if (diff(range(dt_vec, na.rm = TRUE)) > 1e-6) {
+        warning(sprintf(
+          paste0("Scenario '%s': non-uniform time step in ",
+                 "'Oberflaechenablauf_Ueberlauf' (range %g to %g h); ",
+                 "integrating with per-step dt."),
+          s_name, min(dt_vec), max(dt_vec)
+        ))
+      }
+
+      rates_all$dt_hours <- c(dt_vec, dt_vec[length(dt_vec)])
     } else {
-      NA_real_
+      if (n_rates == 1) {
+        warning(sprintf(
+          paste0("Scenario '%s': only one 'Oberflaechenablauf_Ueberlauf' ",
+                 "sample; cannot determine time step, sum_overflows is NA."),
+          s_name
+        ))
+      }
+      rates_all$dt_hours <- rep(NA_real_, n_rates)
     }
-    
+
     xx <- rates_all %>%
       dplyr::filter(value > 0) %>%
       dplyr::mutate(
@@ -119,13 +145,22 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
       
       xx_events$overflow_sum <- vapply(seq_len(nrow(xx_events)), function(event) {
         idx <- xx_events$iBeg[event]:xx_events$iEnd[event]
-        sum(xx$value[idx] * dt_hours, na.rm = TRUE)
+        contributions <- xx$value[idx] * xx$dt_hours[idx]
+        if (all(is.na(contributions))) {
+          NA_real_
+        } else {
+          sum(contributions, na.rm = TRUE)
+        }
       }, numeric(1))
-      
+
       n_overflows <- nrow(xx_events)
       median_duration_overflows_hours <- round(stats::median(xx_events$dur), 2)
-      sum_overflows <- round(sum(xx_events$overflow_sum, na.rm = TRUE), 2)
-      
+      sum_overflows <- if (all(is.na(xx_events$overflow_sum))) {
+        NA_real_
+      } else {
+        round(sum(xx_events$overflow_sum, na.rm = TRUE), 2)
+      }
+
     } else {
       n_overflows <- 0
       median_duration_overflows_hours <- NA_real_

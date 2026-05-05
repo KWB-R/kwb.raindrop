@@ -60,13 +60,14 @@ path_list <- list(
 
 parameters <- tibble::tibble(
   para_nama_short = c(
-                    "connected_area", 
-                    "mulde_area", 
+                    "connected_area",
+                    "mulde_area",
                     "mulde_height",
                     "filter_hydraulicconductivity",
                    # "filter_height",
-                    "storage_height"#,
-                   # "bottom_hydraulicconductivity"
+                    "storage_height",
+                   # "bottom_hydraulicconductivity",
+                    "lai"
                     ),
   para_name_long = c(
                    "/Massnahmenelemente/Dach/Allgemein/Flaeche",
@@ -74,14 +75,16 @@ parameters <- tibble::tibble(
                    "/Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe",
                    "Bodenarten/Bodenfilter/Ks_HydraulicConductivity",
                    #"/Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken",
-                   "/Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken"#,
-                  # "/Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate"
+                   "/Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken",
+                  # "/Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate",
+                   "/Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex"
                    ),
   index = c(1L,
             1L,
             1L,
             1L,
-            2)
+            2L,
+            1L)
 )
 
 DT::datatable(parameters, 
@@ -92,12 +95,16 @@ DT::datatable(parameters,
 
 connected_area <- 1000
 mulde_area <- c(25, 50, 75, 100, 125, 150, 175, 200)
-mulde_height <- c(100, 200, 300) 
+mulde_height <- c(100, 200, 300)
 filter_hydraulicconductivity <-  c(36, 180, 360)
 filter_height <- 300
 storage_height <- c(100, 500, 1000)
 rain_factor <- 1
 bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
+# LAI for Mulde_Rigole only (Dach kept at H5 default).
+# 8.5 = status-quo H5 default; 3.9 = grass per Hörnschemeyer et al.,
+# Water 2023, 15, 2840, Tab. 6, plant type 5 (grasses/herbs).
+lai <- c(3.9, 8.5)
 
 
 # Alle Kombinationen erzeugen
@@ -109,21 +116,23 @@ param_grid_all_combinations <- expand.grid(
   filter_height = filter_height,
   storage_height = storage_height,
   bottom_hydraulicconductivity = bottom_hydraulicconductivity,
-  rain_factor = rain_factor
+  rain_factor = rain_factor,
+  lai = lai
 )
 
 param_grid_all_combinations <- param_grid_all_combinations %>% 
   dplyr::bind_cols(tibble::tibble(scenario_name = sprintf("s%05d", 
                                                           seq_len(nrow(param_grid_all_combinations)))))
 
-ref_scenario <- param_grid_all_combinations %>% 
+ref_scenario <- param_grid_all_combinations %>%
        dplyr::filter(connected_area == min(unique(param_grid_all_combinations$connected_area)),
-                     mulde_area == min(unique(param_grid_all_combinations$mulde_area)), 
+                     mulde_area == min(unique(param_grid_all_combinations$mulde_area)),
                      filter_height == min(filter_height),
-                     filter_hydraulicconductivity == min(param_grid_all_combinations$filter_hydraulicconductivity), 
+                     filter_hydraulicconductivity == min(param_grid_all_combinations$filter_hydraulicconductivity),
                      bottom_hydraulicconductivity == min(unique(param_grid_all_combinations$bottom_hydraulicconductivity)),
                      mulde_height == min(param_grid_all_combinations$mulde_height),
-                     storage_height == min(param_grid_all_combinations$storage_height)) %>% 
+                     storage_height == min(param_grid_all_combinations$storage_height),
+                     lai == max(param_grid_all_combinations$lai)) %>%
        dplyr::pull(scenario_name)
 
 stopifnot(length(ref_scenario)==1)
@@ -296,6 +305,8 @@ run_one <- function(i,
       vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
       vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <- psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
 
+      vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- param_grid_tmp$lai
+
       vals$`//Kurven/ET0` <- timeseries_et
       vals$`//Kurven/Regen` <- timeseries_rain
       vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
@@ -389,9 +400,10 @@ params <- c(
   "mulde_height",
   "filter_hydraulicconductivity",
   #"filter_height",
-  "storage_height"
+  "storage_height",
   #"bottom_hydraulicconductivity",
-  #"rain_factor"
+  #"rain_factor",
+  "lai"
 )
 
 lang <- "de"

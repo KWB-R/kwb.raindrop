@@ -71,7 +71,8 @@ plot_main_effects <- function(df,
     "connected_area" = "Angeschlossene Fl\u00e4che [m\u00b2]",
     "filter_height" = "Filterh\u00f6he [mm]",
     "bottom_hydraulicconductivity" = "hydr. Leitf\u00e4higkeit des Untergrunds [mm/h]",
-    "rain_factor" = "Regenfaktor"
+    "rain_factor" = "Regenfaktor",
+    "lai" = "Blattfl\u00e4chenindex (Mulde-Rigole) [m\u00b2/m\u00b2]"
   )
   
   translate_param <- function(x) {

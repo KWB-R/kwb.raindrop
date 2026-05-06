@@ -27,7 +27,6 @@ Imports:
     lubridate,
     magrittr,
     parallel,
-    plotly,
     progressr,
     purrr,
     rlang,
@@ -38,6 +37,7 @@ Suggests:
     covr,
     DT,
     knitr,
+    plotly,
     readr,
     rmarkdown
 VignetteBuilder: 

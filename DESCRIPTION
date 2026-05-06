@@ -36,6 +36,7 @@ Imports:
 Suggests:
     covr,
     DT,
+    htmlwidgets,
     knitr,
     plotly,
     readr,

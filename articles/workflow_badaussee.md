@@ -1,0 +1,518 @@
+# Workflow Bad Aussee (2011 - 2025)
+
+### Define Paths and Scenarios
+
+``` r
+
+library(kwb.raindrop)
+
+path_list <- list(
+  root_path = "C:/raindrop/2026-01-22_Raindrop_Daten",
+  dir_base = "<root_path>/Optimierungsfall",
+  dir_data = "<dir_base>/data",
+  dir_exe = "<root_path>/Berechnungskern",
+  modelname = "BadAussee",
+  dir_input = "<root_path>/Optimierungsfall/models/<modelname>/input",
+  dir_output = "<root_path>/Optimierungsfall/models/<modelname>/output", 
+  dir_target_output = "<dir_output>/<dir_target>",
+  file_base = "<modelname>.h5",
+  file_errors_hdf5 = "Fehlerprotokoll.h5",
+  file_exe = "Regenwasserbewirtschaftung_2026-02-24.exe", #"Regenwasserbewirtschaftung_2025-12-10.exe",
+  file_et = "<modelname>_ET0_2011-2025.csv",
+  file_rain = "<modelname>_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv",
+  file_results_hdf5_element = "Mulde_Rigole.h5",
+  file_results_hdf5_flaeche = "Dach.h5",
+  file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
+  file_results_txt = "Mulde_Rigole_RAINDROP.txt", 
+  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt", 
+  file_target = "<dir_target>.h5",
+  path_base = "<dir_base>/<file_base>",
+  path_exe = "<dir_exe>/<file_exe>",
+  path_et = "<dir_data>/<file_et>",
+  path_rain = "<dir_data>/<file_rain>",
+  path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
+  path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
+  path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
+  path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
+  path_results_txt = "<dir_target_output>/<file_results_txt>", 
+  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>", 
+  path_target_input = "<dir_input>/<file_target>"
+)
+
+
+parameters <- tibble::tibble(
+  para_nama_short = c(
+                    "connected_area",
+                    "mulde_area",
+                    "mulde_height",
+                    "filter_hydraulicconductivity",
+                   # "filter_height",
+                    "storage_height",
+                   # "bottom_hydraulicconductivity",
+                    "lai"
+                    ),
+  para_name_long = c(
+                   "/Massnahmenelemente/Dach/Allgemein/Flaeche",
+                   "/Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche",
+                   "/Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe",
+                   "Bodenarten/Bodenfilter/Ks_HydraulicConductivity",
+                   #"/Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken",
+                   "/Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken",
+                  # "/Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate",
+                   "/Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex"
+                   ),
+  index = c(1L,
+            1L,
+            1L,
+            1L,
+            2L,
+            1L)
+)
+
+DT::datatable(parameters, 
+              filter = "top",
+              options = list(pageLength = 25,
+                             autoWidth = TRUE))
+
+
+connected_area <- 1000
+mulde_area <- c(25, 50, 75, 100, 125, 150, 175, 200)
+mulde_height <- c(100, 200, 300)
+filter_hydraulicconductivity <-  c(36, 180, 360)
+filter_height <- 300
+storage_height <- c(100, 500, 1000)
+rain_factor <- 1
+bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
+# LAI for Mulde_Rigole only (Dach kept at H5 default).
+# 8.5 = status-quo H5 default; 3.9 = grass per Hörnschemeyer et al.,
+# Water 2023, 15, 2840, Tab. 6, plant type 5 (grasses/herbs).
+lai <- c(3.9, 8.5)
+
+
+# Alle Kombinationen erzeugen
+param_grid_all_combinations <- expand.grid(
+  connected_area = connected_area,
+  mulde_area = mulde_area,
+  mulde_height = mulde_height,
+  filter_hydraulicconductivity = filter_hydraulicconductivity,
+  filter_height = filter_height,
+  storage_height = storage_height,
+  bottom_hydraulicconductivity = bottom_hydraulicconductivity,
+  rain_factor = rain_factor,
+  lai = lai
+)
+
+param_grid_all_combinations <- param_grid_all_combinations %>% 
+  dplyr::bind_cols(tibble::tibble(scenario_name = sprintf("s%05d", 
+                                                          seq_len(nrow(param_grid_all_combinations)))))
+
+ref_scenario <- param_grid_all_combinations %>%
+       dplyr::filter(connected_area == min(unique(param_grid_all_combinations$connected_area)),
+                     mulde_area == min(unique(param_grid_all_combinations$mulde_area)),
+                     filter_height == min(filter_height),
+                     filter_hydraulicconductivity == min(param_grid_all_combinations$filter_hydraulicconductivity),
+                     bottom_hydraulicconductivity == min(unique(param_grid_all_combinations$bottom_hydraulicconductivity)),
+                     mulde_height == min(param_grid_all_combinations$mulde_height),
+                     storage_height == min(param_grid_all_combinations$storage_height),
+                     lai == max(param_grid_all_combinations$lai)) %>%
+       dplyr::pull(scenario_name)
+
+stopifnot(length(ref_scenario)==1)
+
+scenarios_with_single_parameter_variation <- kwb.raindrop::find_single_param_variations(
+  data = param_grid_all_combinations,
+  ref_scenario = ref_scenario
+  ) %>% 
+  dplyr::pull(scenario_name) %>% unique()
+
+param_grid <- param_grid_all_combinations  %>% 
+  dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)
+param_grid <- param_grid_all_combinations
+
+DT::datatable(param_grid,
+              filter = "top",
+              options = list(pageLength = 25,
+                             autoWidth = TRUE))
+
+htmlwidgets::saveWidget(DT::datatable(parameters,
+                                      filter = "top",
+                                      options = list(pageLength = 25, 
+                                                     autoWidth = TRUE)), "parameters.html")
+htmlwidgets::saveWidget(DT::datatable(param_grid, 
+                                      filter = "top",
+                                      options = list(pageLength = 25, 
+                                                     autoWidth = TRUE)), "param_grid.html")
+
+
+psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh/25.4)^(-0.328)) * 25.4
+
+
+paths <- kwb.utils::resolve(path_list)
+
+timeseries_et <- readr::read_delim(paths$path_et, delim = ";", col_types = "cd") %>% 
+  dplyr::mutate(date = lubridate::dmy(date),
+                time = difftime(date, min(date), units = "hours") %>%  as.integer()) %>% 
+  dplyr::select(-date) %>% 
+  dplyr::filter(!is.na(value)) %>% 
+  dplyr::relocate(time,.before = value)
+
+timeseries_et$time[nrow(timeseries_et)] <- ceiling(timeseries_et$time[nrow(timeseries_et)])
+
+timeseries_rain <- readr::read_csv(paths$path_rain) %>% 
+    dplyr::rename(datetime = time,
+                  value = rr) %>% 
+  dplyr::mutate(time = difftime(datetime, min(datetime), units = "secs") %>%  as.double()/3600) %>%
+  dplyr::filter(!is.na(value)) %>% 
+  dplyr::select(-datetime, -station, -substation) %>% 
+  dplyr::relocate(time,.before = value)
+
+timeseries_rain$time[nrow(timeseries_rain)] <- ceiling(timeseries_rain$time[nrow(timeseries_rain)])
+
+timeseries_et <- if(max(timeseries_rain$time) > max(timeseries_et$time)) {
+  
+  rain_last_time <- max(timeseries_rain$time)
+  et_last_value <- timeseries_et$value[nrow(timeseries_et)]
+  
+  msg <- sprintf("Rain time series is %f hours longer than ET time series. Adding final time %f with last value ('%f') in ET time series",
+                 rain_last_time - max(timeseries_et$time),
+                 rain_last_time,
+                 et_last_value 
+                 )
+  
+  kwb.utils::catAndRun(messageText = msg, 
+                       expr = {
+                       timeseries_et %>%
+                         dplyr::bind_rows(tibble::tibble(time = rain_last_time,
+                                                         value = et_last_value))
+                         })
+} else {
+  timeseries_et
+}
+
+timeseries_rain <- if(max(timeseries_et$time) > max(timeseries_rain$time)) {
+  
+  et_last_time <- max(timeseries_rain$time)
+  rain_last_value <- timeseries_rain$value[nrow(timeseries_rain)]
+  
+  msg <- sprintf("ET time series is %f hours longer than rain time series. Adding final time %f with last value ('%f') in rain time series",
+                 et_last_time - max(timeseries_rain$time),
+                 et_last_time,
+                 rain_last_value 
+                 )
+  
+  kwb.utils::catAndRun(messageText = msg, 
+                       expr = {
+                       timeseries_rain %>%
+                         dplyr::bind_rows(tibble::tibble(time = et_last_time,
+                                                         value = rain_last_value))
+                         })
+} else {
+  timeseries_rain
+}
+
+txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Regenmenge: %f mm/a)\n",
+        paths$path_rain,
+        100*sum(is.na(timeseries_rain$value))/nrow(timeseries_rain),
+        100*sum(timeseries_rain$value == 0, na.rm = TRUE)/nrow(timeseries_rain),
+        sum(timeseries_rain$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
+
+message(txt)
+
+txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
+        paths$path_et,
+        100*sum(is.na(timeseries_et$value))/nrow(timeseries_et),
+        100*sum(timeseries_et$value == 0, na.rm = TRUE)/nrow(timeseries_et),
+        sum(timeseries_et$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
+
+message(txt)
+
+
+### Convert rain from mm to mm/h
+period <- c(diff(timeseries_rain$time), mean(diff(timeseries_rain$time)))
+timeseries_rain$value <- timeseries_rain$value / period
+
+
+#openxlsx::write.xlsx(list(regen = timeseries_rain, et = timeseries_et), "timeseries.xlsx")
+```
+
+### Run Model
+
+``` r
+
+run_one <- function(i,
+                    timestep_hours,
+                    debug = FALSE,
+                    ...) {
+
+  param_grid_tmp <- param_grid[i, ]
+
+  paths <- kwb.utils::resolve(path_list,
+                              dir_target = param_grid_tmp$scenario_name)
+
+      fs::dir_create(paths$dir_input, recurse = TRUE)
+      fs::dir_create(paths$dir_output, recurse = TRUE)
+      fs::dir_create(paths$dir_target_output, recurse = TRUE)
+
+      fs::file_copy(path = paths$path_base,
+                    new_path = paths$path_target_input,
+                    overwrite = TRUE)
+
+      h5 <- hdf5r::H5File$new(paths$path_target_input, mode = "a")
+
+      new_path <- stringr::str_c(normalizePath(fs::path_abs(paths$dir_target_output)),
+                                 "\\")
+
+      vals <- kwb.raindrop::h5_read_values(h5)
+
+      vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
+      vals$`//Berechnungsparameter/Zeitschritt_Infiltration` <- timestep_hours
+      vals$`//Berechnungsparameter/Zeitschritt_ET` <- timestep_hours
+      vals$`//Berechnungsparameter/Zeitschritt_Verschaltungen` <- timestep_hours
+      vals$`//Berechnungsparameter/R-Plots` <- 0
+      vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung"
+      vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+      
+      vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+      vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
+      
+      vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+      vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- 1
+      vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
+      vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- param_grid_tmp$mulde_height
+      vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
+      vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(param_grid_tmp$filter_height,
+                                                                                 param_grid_tmp$storage_height)
+      vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
+      
+      vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
+      vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <- psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
+
+      vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- param_grid_tmp$lai
+
+      vals$`//Kurven/ET0` <- timeseries_et
+      vals$`//Kurven/Regen` <- timeseries_rain
+      vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
+      vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
+
+      kwb.raindrop::h5_write_values(h5, vals, resize = TRUE,
+                                   scalar_strategy = "error",
+                                   verbose = FALSE)
+      h5$close_all()
+
+      kwb.raindrop::run_model(path_exe = paths$path_exe,
+                              path_input = paths$path_target_input,
+                              debug = debug)
+
+      invisible(NULL)
+}
+
+n_cores <- parallel::detectCores()
+
+system.time(expr = {
+kwb.raindrop::run_scenarios(indices = seq_len(nrow(param_grid)),
+                            run_one_scenario = run_one,
+                            timestep_hours = 0.1,
+                            debug = FALSE,
+                            parallel = TRUE,
+                            workers = n_cores,
+                            show_progress = TRUE
+                            )
+}
+)
+
+### Read results for first run
+if(FALSE) {
+paths <- kwb.utils::resolve(path_list, 
+                            dir_target = sprintf("s%05d", i = 1))
+
+#simulation_names <- basename(fs::dir_ls(paths$dir_output))
+simulation_names <- param_grid$scenario_name
+
+debug <- TRUEn_cores
+errors_df <- kwb.raindrop::read_raindrop_errors(simulation_names, path_list)
+x <- tidyr::unnest(errors_df, errors) 
+x$Fehlerbeschreibung
+}
+```
+
+### Analyse Results
+
+``` r
+
+system.time(
+simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
+  paths = paths, 
+  path_list = path_list,
+  simulation_names = param_grid$scenario_name,
+  debug = FALSE)
+)
+
+system.time(
+simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
+  simulation_results = simulation_results,
+  event_separation_hours = 4
+  )
+)
+
+simulation_results_optimisation <- param_grid %>% 
+  dplyr::left_join(simulation_results_optimisation,
+                   by = c("scenario_name" = "s_name")) %>% 
+  dplyr::relocate(scenario_name, .before = connected_area)
+
+readr::write_csv(simulation_results_optimisation, 
+                 file = sprintf("simulation_results_optimisation_%s.csv",
+                                paths$modelname)
+                 )
+
+htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
+                                      filter = "top",
+                                      options = list(pageLength = 25, 
+                                                     autoWidth = TRUE)), 
+                        file = sprintf("simulation_results_optimisation_%s.html",
+                                       paths$modelname),
+                        title = sprintf("RAINDROP - '%s': Solution Space",
+                                        paths$modelname)
+)
+### Plot results
+
+
+params <- c(
+  #"connected_area",
+  "mulde_area",
+  "mulde_height",
+  "filter_hydraulicconductivity",
+  #"filter_height",
+  "storage_height",
+  #"bottom_hydraulicconductivity",
+  #"rain_factor",
+  "lai"
+)
+
+lang <- "de"
+max_n_overflows <- 5
+
+pdff <- sprintf("simulation_results_optimisation_%s_main-effects.pdf",
+                paths$modelname)
+
+gg <- kwb.raindrop::plot_main_effects(
+  df = simulation_results_optimisation,
+  y = "n_overflows",
+  params = params,
+  lang = lang,
+  ylim_lower = 0
+)
+
+grDevices::pdf(pdff, width = 9, height = 3, onefile = TRUE)
+print(gg)
+dev.off()
+#kwb.utils::finishAndShowPdf(pdff)
+
+
+pdff <- sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_mulde-height_single.pdf",
+                paths$modelname)
+
+# kwb.utils::preparePdf(pdfFile = pdff)
+# on.exit(dev.off(), add = TRUE)
+grDevices::pdf(pdff, width = 9, height = 4, onefile = TRUE)
+
+  p <- kwb.raindrop::plot_valid_design_space(
+    param_grid = param_grid,
+    sim_results = simulation_results_optimisation,
+    x = "mulde_area",
+    y = "mulde_height",
+    valid_max = max_n_overflows,
+    jitter = TRUE,
+    alpha_mode = "duplicates",
+    alpha_min = 0.25,
+    alpha_max = 1,
+    drop_overflow_gt_valid_max = FALSE,
+    keep_param_grid_limits = TRUE,
+    lang = lang,
+    subtitle = ""
+  )
+
+  suppressWarnings(print(p))
+
+dev.off()
+
+
+# --- 2) Interaktiv als HTML: nach dem PDF
+plotly_gg <- plotly::ggplotly(gg)
+
+htmlwidgets::saveWidget(
+  widget = plotly_gg,
+  file = sprintf("simulation_results_optimisation_%s_main-effects.html",
+                 paths$modelname),
+  selfcontained = TRUE,
+  title = sprintf("RAINDROP - '%s': Main Effects",
+                  paths$modelname)
+)
+
+
+
+pdff <- sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_parameters.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
+
+  p <- kwb.raindrop::plot_valid_design_space(
+    param_grid = param_grid,
+    sim_results = simulation_results_optimisation,
+    x = "mulde_area",
+    y = y,
+    valid_max = max_n_overflows,
+    jitter = TRUE,
+    alpha_mode = "duplicates",
+    alpha_min = 0.25,
+    alpha_max = 1,
+    drop_overflow_gt_valid_max = FALSE,
+    keep_param_grid_limits = TRUE
+  )
+
+  # interaktiv als HTML
+  plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  htmlwidgets::saveWidget(
+    widget = plotly_p,
+    file = sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_%s.html", 
+                   paths$modelname,
+                   y),
+    selfcontained = TRUE,
+    title = sprintf("'%s' - Design Space: mulde_area vs. %s", 
+                    paths$modelname, 
+                    y)
+  )
+
+  # statisch ins PDF (WICHTIG!)
+  suppressWarnings(print(p))
+}
+dev.off()
+#kwb.utils::finishAndShowPdf(pdff)
+
+pdff <- sprintf("simulation_results_optimisation_%s_water-balance.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_wb_tradeoff_overflows(
+  simulation_results_optimisation = simulation_results_optimisation,
+    param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE
+  )
+
+  # interaktiv als HTML
+  plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  htmlwidgets::saveWidget(
+    widget = plotly_p,
+    file = sprintf("simulation_results_optimisation_%s_water-balance.html",
+                   paths$modelname),
+    selfcontained = TRUE,
+    title = sprintf("'%s' - Water balance vs overflows", 
+                    paths$modelname)
+  )
+
+  # statisch ins PDF (WICHTIG!)
+  suppressWarnings(print(p))  
+dev.off()
+```

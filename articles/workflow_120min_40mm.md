@@ -3,10 +3,11 @@
 ### Define Paths and Scenarios
 
 ``` r
+
 library(kwb.raindrop)
 
 path_list <- list(
-  root_path = "C:/kwb/projects/raindrop/2025-12-19_Raindrop_Daten",
+  root_path = "D:/raindrop/2025-12-19_Raindrop_Daten",
   dir_base = "<root_path>/Optimierungsfall",
   dir_exe = "<root_path>/Berechnungskern",
   dir_input = "<root_path>/Optimierungsfall/models/120min_40mm/input",
@@ -68,6 +69,7 @@ DT::datatable(parameters)
 ``` r
 
 
+
 connected_area <- 1000
 mulde_area <- c(25, 50, 100, 200)
 mulde_height <- c(100, 200, 300) 
@@ -122,6 +124,7 @@ DT::datatable(param_grid)
 
 ``` r
 
+
 htmlwidgets::saveWidget(DT::datatable(parameters), "parameters.html")
 htmlwidgets::saveWidget(DT::datatable(param_grid), "param_grid.html")
 
@@ -132,6 +135,7 @@ psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh/25.4)^(-0.328)) * 25.4
 ### Run Model
 
 ``` r
+
 # Number of cores for parallel processing (or: automatic)
 #future::plan(future::multisession, workers = parallel::detectCores() - 1)
 
@@ -221,66 +225,18 @@ errors_df <- lapply(simulation_names, function(s_name) {
 ### Analyse Results
 
 ``` r
-import_results_from_rds <- FALSE
+
 debug <- TRUE
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))
 
 #simulation_names <- basename(fs::dir_ls(paths$dir_output))
 simulation_names <- scenarios_with_single_parameter_variation
 
-simulation_results <- if(import_results_from_rds == FALSE) {
-  
-message(sprintf("Reading results files ('%s') for %d model runs",
-                                               paste0(c(paths$file_results_hdf5_element, paths$file_results_hdf5_flaeche, 
-                                                        stringr::str_replace(paths$file_results_hdf5_verschaltungen, 
-                                                                             "[0-9]+", "xxxxx")), collapse = "|"),
-                                                      length(simulation_names)))
-  stats::setNames(lapply(simulation_names, function(s_name) {
-
-
-s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
-
-paths <- kwb.utils::resolve(path_list, dir_target = s_name)
-
-if(all(file.exists(c(paths$path_results_hdf5_verschaltungen, 
-                 paths$path_results_hdf5_element, 
-                 paths$path_results_hdf5_flaeche)))) {
-
-    kwb.utils::catAndRun(messageText = sprintf("(%d/%d)) Reading results files for model run %s",
-                                               which(simulation_names == s_name),
-                                               length(simulation_names),
-                                               paths$dir_target_output),
-                         expr = {
-
-# "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen
-res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
-res_hdf5_flaeche <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
-res_hdf5_verschaltungen <- hdf5r::H5File$new(paths$path_results_hdf5_verschaltungen, mode = "r")
-
-hdf5_results <- list(
-  element = list(
-    meta = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]], numeric_only = FALSE),
-    rates = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
-    water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
-    additional_evapotranspiration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zusaetzliche Variablen Evapotranspiration"]]),
-    additional_infiltration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zusaetzliche Variablen Infiltration"]]),
-    states = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])),
-  connected_area = list(
-    meta = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]], numeric_only = FALSE),
-    rates = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
-    water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
-    additional_evapotranspiration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zusaetzliche Variablen Evapotranspiration"]]),
-    additional_infiltration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zusaetzliche Variablen Infiltration"]]),
-    states = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])),
-  connections =  kwb.raindrop::read_hdf5_connections(res_hdf5_verschaltungen)
-  )
-
-hdf5_results
-}, 
-dbg = debug)}}), nm = simulation_names)
-} else {
-  readRDS(file = "../simulation_results.Rds")
-}
+simulation_results <- kwb.raindrop::get_simulation_results_all(
+  paths = paths, 
+  path_list = path_list, 
+  simulation_names = simulation_names, 
+  debug = debug)
 
 
 pdff <- "simulation_results_per_scenario_120min-40mm.pdf"

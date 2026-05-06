@@ -1,7 +1,7 @@
 # Add overflow-event metrics and water-balance shares (percent) to simulation results
 
 Computes (i) overflow event statistics from the element outflow time
-series and (ii) water-balance components as *percent shares* for both
+series and (ii) water-balance components as percent shares for both
 `element` and `connected_area` per scenario.
 
 ## Usage
@@ -60,14 +60,20 @@ Water-balance percentages are computed with sign preserved
 Overflow events are derived from positive `Oberflaechenablauf_Ueberlauf`
 values using
 [`kwb.event::hsEvents()`](https://rdrr.io/pkg/kwb.event/man/hsEvents.html).
-Event separation is controlled via `event_separation_hours` (converted
-to seconds).
+Assuming the overflow rate is in `mm/h`, event sums (in `mm`) are
+obtained by integrating each sample over its **local** time step
+(`time[i+1] - time[i]`; the last sample inherits the previous step). A
+warning is emitted if the time step is non-uniform, and `sum_overflows`
+is returned as `NA` if it cannot be determined (single sample).
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
 out <- add_overflow_events_and_waterbalance(simulation_results)
-out <- add_overflow_events_and_waterbalance(simulation_results, event_separation_hours = 6)
+out <- add_overflow_events_and_waterbalance(
+  simulation_results,
+  event_separation_hours = 6
+)
 } # }
 ```

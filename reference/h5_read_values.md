@@ -19,24 +19,24 @@ h5_read_values(
 - h5:
 
   An open
-  [`hdf5r::H5File`](http://hhoeflin.github.io/hdf5r/reference/H5File-class.md)
+  [`hdf5r::H5File`](http://hhoeflin.github.io/hdf5r/reference/H5File-class.md).
 
 - paths:
 
-  character vector; if NULL read all
+  character vector; if NULL read all.
 
 - simplify_scalars:
 
-  logical: simplify H5S_SCALAR to length-1 atom
+  logical: simplify scalar datasets to length-1 atoms.
 
 - timeseries_as_tibble:
 
-  logical: convert 2xN / Nx2 to tibble(time,value)
+  logical: convert 2xN / Nx2 arrays to tibble(time,value).
 
 - ts_names:
 
-  character(2): names for time/value columns
+  character(2): names for time/value columns.
 
 ## Value
 
-named list
+Named list.

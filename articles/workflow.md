@@ -3,6 +3,7 @@
 ### Define Paths and Scenarios
 
 ``` r
+
 library(kwb.raindrop)
 
 path_list <- list(
@@ -59,6 +60,7 @@ DT::datatable(parameters)
 ``` r
 
 
+
 mulde_area <- c(1,10,50,100,500,1000)
 mulde_height <- 1:5 * 100
 filter_hydraulicconductivity <- c(10,20,45,90,180,270,360)
@@ -112,6 +114,7 @@ DT::datatable(param_grid)
 ### Run Model
 
 ``` r
+
 # Number of cores for parallel processing (or: automatic)
 #future::plan(future::multisession, workers = parallel::detectCores() - 1)
 
@@ -194,6 +197,7 @@ errors_df <- lapply(simulation_names, function(s_name) {
 ### Analyse Results
 
 ``` r
+
 import_results_from_rds <- FALSE
 debug <- TRUE
 paths <- kwb.utils::resolve(path_list, dir_target = sprintf("s%05d", i = 1))

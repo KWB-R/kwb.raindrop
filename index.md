@@ -7,6 +7,7 @@ For details on how to install KWB-R packages checkout our [installation
 tutorial](https://kwb-r.github.io/kwb.pkgbuild/articles/install.html).
 
 ``` r
+
 ### Optionally: specify GitHub Personal Access Token (GITHUB_PAT)
 ### See here why this might be important for you:
 ### https://kwb-r.github.io/kwb.pkgbuild/articles/install.html#set-your-github_pat

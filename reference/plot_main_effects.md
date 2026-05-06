@@ -1,21 +1,28 @@
 # Plot main effects of multiple parameters on an outcome (violin/box/jitter)
 
 Creates a facetted overview plot showing the distribution of an outcome
-(e.g., `n_overflows`) across the tested levels of multiple (varied)
+(for example `n_overflows`) across the tested levels of multiple varied
 parameters. Parameters are sorted by a simple effect-size proxy: the
 range of median outcome values across parameter levels.
 
 ## Usage
 
 ``` r
-plot_main_effects(df, y = "n_overflows", params, max_levels = 25)
+plot_main_effects(
+  df,
+  y = "n_overflows",
+  params,
+  max_levels = 25,
+  ylim_lower = 0,
+  lang = c("de", "en")
+)
 ```
 
 ## Arguments
 
 - df:
 
-  A data.frame (or tibble) containing the outcome column `y` and the
+  A data.frame or tibble containing the outcome column `y` and the
   parameter columns listed in `params`.
 
 - y:
@@ -32,31 +39,26 @@ plot_main_effects(df, y = "n_overflows", params, max_levels = 25)
   Integer. Parameters with more than `max_levels` distinct values are
   dropped to keep the plot readable. Defaults to 25.
 
+- ylim_lower:
+
+  Numeric scalar or `NULL`. Optional lower display limit for the y-axis.
+  Uses
+  [`ggplot2::coord_cartesian()`](https://ggplot2.tidyverse.org/reference/coord_cartesian.html),
+  so data are not removed before computing violin and boxplots. Defaults
+  to `0`.
+
+- lang:
+
+  Character. Plot language: `"de"` or `"en"`.
+
 ## Value
 
-A ggplot object (facetted violin + boxplot + jitter).
+A ggplot object with facetted violin, boxplot, and jitter layers.
 
 ## Details
 
-The function is intended for optimisation / sensitivity grids with many
+The function is intended for optimisation or sensitivity grids with many
 parameters, where a single 2D scatter plot is not informative.
 
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-library(readr)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(forcats)
-
-df <- read_csv("simulation_results_optimisation.csv", show_col_types = FALSE)
-params <- c("connected_area", "mulde_area", "mulde_height",
-            "filter_hydraulicconductivity", "filter_height",
-            "storage_height", "bottom_hydraulicconductivity", "rain_factor")
-
-p <- plot_main_effects(df, y = "n_overflows", params = params, max_levels = 20)
-p
-} # }
-```
+The plot language can be switched via `lang = "de"` or `lang = "en"`.
+This affects the title, y-axis label, and selected parameter labels.

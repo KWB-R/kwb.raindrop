@@ -1,9 +1,15 @@
-# Write (updated) values back into existing HDF5 datasets (robust)
+# Write (updated) values back into existing HDF5 datasets (robust for your hdf5r build)
 
-Writes scalars, vectors, matrices/arrays, and 2-column data
-frames/tibbles (treated as time series) into existing HDF5 datasets. If
-the dataset reports SCALAR incorrectly, the function can infer target
-dimensions from the supplied value and resize accordingly.
+- Scalars: write with required `args` (args=list() or args=1L fallback).
+
+- 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5
+  (RAINDROP style), using explicit hyperslab args=list(1:2, 1:N) to
+  avoid empty selections.
+
+- If TS length changes and dataset maxdims blocks resize, the dataset is
+  deleted via parent\$link_delete(name) and recreated with dims=2xN
+  (fixed), then written. (No maxdims argument used; compatible with your
+  create_dataset signature.)
 
 ## Usage
 
@@ -13,10 +19,10 @@ h5_write_values(
   values,
   resize = TRUE,
   strict = TRUE,
-  prefer_rows = NA,
   ts_cols = c("time", "value"),
   scalar_strategy = c("error", "first", "collapse"),
   collapse_sep = ";",
+  ts_dtype = "double",
   verbose = FALSE
 )
 ```
@@ -25,58 +31,40 @@ h5_write_values(
 
 - h5:
 
-  An open
-  [`hdf5r::H5File`](http://hhoeflin.github.io/hdf5r/reference/H5File-class.md)
-  (e.g., `mode = "r+"`).
+  Open hdf5r::H5File.
 
 - values:
 
-  Named `list`: names are absolute dataset paths, values are R objects
-  to write.
+  Named list; names are dataset paths (leading // allowed).
 
 - resize:
 
-  Logical. If `TRUE`, resize datasets via `set_extent()` when shapes
-  differ.
+  Logical. If TRUE tries set_extent() where possible.
 
 - strict:
 
-  Logical. If `TRUE`, stop on first error; otherwise warn and skip.
-
-- prefer_rows:
-
-  Logical(1) or `NA`. For 2-column time series: `NA` keeps dataset
-  orientation (2xN if first dim == 2), `TRUE` forces 2xN, `FALSE` forces
-  Nx2.
+  Logical. If TRUE stop on first error else warn and continue.
 
 - ts_cols:
 
-  Character(2). Column names to pull from time-series data frames
-  (default `c("time","value")`).
+  Character(2). Column names for TS (default time/value).
 
 - scalar_strategy:
 
-  One of `"error"`, `"first"`, `"collapse"`. Controls how non-length-1
-  values are handled for true SCALAR datasets.
+  "error"\|"first"\|"collapse".
 
 - collapse_sep:
 
-  Character. Separator used when `scalar_strategy = "collapse"`.
+  Separator for collapse.
+
+- ts_dtype:
+
+  Either an H5T object or one of "double","float","integer","logical".
 
 - verbose:
 
-  Logical. If `TRUE`, prints per-path dimension info.
+  Logical.
 
 ## Value
 
-Invisibly returns the character vector of written dataset paths.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-vals <- h5_read_values(h5)
-vals[["/Parameters/OutputPath"]] <- "C:/temp/out.h5"
-h5_write_values(h5, vals, resize = TRUE, scalar_strategy = "first", verbose = TRUE)
-} # }
-```
+Invisibly, written paths.

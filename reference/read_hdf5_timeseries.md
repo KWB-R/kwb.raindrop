@@ -30,9 +30,9 @@ tibble::tibble(variable, time, value)
 
 Supported dataset layouts:
 
-- k x N (rows): 1, = time, 2..k, = values (series)
+- k x N (rows): `[1, ]` = time, `[2..k, ]` = values (series)
 
-- N x k (cols): , 1 = time, , 2..k = values (series)
+- N x k (cols): `[, 1]` = time, `[, 2..k]` = values (series)
 
 Special handling for names containing "deeperLayers"/"deeper_layers":
 

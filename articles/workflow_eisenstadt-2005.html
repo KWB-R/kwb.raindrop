@@ -35,8 +35,10 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/workflow.html">Workflow</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_120min_40mm.html">Workflow 120min_40mm</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
-    <li><a class="dropdown-item" href="../articles/workflow_v2.html">Workflow V2</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_wien.html">Workflow Wien (2011 - 2025)</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -81,13 +83,15 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/KWB-R/kwb.raindrop" class="external-link">kwb.raindrop</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">path_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  root_path <span class="op">=</span> <span class="st">"D:/raindrop/2025-12-19_Raindrop_Daten"</span>,</span>
+<span>  root_path <span class="op">=</span> <span class="st">"C:/raindrop/2026-01-22_Raindrop_Daten"</span>,</span>
 <span>  dir_base <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall"</span>,</span>
+<span>  dir_data <span class="op">=</span> <span class="st">"&lt;dir_base&gt;/data"</span>,</span>
 <span>  dir_exe <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Berechnungskern"</span>,</span>
-<span>  dir_input <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall/models/eisenstadt-optim/input"</span>,</span>
-<span>  dir_output <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall/models/eisenstadt-optim/output"</span>, </span>
+<span>  modelname <span class="op">=</span> <span class="st">"Eisenstadt_2005"</span>,</span>
+<span>  dir_input <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall/models/&lt;modelname&gt;/input"</span>,</span>
+<span>  dir_output <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall/models/&lt;modelname&gt;/output"</span>, </span>
 <span>  dir_target_output <span class="op">=</span> <span class="st">"&lt;dir_output&gt;/&lt;dir_target&gt;"</span>,</span>
-<span>  file_base <span class="op">=</span> <span class="st">"Eisenstadt_2005.h5"</span>,</span>
+<span>  file_base <span class="op">=</span> <span class="st">"&lt;modelname&gt;.h5"</span>,</span>
 <span>  file_errors_hdf5 <span class="op">=</span> <span class="st">"Fehlerprotokoll.h5"</span>,</span>
 <span>  file_exe <span class="op">=</span> <span class="st">"Regenwasserbewirtschaftung.exe"</span>,</span>
 <span>  file_results_hdf5_element <span class="op">=</span> <span class="st">"Mulde_Rigole.h5"</span>,</span>
@@ -188,8 +192,8 @@
 <span><span class="co">#&gt; Rows with exactly one differing parameter: 13 of 216</span></span>
 <span><span class="co">#&gt; Single-parameter variations per parameter: connected_area=0, mulde_area=7, mulde_height=2, filter_hydraulicconductivity=2, filter_height=0, storage_height=2, bottom_hydraulicconductivity=0, rain_factor=0</span></span>
 <span></span>
-<span><span class="va">param_grid</span> <span class="op">&lt;-</span> <span class="va">param_grid_all_combinations</span>  <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">scenario_name</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">scenarios_with_single_parameter_variation</span><span class="op">)</span></span>
+<span><span class="co"># param_grid &lt;- param_grid_all_combinations  %&gt;% </span></span>
+<span><span class="co">#   dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)</span></span>
 <span><span class="va">param_grid</span> <span class="op">&lt;-</span> <span class="va">param_grid_all_combinations</span></span>
 <span></span>
 <span><span class="fu">DT</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">datatable</a></span><span class="op">(</span><span class="va">param_grid</span>,</span>
@@ -209,117 +213,118 @@
 <span>                                                     autoWidth <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>, <span class="st">"param_grid.html"</span><span class="op">)</span></span>
 <span></span>
 <span></span>
-<span><span class="va">psi_s_mm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">kf_mmh</span><span class="op">)</span> <span class="op">(</span><span class="fl">3.237</span> <span class="op">*</span> <span class="op">(</span><span class="va">kf_mmh</span><span class="op">/</span><span class="fl">25.4</span><span class="op">)</span><span class="op">^</span><span class="op">(</span><span class="op">-</span><span class="fl">0.328</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fl">25.4</span></span></code></pre></div>
+<span><span class="va">psi_s_mm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">kf_mmh</span><span class="op">)</span> <span class="op">(</span><span class="fl">3.237</span> <span class="op">*</span> <span class="op">(</span><span class="va">kf_mmh</span><span class="op">/</span><span class="fl">25.4</span><span class="op">)</span><span class="op">^</span><span class="op">(</span><span class="op">-</span><span class="fl">0.328</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fl">25.4</span></span>
+<span></span>
+<span><span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-model">Run Model<a class="anchor" aria-label="anchor" href="#run-model"></a>
 </h3>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">debug</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span></span>
-<span><span class="co">#Number of cores for parallel processing (or: automatic)</span></span>
-<span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">run_one</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span>,</span>
+<span>                    <span class="va">timestep_hours</span>,</span>
+<span>                    <span class="va">debug</span> <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>                    <span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
-<span>  <span class="fu">future.apply</span><span class="fu">::</span><span class="fu"><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future_lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">param_grid</span><span class="op">)</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  </span>
 <span>  <span class="va">param_grid_tmp</span> <span class="op">&lt;-</span> <span class="va">param_grid</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span></span>
-<span>  </span>
-<span>  <span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span>, dir_target <span class="op">=</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">scenario_name</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/create.html" class="external-link">dir_create</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_input</span>, recurse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/create.html" class="external-link">dir_create</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_output</span>, recurse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/create.html" class="external-link">dir_create</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_target_output</span>, recurse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/copy.html" class="external-link">file_copy</a></span><span class="op">(</span>path <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_base</span>, </span>
-<span>                new_path <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span>, </span>
-<span>                overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen</span></span>
-<span>  <span class="va">h5</span> <span class="op">&lt;-</span> <span class="fu">hdf5r</span><span class="fu">::</span><span class="va"><a href="http://hhoeflin.github.io/hdf5r/reference/H5File-class.html" class="external-link">H5File</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span>, mode <span class="op">=</span> <span class="st">"a"</span><span class="op">)</span></span>
-<span>  </span>
 <span></span>
-<span>  <span class="va">new_path</span> <span class="op">&lt;-</span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_c.html" class="external-link">str_c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/normalizePath.html" class="external-link">normalizePath</a></span><span class="op">(</span><span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/path_math.html" class="external-link">path_abs</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_target_output</span><span class="op">)</span><span class="op">)</span>, </span>
-<span>                             <span class="st">"\\"</span><span class="op">)</span></span>
+<span>  <span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span>,</span>
+<span>                              dir_target <span class="op">=</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">scenario_name</span><span class="op">)</span></span>
 <span></span>
-<span>   <span class="co"># 2) Alle Werte lesen (als named list, Keys = absolute Pfade)</span></span>
-<span><span class="va">vals</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/h5_read_values.html">h5_read_values</a></span><span class="op">(</span><span class="va">h5</span><span class="op">)</span></span>
+<span>      <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/create.html" class="external-link">dir_create</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_input</span>, recurse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>      <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/create.html" class="external-link">dir_create</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_output</span>, recurse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>      <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/create.html" class="external-link">dir_create</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_target_output</span>, recurse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Ergebnispfad`</span> <span class="op">&lt;-</span> <span class="va">new_path</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/R-Plots`</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Ausgabemodus`</span> <span class="op">&lt;-</span> <span class="st">"Optimierung"</span> <span class="co"># "komplett" "Optimierung"</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Evapotranspiration_aktiv`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Dach/Allgemein/Flaeche`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">connected_area</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">mulde_area</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe`</span> <span class="op">&lt;-</span>  <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">mulde_height</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">filter_hydraulicconductivity</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction`</span> <span class="op">&lt;-</span> <span class="fu">psi_s_mm</span><span class="op">(</span><span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">filter_hydraulicconductivity</span><span class="op">)</span></span>
-<span><span class="co">#vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` &lt;- c(0.3, 0)</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken`</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">filter_height</span>,</span>
-<span>                                                                            <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">storage_height</span><span class="op">)</span></span>
-<span><span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">bottom_hydraulicconductivity</span></span>
+<span>      <span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/copy.html" class="external-link">file_copy</a></span><span class="op">(</span>path <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_base</span>,</span>
+<span>                    new_path <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span>,</span>
+<span>                    overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="va">h5</span> <span class="op">&lt;-</span> <span class="fu">hdf5r</span><span class="fu">::</span><span class="va"><a href="http://hhoeflin.github.io/hdf5r/reference/H5File-class.html" class="external-link">H5File</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span>, mode <span class="op">=</span> <span class="st">"a"</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="va">new_path</span> <span class="op">&lt;-</span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_c.html" class="external-link">str_c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/normalizePath.html" class="external-link">normalizePath</a></span><span class="op">(</span><span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/path_math.html" class="external-link">path_abs</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dir_target_output</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                                 <span class="st">"\\"</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="va">vals</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/h5_read_values.html">h5_read_values</a></span><span class="op">(</span><span class="va">h5</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Ergebnispfad`</span> <span class="op">&lt;-</span> <span class="va">new_path</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Zeitschritt_Infiltration`</span> <span class="op">&lt;-</span> <span class="va">timestep_hours</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Zeitschritt_ET`</span> <span class="op">&lt;-</span> <span class="va">timestep_hours</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Zeitschritt_Verschaltungen`</span> <span class="op">&lt;-</span> <span class="va">timestep_hours</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/R-Plots`</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Ausgabemodus`</span> <span class="op">&lt;-</span> <span class="st">"Optimierung"</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Berechnungsparameter/Evapotranspiration_aktiv`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>      </span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Dach/Allgemein/Flaeche`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">connected_area</span></span>
+<span>      </span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor`</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">mulde_area</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">mulde_height</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture`</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken`</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">filter_height</span>,</span>
+<span>                                                                                 <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">storage_height</span><span class="op">)</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">bottom_hydraulicconductivity</span></span>
+<span>      </span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity`</span> <span class="op">&lt;-</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">filter_hydraulicconductivity</span></span>
+<span>      <span class="va">vals</span><span class="op">$</span><span class="va">`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction`</span> <span class="op">&lt;-</span> <span class="fu">psi_s_mm</span><span class="op">(</span><span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">filter_hydraulicconductivity</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Timeseries (2×N) als tibble?</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">is.data.frame</a></span><span class="op">(</span><span class="va">vals</span><span class="op">[[</span><span class="st">"//Kurven/Regen"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">vals</span><span class="op">[[</span><span class="st">"//Kurven/Regen"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">value</span> <span class="op">&lt;-</span> <span class="va">vals</span><span class="op">[[</span><span class="st">"//Kurven/Regen"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">value</span> <span class="op">*</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">rain_factor</span></span>
 <span><span class="op">}</span></span>
 <span></span>
+<span>      <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/h5_write_values.html">h5_write_values</a></span><span class="op">(</span><span class="va">h5</span>, <span class="va">vals</span>, resize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>                                   scalar_strategy <span class="op">=</span> <span class="st">"error"</span>,</span>
+<span>                                   verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>      <span class="va">h5</span><span class="op">$</span><span class="fu">close_all</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/h5_write_values.html">h5_write_values</a></span><span class="op">(</span><span class="va">h5</span>, <span class="va">vals</span>, resize <span class="op">=</span> <span class="cn">TRUE</span>, scalar_strategy <span class="op">=</span> <span class="st">"error"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">h5</span><span class="op">$</span><span class="fu">close_all</span><span class="op">(</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/run_model.html">run_model</a></span><span class="op">(</span>path_exe <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_exe</span>,</span>
-<span>                          path_input <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<span>      <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/run_model.html">run_model</a></span><span class="op">(</span>path_exe <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_exe</span>,</span>
+<span>                              path_input <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span>,</span>
+<span>                              debug <span class="op">=</span> <span class="va">debug</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">n_cores</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span>expr <span class="op">=</span> <span class="op">{</span></span>
+<span><span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/run_scenarios.html">run_scenarios</a></span><span class="op">(</span>indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">param_grid</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                            run_one_scenario <span class="op">=</span> <span class="va">run_one</span>,</span>
+<span>                            timestep_hours <span class="op">=</span> <span class="fl">0.1</span>,</span>
+<span>                            debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>                            parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>                            workers <span class="op">=</span> <span class="va">n_cores</span>,</span>
+<span>                            show_progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>                            <span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span></span>
 <span><span class="co">### Read results for first run</span></span>
-<span></span>
-<span><span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span>, dir_target <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"s%05d"</span>, i <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span>, </span>
+<span>                            dir_target <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"s%05d"</span>, i <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co">#simulation_names &lt;- basename(fs::dir_ls(paths$dir_output))</span></span>
-<span><span class="va">simulation_names</span> <span class="op">&lt;-</span> <span class="va">scenarios_with_single_parameter_variation</span></span>
 <span><span class="va">simulation_names</span> <span class="op">&lt;-</span> <span class="va">param_grid</span><span class="op">$</span><span class="va">scenario_name</span></span>
 <span></span>
 <span><span class="va">debug</span> <span class="op">&lt;-</span> <span class="cn">TRUE</span></span>
-<span><span class="va">errors_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">simulation_names</span>, <span class="kw">function</span><span class="op">(</span><span class="va">s_name</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  </span>
-<span>  <span class="va">s_id</span> <span class="op">&lt;-</span> <span class="va">s_name</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove</a></span><span class="op">(</span><span class="st">"s"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span>  <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span>, dir_target <span class="op">=</span> <span class="va">s_name</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="kw">if</span><span class="op">(</span><span class="fu">fs</span><span class="fu">::</span><span class="fu"><a href="https://fs.r-lib.org/reference/file_access.html" class="external-link">file_exists</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">path_errors_hdf5</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/catAndRun.html" class="external-link">catAndRun</a></span><span class="op">(</span>messageText <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Reading error file '%s'"</span>,</span>
-<span>                                               <span class="va">paths</span><span class="op">$</span><span class="va">path_errors_hdf5</span><span class="op">)</span>,</span>
-<span>                         expr <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">error_hdf</span> <span class="op">&lt;-</span> <span class="fu">hdf5r</span><span class="fu">::</span><span class="va"><a href="http://hhoeflin.github.io/hdf5r/reference/H5File-class.html" class="external-link">H5File</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">path_errors_hdf5</span>, mode <span class="op">=</span> <span class="st">"r"</span><span class="op">)</span></span>
-<span>    </span>
-<span>    <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">s_id</span>, </span>
-<span>                   path <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_errors_hdf5</span>,</span>
-<span>                   number_of_errors <span class="op">=</span> <span class="va">error_hdf</span><span class="op">[[</span><span class="st">"AnzahlFehler"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="fu">read</span><span class="op">(</span><span class="op">)</span></span>
-<span>    <span class="op">)</span></span>
-<span>                         <span class="op">}</span>,</span>
-<span>    dbg <span class="op">=</span> <span class="va">debug</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">}</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">errors_df</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/read_raindrop_errors.html">read_raindrop_errors</a></span><span class="op">(</span><span class="va">simulation_names</span>, <span class="va">path_list</span><span class="op">)</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/unnest.html" class="external-link">unnest</a></span><span class="op">(</span><span class="va">errors_df</span>, <span class="va">errors</span><span class="op">)</span> </span>
+<span><span class="va">x</span><span class="op">$</span><span class="va">Fehlerbeschreibung</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="analyse-results">Analyse Results<a class="anchor" aria-label="anchor" href="#analyse-results"></a>
 </h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">paths</span> <span class="op">&lt;-</span> <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/resolve.html" class="external-link">resolve</a></span><span class="op">(</span><span class="va">path_list</span>, dir_target <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"s%05d"</span>, i <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co">#simulation_names &lt;- basename(fs::dir_ls(paths$dir_output))</span></span>
-<span><span class="va">simulation_names</span> <span class="op">&lt;-</span> <span class="va">param_grid</span><span class="op">$</span><span class="va">scenario_name</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
-<span><span class="va">simulation_results</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/get_simulation_results_optim.html">get_simulation_results_optim</a></span><span class="op">(</span>paths <span class="op">=</span> <span class="va">paths</span>, </span>
-<span>                                                                 path_list <span class="op">=</span> <span class="va">path_list</span>,</span>
-<span>                                                                 simulation_names <span class="op">=</span> <span class="va">simulation_names</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span><span class="va">simulation_results</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/get_simulation_results_optim_parallel.html">get_simulation_results_optim_parallel</a></span><span class="op">(</span></span>
+<span>  paths <span class="op">=</span> <span class="va">paths</span>, </span>
+<span>  path_list <span class="op">=</span> <span class="va">path_list</span>,</span>
+<span>  simulation_names <span class="op">=</span> <span class="va">param_grid</span><span class="op">$</span><span class="va">scenario_name</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span><span class="va">simulation_results_optimisation</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/add_overflow_events_and_waterbalance.html">add_overflow_events_and_waterbalance</a></span><span class="op">(</span></span>
@@ -333,17 +338,21 @@
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"scenario_name"</span> <span class="op">=</span> <span class="st">"s_name"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/relocate.html" class="external-link">relocate</a></span><span class="op">(</span><span class="va">scenario_name</span>, .before <span class="op">=</span> <span class="va">connected_area</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">readr</span><span class="fu">::</span><span class="fu">write_csv</span><span class="op">(</span><span class="va">simulation_results_optimisation</span>, file <span class="op">=</span> <span class="st">"simulation_results_optimisation.csv"</span><span class="op">)</span></span>
+<span><span class="fu">readr</span><span class="fu">::</span><span class="fu">write_csv</span><span class="op">(</span><span class="va">simulation_results_optimisation</span>, </span>
+<span>                 file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s.csv"</span>,</span>
+<span>                                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
+<span>                 <span class="op">)</span></span>
 <span></span>
 <span><span class="fu">htmlwidgets</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmlwidgets/man/saveWidget.html" class="external-link">saveWidget</a></span><span class="op">(</span><span class="fu">DT</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">datatable</a></span><span class="op">(</span><span class="va">simulation_results_optimisation</span>,</span>
 <span>                                      filter <span class="op">=</span> <span class="st">"top"</span>,</span>
 <span>                                      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>pageLength <span class="op">=</span> <span class="fl">25</span>, </span>
 <span>                                                     autoWidth <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>, </span>
-<span>                        <span class="st">"simulation_results_optimisation.html"</span>,</span>
-<span>                        title <span class="op">=</span> <span class="st">"RAINDROP - Solution Space"</span><span class="op">)</span></span>
-<span></span>
+<span>                        file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s.html"</span>,</span>
+<span>                                       <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span>,</span>
+<span>                        title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"RAINDROP - '%s': Solution Space"</span>,</span>
+<span>                                        <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span><span class="co">### Plot results</span></span>
-<span></span>
 <span></span>
 <span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="co">#"connected_area",</span></span>
@@ -351,38 +360,75 @@
 <span>  <span class="st">"mulde_height"</span>,</span>
 <span>  <span class="st">"filter_hydraulicconductivity"</span>,</span>
 <span>  <span class="co">#"filter_height",</span></span>
-<span>  <span class="st">"storage_height"</span><span class="co">#,</span></span>
+<span>  <span class="st">"storage_height"</span></span>
 <span>  <span class="co">#"bottom_hydraulicconductivity",</span></span>
 <span>  <span class="co">#"rain_factor"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="st">"simulation_results_optimisation_main-effects.pdf"</span></span>
+<span><span class="va">lang</span> <span class="op">&lt;-</span> <span class="st">"de"</span></span>
+<span><span class="va">max_n_overflows</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span></span>
+<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_main-effects.pdf"</span>,</span>
+<span>                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">gg</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/plot_main_effects.html">plot_main_effects</a></span><span class="op">(</span></span>
 <span>  df <span class="op">=</span> <span class="va">simulation_results_optimisation</span>,</span>
 <span>  y <span class="op">=</span> <span class="st">"n_overflows"</span>,</span>
-<span>  params <span class="op">=</span> <span class="va">params</span></span>
+<span>  params <span class="op">=</span> <span class="va">params</span>,</span>
+<span>  lang <span class="op">=</span> <span class="va">lang</span>,</span>
+<span>  ylim_lower <span class="op">=</span> <span class="fl">0</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># --- 1) Statisch ins PDF: kein Plotly dazwischen!</span></span>
-<span><span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/preparePdf.html" class="external-link">preparePdf</a></span><span class="op">(</span>pdfFile <span class="op">=</span> <span class="va">pdff</span><span class="op">)</span></span>
+<span><span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/pdf.html" class="external-link">pdf</a></span><span class="op">(</span><span class="va">pdff</span>, width <span class="op">=</span> <span class="fl">9</span>, height <span class="op">=</span> <span class="fl">3</span>, onefile <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">gg</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#kwb.utils::finishAndShowPdf(pdff)</span></span>
+<span></span>
+<span></span>
+<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_design-space_mulde-area_vs_mulde-height_single.pdf"</span>,</span>
+<span>                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># kwb.utils::preparePdf(pdfFile = pdff)</span></span>
+<span><span class="co"># on.exit(dev.off(), add = TRUE)</span></span>
+<span><span class="fu">grDevices</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grDevices/pdf.html" class="external-link">pdf</a></span><span class="op">(</span><span class="va">pdff</span>, width <span class="op">=</span> <span class="fl">9</span>, height <span class="op">=</span> <span class="fl">4</span>, onefile <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/plot_valid_design_space.html">plot_valid_design_space</a></span><span class="op">(</span></span>
+<span>    param_grid <span class="op">=</span> <span class="va">param_grid</span>,</span>
+<span>    sim_results <span class="op">=</span> <span class="va">simulation_results_optimisation</span>,</span>
+<span>    x <span class="op">=</span> <span class="st">"mulde_area"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"mulde_height"</span>,</span>
+<span>    valid_max <span class="op">=</span> <span class="va">max_n_overflows</span>,</span>
+<span>    jitter <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    alpha_mode <span class="op">=</span> <span class="st">"duplicates"</span>,</span>
+<span>    alpha_min <span class="op">=</span> <span class="fl">0.25</span>,</span>
+<span>    alpha_max <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>    drop_overflow_gt_valid_max <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    keep_param_grid_limits <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    lang <span class="op">=</span> <span class="va">lang</span>,</span>
+<span>    subtitle <span class="op">=</span> <span class="st">""</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
 <span></span>
 <span><span class="co"># --- 2) Interaktiv als HTML: nach dem PDF</span></span>
 <span><span class="va">plotly_gg</span> <span class="op">&lt;-</span> <span class="fu">plotly</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">ggplotly</a></span><span class="op">(</span><span class="va">gg</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">htmlwidgets</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmlwidgets/man/saveWidget.html" class="external-link">saveWidget</a></span><span class="op">(</span></span>
 <span>  widget <span class="op">=</span> <span class="va">plotly_gg</span>,</span>
-<span>  file <span class="op">=</span> <span class="st">"simulation_results_optimisation_main-effects.html"</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_main-effects.html"</span>,</span>
+<span>                 <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span>,</span>
 <span>  selfcontained <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  title <span class="op">=</span> <span class="st">"RAINDROP - Main Effects"</span></span>
+<span>  title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"RAINDROP - '%s': Main Effects"</span>,</span>
+<span>                  <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span></span>
 <span></span>
-<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="st">"simulation_results_optimisation_design-space_mulde-area_vs_parameters.pdf"</span></span>
+<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_design-space_mulde-area_vs_parameters.pdf"</span>,</span>
+<span>                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
 <span><span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/preparePdf.html" class="external-link">preparePdf</a></span><span class="op">(</span>pdfFile <span class="op">=</span> <span class="va">pdff</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">y</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mulde_height"</span>, <span class="st">"filter_hydraulicconductivity"</span>, <span class="st">"storage_height"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -392,7 +438,7 @@
 <span>    sim_results <span class="op">=</span> <span class="va">simulation_results_optimisation</span>,</span>
 <span>    x <span class="op">=</span> <span class="st">"mulde_area"</span>,</span>
 <span>    y <span class="op">=</span> <span class="va">y</span>,</span>
-<span>    valid_max <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>    valid_max <span class="op">=</span> <span class="va">max_n_overflows</span>,</span>
 <span>    jitter <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>    alpha_mode <span class="op">=</span> <span class="st">"duplicates"</span>,</span>
 <span>    alpha_min <span class="op">=</span> <span class="fl">0.25</span>,</span>
@@ -405,9 +451,13 @@
 <span>  <span class="va">plotly_p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu">plotly</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">ggplotly</a></span><span class="op">(</span><span class="va">p</span>, tooltip <span class="op">=</span> <span class="st">"text"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu">htmlwidgets</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmlwidgets/man/saveWidget.html" class="external-link">saveWidget</a></span><span class="op">(</span></span>
 <span>    widget <span class="op">=</span> <span class="va">plotly_p</span>,</span>
-<span>    file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_design-space_mulde-area_vs_%s.html"</span>, <span class="va">y</span><span class="op">)</span>,</span>
+<span>    file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_design-space_mulde-area_vs_%s.html"</span>, </span>
+<span>                   <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span>,</span>
+<span>                   <span class="va">y</span><span class="op">)</span>,</span>
 <span>    selfcontained <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Design Space: mulde_area vs. %s"</span>, <span class="va">y</span><span class="op">)</span></span>
+<span>    title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"'%s' - Design Space: mulde_area vs. %s"</span>, </span>
+<span>                    <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span>, </span>
+<span>                    <span class="va">y</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># statisch ins PDF (WICHTIG!)</span></span>
@@ -416,13 +466,15 @@
 <span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#kwb.utils::finishAndShowPdf(pdff)</span></span>
 <span></span>
-<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="st">"simulation_results_optimisation_water-balance.pdf"</span></span>
+<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_water-balance.pdf"</span>,</span>
+<span>                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
 <span><span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/preparePdf.html" class="external-link">preparePdf</a></span><span class="op">(</span>pdfFile <span class="op">=</span> <span class="va">pdff</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/plot_wb_tradeoff_overflows.html">plot_wb_tradeoff_overflows</a></span><span class="op">(</span></span>
 <span>  simulation_results_optimisation <span class="op">=</span> <span class="va">simulation_results_optimisation</span>,</span>
+<span>  x <span class="op">=</span> <span class="va">max_n_overflows</span>,</span>
 <span>  param_grid <span class="op">=</span> <span class="va">param_grid</span>,</span>
-<span>  filter_n_gt1 <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  filter_n_gtx <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  use_jitter <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
@@ -430,9 +482,11 @@
 <span>  <span class="va">plotly_p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu">plotly</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">ggplotly</a></span><span class="op">(</span><span class="va">p</span>, tooltip <span class="op">=</span> <span class="st">"text"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu">htmlwidgets</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmlwidgets/man/saveWidget.html" class="external-link">saveWidget</a></span><span class="op">(</span></span>
 <span>    widget <span class="op">=</span> <span class="va">plotly_p</span>,</span>
-<span>    file <span class="op">=</span> <span class="st">"simulation_results_optimisation_water-balance.html"</span>,</span>
+<span>    file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_water-balance.html"</span>,</span>
+<span>                   <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span>,</span>
 <span>    selfcontained <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    title <span class="op">=</span> <span class="st">"Water balance vs overflows"</span></span>
+<span>    title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"'%s' - Water balance vs overflows"</span>, </span>
+<span>                    <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># statisch ins PDF (WICHTIG!)</span></span>

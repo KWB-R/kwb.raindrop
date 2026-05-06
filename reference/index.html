@@ -20,8 +20,10 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/workflow.html">Workflow</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_120min_40mm.html">Workflow 120min_40mm</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
-    <li><a class="dropdown-item" href="../articles/workflow_v2.html">Workflow V2</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_wien.html">Workflow Wien (2011 - 2025)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -64,10 +66,38 @@
 
         <dt>
 
+          <code><a href="get_simulation_results_all.html">get_simulation_results_all()</a></code>
+
+        </dt>
+        <dd>Read Raindrop optimisation simulation results (all) from HDF5</dd>
+
+        <dt>
+
           <code><a href="get_simulation_results_optim.html">get_simulation_results_optim()</a></code>
 
         </dt>
         <dd>Read Raindrop optimisation simulation results from HDF5</dd>
+
+        <dt>
+
+          <code><a href="get_simulation_results_optim_parallel.html">get_simulation_results_optim_parallel()</a></code>
+
+        </dt>
+        <dd>Read Raindrop optimisation simulation results from HDF5 (parallel via future.apply + progress)</dd>
+
+        <dt>
+
+          <code><a href="h5_ensure_dataset.html">h5_ensure_dataset()</a></code>
+
+        </dt>
+        <dd>Ensure that an HDF5 dataset exists (create if missing)</dd>
+
+        <dt>
+
+          <code><a href="h5_ensure_datasets_from_values.html">h5_ensure_datasets_from_values()</a></code>
+
+        </dt>
+        <dd>Ensure that all datasets referenced by a values list exist</dd>
 
         <dt>
 
@@ -88,7 +118,7 @@
           <code><a href="h5_write_values.html">h5_write_values()</a></code>
 
         </dt>
-        <dd>Write (updated) values back into existing HDF5 datasets (robust)</dd>
+        <dd>Write (updated) values back into existing HDF5 datasets (robust for your hdf5r build)</dd>
 
         <dt>
 
@@ -116,14 +146,14 @@
           <code><a href="plot_valid_design_space.html">plot_valid_design_space()</a></code>
 
         </dt>
-        <dd>Valid solutions in design space (mulde_area × storage_height) with tooltip labels</dd>
+        <dd>Valid solutions in design space (x × y) with overflow-threshold discrete color scale</dd>
 
         <dt>
 
           <code><a href="plot_wb_tradeoff_overflows.html">plot_wb_tradeoff_overflows()</a></code>
 
         </dt>
-        <dd>Trade-off-Plot: Infiltration vs. Evapotranspiration (farbcodiert nach Overflows)</dd>
+        <dd>Trade-off plot: Infiltration vs. Evapotranspiration (discrete colors by overflow threshold)</dd>
 
         <dt>
 
@@ -148,10 +178,24 @@
 
         <dt>
 
+          <code><a href="read_raindrop_errors.html">read_raindrop_errors()</a></code>
+
+        </dt>
+        <dd>Read RAINDROP error logs into a nested tibble</dd>
+
+        <dt>
+
           <code><a href="run_model.html">run_model()</a></code>
 
         </dt>
         <dd>Run an rainwater management model executable with an input file</dd>
+
+        <dt>
+
+          <code><a href="run_scenarios.html">run_scenarios()</a></code>
+
+        </dt>
+        <dd>Run scenarios (parallel or sequential) with a user-supplied worker function</dd>
       </dl></div>
   </main></div>
 

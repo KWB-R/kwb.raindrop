@@ -18,12 +18,3 @@ list_h5_datasets(h5)
 ## Value
 
 A tibble with columns: `path`, `obj_type`, `dims`, `maxdims`.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-h5 <- hdf5r::H5File$new("file.h5", mode = "r")
-list_h5_datasets(h5)
-} # }
-```

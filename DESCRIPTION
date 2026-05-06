@@ -29,7 +29,8 @@ Imports:
     parallel,
     plotly,
     progressr,
-    purrr, 
+    purrr,
+    rlang,
     stringr,
     tibble,
     tidyr

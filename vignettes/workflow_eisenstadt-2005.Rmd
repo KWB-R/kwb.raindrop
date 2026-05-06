@@ -50,7 +50,7 @@ path_list <- list(
   file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
   file_target = "<dir_target>.h5",
   path_base = system.file("extdata/models/eisenstadt-2005/base.h5", package = "kwb.raindrop"),
-  path_exe  = if (is_windows) kwb.raindrop::download_engine() else NA_character_,
+  path_exe  = if (is_windows && !is_ghactions) kwb.raindrop::download_engine() else NA_character_,
   path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
   path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",

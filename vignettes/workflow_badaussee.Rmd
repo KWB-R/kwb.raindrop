@@ -55,7 +55,7 @@ path_list <- list(
   file_target = "<dir_target>.h5",
   # Inputs (data source: GeoSphere Austria, period 2011-2025)
   path_base = system.file("extdata/models/badaussee/base.h5", package = "kwb.raindrop"),
-  path_exe  = if (is_windows) kwb.raindrop::download_engine() else NA_character_,
+  path_exe  = if (is_windows && !is_ghactions) kwb.raindrop::download_engine() else NA_character_,
   path_et   = system.file("extdata/models/badaussee/et.csv",  package = "kwb.raindrop"),
   path_rain = system.file("extdata/models/badaussee/rain.csv", package = "kwb.raindrop"),
   # Output paths (still templated against tempdir scratch root)

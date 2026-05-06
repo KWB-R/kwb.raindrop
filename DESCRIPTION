@@ -31,7 +31,8 @@ Imports:
     progressr,
     purrr, 
     stringr,
-    tibble
+    tibble,
+    tidyr
 Suggests: 
     covr,
     DT,

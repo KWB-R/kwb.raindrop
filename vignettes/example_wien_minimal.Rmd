@@ -1,0 +1,273 @@
+---
+title: "Minimal example: Wien, 2 scenarios, no LAI sweep"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Minimal example: Wien, 2 scenarios, no LAI sweep}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+
+is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true" ||
+  tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
+
+path_base <- system.file("extdata/models/wien/base.h5", package = "kwb.raindrop")
+data_available <- nzchar(path_base) && file.exists(path_base)
+is_windows <- Sys.info()[["sysname"]] == "Windows"
+```
+
+This vignette is a small, self-contained reduction of the full Wien
+workflow used for end-to-end checks (CI and review). It runs only
+**two scenarios** (Daniel's reference design plus one mulde-area
+variation) and intentionally does **not** sweep `LAI` so that the
+default value baked into `base.h5` is left in place.
+
+The companion full-grid vignette (`workflow_wien.Rmd`) varies LAI as
+part of a 432-row parameter grid; see Michael's analysis (May 2026)
+which showed that LAI between 3.9 and 8.5 changes the modelled ET
+share by ~0.1 percentage points only.
+
+### Input data
+
+Precipitation (10-minute resolution) and evapotranspiration (daily
+ET0) for 2011-2025 are provided by
+[GeoSphere Austria](https://www.geosphere.at/) (Österreichischer
+Wetterdienst, formerly ZAMG) and ship with the package under
+`inst/extdata/models/wien/`. The HDF5 model template (`base.h5`)
+is produced with the Tandler "Regenwasserbewirtschaftung" calculation
+engine; the engine itself is downloaded from the
+`KWB-R/kwb.raindrop.binaries` GitHub Release on demand via
+`kwb.raindrop::download_engine()`.
+
+### Static `base.h5` parameter overview
+
+All values present in the shipped `base.h5` template. The two
+scenarios below override only a small subset (`connected_area`,
+`mulde_area`, `mulde_height`, `filter_hydraulicconductivity`,
+filter/storage Schichtdicken, `Endversickerungsrate`, `LAI` is
+*not* touched). Everything else listed here is the static default
+that drives the simulation.
+
+```{r show_static_params, eval = data_available}
+library(kwb.raindrop)
+
+h5 <- hdf5r::H5File$new(path_base, mode = "r")
+all_vals <- kwb.raindrop::h5_read_values(h5)
+h5$close_all()
+
+format_value <- function(v) {
+  if (is.data.frame(v)) {
+    sprintf("[time series: %d rows, columns: %s]",
+            nrow(v), paste(names(v), collapse = ", "))
+  } else if (length(v) > 1L) {
+    paste(format(v, trim = TRUE), collapse = ", ")
+  } else {
+    format(v, trim = TRUE)
+  }
+}
+
+base_params <- tibble::tibble(
+  parameter = names(all_vals),
+  value = vapply(all_vals, format_value, character(1L))
+) |>
+  dplyr::arrange(parameter)
+
+DT::datatable(
+  base_params,
+  filter = "top",
+  options = list(pageLength = 25, autoWidth = TRUE),
+  caption = sprintf("All %d parameters in base.h5 (Wien)", nrow(base_params))
+)
+```
+
+### Two-scenario parameter grid
+
+Daniel's reference design plus one variation (`mulde_area` doubled).
+
+```{r preparation, eval = data_available}
+path_list <- list(
+  modelname = "Wien",
+  root_path = file.path(tempdir(), "raindrop_wien_minimal"),
+  dir_input  = "<root_path>/models/<modelname>/input",
+  dir_output = "<root_path>/models/<modelname>/output",
+  dir_target_output = "<dir_output>/<dir_target>",
+  file_errors_hdf5 = "Fehlerprotokoll.h5",
+  file_results_hdf5_element = "Mulde_Rigole.h5",
+  file_results_hdf5_flaeche = "Dach.h5",
+  file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
+  file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
+  file_target = "<dir_target>.h5",
+  path_base = system.file("extdata/models/wien/base.h5",  package = "kwb.raindrop"),
+  path_exe  = if (is_windows) kwb.raindrop::download_engine() else NA_character_,
+  path_et   = system.file("extdata/models/wien/et.csv",   package = "kwb.raindrop"),
+  path_rain = system.file("extdata/models/wien/rain.csv.gz", package = "kwb.raindrop"),
+  path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
+  path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
+  path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
+  path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
+  path_results_txt = "<dir_target_output>/<file_results_txt>",
+  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
+  path_target_input = "<dir_input>/<file_target>"
+)
+
+param_grid <- tibble::tibble(
+  scenario_name = c("s00001", "s00002"),
+  connected_area               = 1000,
+  mulde_area                   = c(75, 150),
+  mulde_height                 = 200,
+  filter_hydraulicconductivity = 36,
+  filter_height                = 300,
+  storage_height               = 500,
+  bottom_hydraulicconductivity = 12,
+  rain_factor                  = 1
+)
+
+DT::datatable(
+  param_grid,
+  options = list(pageLength = 5, autoWidth = TRUE),
+  caption = "Variable parameters (everything not listed here stays at the base.h5 default)"
+)
+
+psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh / 25.4)^(-0.328)) * 25.4
+
+paths <- kwb.utils::resolve(path_list)
+
+timeseries_et <- readr::read_delim(paths$path_et, delim = ";", col_types = "cd") |>
+  dplyr::mutate(
+    date = lubridate::dmy(date),
+    time = as.integer(difftime(date, min(date), units = "hours"))
+  ) |>
+  dplyr::select(-date) |>
+  dplyr::filter(!is.na(value)) |>
+  dplyr::relocate(time, .before = value)
+timeseries_et$time[nrow(timeseries_et)] <- ceiling(timeseries_et$time[nrow(timeseries_et)])
+
+timeseries_rain <- readr::read_csv(paths$path_rain, show_col_types = FALSE) |>
+  dplyr::rename(datetime = time, value = rr) |>
+  dplyr::mutate(time = as.double(difftime(datetime, min(datetime), units = "secs")) / 3600) |>
+  dplyr::filter(!is.na(value)) |>
+  dplyr::select(-datetime, -station) |>
+  dplyr::relocate(time, .before = value)
+timeseries_rain$time[nrow(timeseries_rain)] <- ceiling(timeseries_rain$time[nrow(timeseries_rain)])
+
+# Align ET / rain end-times to the longer of the two
+if (max(timeseries_rain$time) > max(timeseries_et$time)) {
+  timeseries_et <- dplyr::bind_rows(
+    timeseries_et,
+    tibble::tibble(time = max(timeseries_rain$time),
+                   value = timeseries_et$value[nrow(timeseries_et)])
+  )
+}
+if (max(timeseries_et$time) > max(timeseries_rain$time)) {
+  timeseries_rain <- dplyr::bind_rows(
+    timeseries_rain,
+    tibble::tibble(time = max(timeseries_et$time),
+                   value = timeseries_rain$value[nrow(timeseries_rain)])
+  )
+}
+
+# Convert rain from mm to mm/h (per 10-min interval)
+period <- c(diff(timeseries_rain$time), mean(diff(timeseries_rain$time)))
+timeseries_rain$value <- timeseries_rain$value / period
+```
+
+### Run the two scenarios
+
+```{r run_model, eval = data_available && is_windows}
+run_one <- function(i, timestep_hours, debug = FALSE, ...) {
+  param_grid_tmp <- param_grid[i, ]
+  paths <- kwb.utils::resolve(path_list, dir_target = param_grid_tmp$scenario_name)
+
+  fs::dir_create(paths$dir_input, recurse = TRUE)
+  fs::dir_create(paths$dir_output, recurse = TRUE)
+  fs::dir_create(paths$dir_target_output, recurse = TRUE)
+
+  fs::file_copy(path = paths$path_base,
+                new_path = paths$path_target_input,
+                overwrite = TRUE)
+
+  h5 <- hdf5r::H5File$new(paths$path_target_input, mode = "a")
+  new_path <- stringr::str_c(normalizePath(fs::path_abs(paths$dir_target_output)), "\\")
+  vals <- kwb.raindrop::h5_read_values(h5)
+
+  vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
+  vals$`//Berechnungsparameter/Zeitschritt_Infiltration` <- timestep_hours
+  vals$`//Berechnungsparameter/Zeitschritt_ET` <- timestep_hours
+  vals$`//Berechnungsparameter/Zeitschritt_Verschaltungen` <- timestep_hours
+  vals$`//Berechnungsparameter/R-Plots` <- 0
+  vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung"
+  vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+
+  vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+  vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
+
+  vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+  vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- param_grid_tmp$rain_factor
+  vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
+  vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- param_grid_tmp$mulde_height
+  vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
+  vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(
+    param_grid_tmp$filter_height, param_grid_tmp$storage_height
+  )
+  vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <-
+    param_grid_tmp$bottom_hydraulicconductivity
+
+  vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
+  vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <-
+    psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
+
+  # NOTE: LAI is intentionally NOT overridden — base.h5 default is used.
+
+  vals$`//Kurven/ET0` <- timeseries_et
+  vals$`//Kurven/Regen` <- timeseries_rain
+  vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
+  vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
+
+  kwb.raindrop::h5_write_values(h5, vals, resize = TRUE,
+                               scalar_strategy = "error", verbose = FALSE)
+  h5$close_all()
+
+  kwb.raindrop::run_model(path_exe = paths$path_exe,
+                          path_input = paths$path_target_input,
+                          debug = debug)
+  invisible(NULL)
+}
+
+kwb.raindrop::run_scenarios(
+  indices = seq_len(nrow(param_grid)),
+  run_one_scenario = run_one,
+  timestep_hours = 0.1,
+  debug = FALSE,
+  parallel = FALSE,
+  show_progress = FALSE
+)
+```
+
+### Results
+
+```{r analyse_results, eval = data_available && is_windows}
+simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
+  paths = paths,
+  path_list = path_list,
+  simulation_names = param_grid$scenario_name,
+  debug = FALSE
+)
+
+simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
+  simulation_results = simulation_results,
+  event_separation_hours = 4
+)
+
+results <- param_grid |>
+  dplyr::left_join(simulation_results_optimisation, by = c("scenario_name" = "s_name")) |>
+  dplyr::relocate(scenario_name, .before = connected_area)
+
+DT::datatable(
+  results,
+  options = list(pageLength = 5, autoWidth = TRUE),
+  caption = "Two-scenario simulation results (water balance + overflow events)"
+)
+```

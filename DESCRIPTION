@@ -27,17 +27,19 @@ Imports:
     lubridate,
     magrittr,
     parallel,
-    plotly,
     progressr,
     purrr,
     rlang,
     stringr,
     tibble,
     tidyr
-Suggests: 
+Suggests:
     covr,
     DT,
+    htmlwidgets,
     knitr,
+    plotly,
+    readr,
     rmarkdown
 VignetteBuilder: 
     knitr

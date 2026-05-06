@@ -1,4 +1,13 @@
-# Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)
+# Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)
+
+### Input data
+
+The HDF5 model template (`base.h5`) ships with the package under
+`inst/extdata/models/eisenstadt-2005/` and is produced with the Tandler
+“Regenwasserbewirtschaftung” calculation engine. This vignette pins
+engine version `2026-01-22` (newer Rechenkern); the engine is downloaded
+from the `KWB-R/kwb.raindrop.binaries` GitHub Release on demand via
+`kwb.raindrop::download_engine("2026-01-22")`.
 
 ### Define Paths and Scenarios
 
@@ -7,35 +16,26 @@
 library(kwb.raindrop)
 
 path_list <- list(
-  root_path = "C:/raindrop/2026-01-22_Raindrop_Daten",
-  dir_base = "<root_path>/Optimierungsfall",
-  dir_data = "<dir_base>/data",
-  dir_exe = "<root_path>/Berechnungskern",
   modelname = "Eisenstadt_2005",
-  dir_input = "<root_path>/Optimierungsfall/models/<modelname>/input",
-  dir_output = "<root_path>/Optimierungsfall/models/<modelname>/output", 
+  root_path = file.path(tempdir(), "raindrop_eisenstadt_2005_neu"),
+  dir_input  = "<root_path>/models/<modelname>/input",
+  dir_output = "<root_path>/models/<modelname>/output",
   dir_target_output = "<dir_output>/<dir_target>",
-  file_base = "<modelname>.h5",
   file_errors_hdf5 = "Fehlerprotokoll.h5",
-  file_exe = "Regenwasserbewirtschaftung_2026-01-22.exe", #"Regenwasserbewirtschaftung_2025-12-10.exe",
-  file_et = "<modelname>_ET0_2011-2025.csv",
-  file_rain = "<modelname>_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv",
   file_results_hdf5_element = "Mulde_Rigole.h5",
   file_results_hdf5_flaeche = "Dach.h5",
   file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
-  file_results_txt = "Mulde_Rigole_RAINDROP.txt", 
-  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt", 
+  file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
   file_target = "<dir_target>.h5",
-  path_base = "<dir_base>/<file_base>",
-  path_exe = "<dir_exe>/<file_exe>",
-  path_et = "<dir_data>/<file_et>",
-  path_rain = "<dir_data>/<file_rain>",
+  path_base = system.file("extdata/models/eisenstadt-2005/base.h5", package = "kwb.raindrop"),
+  path_exe  = if (is_windows && !is_ghactions) kwb.raindrop::download_engine(engine_version) else NA_character_,
   path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
   path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
   path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
-  path_results_txt = "<dir_target_output>/<file_results_txt>", 
-  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>", 
+  path_results_txt = "<dir_target_output>/<file_results_txt>",
+  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
   path_target_input = "<dir_input>/<file_target>"
 )
 

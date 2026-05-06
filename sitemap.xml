@@ -1,10 +1,7 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/404.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/index.html</loc></url>
-<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/parameters.html</loc></url>
-<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/param_grid.html</loc></url>
-<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow.html</loc></url>
-<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_120min_40mm.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005_neu.html</loc></url>
@@ -15,6 +12,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/LICENSE.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/news/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/download_engine.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.html</loc></url>

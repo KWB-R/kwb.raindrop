@@ -1,5 +1,17 @@
 # Workflow Wien (2011 - 2025)
 
+### Input data
+
+Precipitation (10-minute resolution) and evapotranspiration (daily ET0)
+for 2011-2025 are provided by [GeoSphere
+Austria](https://www.geosphere.at/) (Österreichischer Wetterdienst,
+formerly ZAMG) and ship with the package under
+`inst/extdata/models/wien/`. The HDF5 model template (`base.h5`) is
+produced with the Tandler “Regenwasserbewirtschaftung” calculation
+engine; the engine itself is downloaded from the
+`KWB-R/kwb.raindrop.binaries` GitHub Release on demand via
+[`kwb.raindrop::download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md).
+
 ### Define Paths and Scenarios
 
 ``` r
@@ -7,35 +19,30 @@
 library(kwb.raindrop)
 
 path_list <- list(
-  root_path = "C:/raindrop/2026-01-22_Raindrop_Daten",
-  dir_base = "<root_path>/Optimierungsfall",
-  dir_data = "<dir_base>/data",
-  dir_exe = "<root_path>/Berechnungskern",
   modelname = "Wien",
-  dir_input = "<root_path>/Optimierungsfall/models/<modelname>/input",
-  dir_output = "<root_path>/Optimierungsfall/models/<modelname>/output", 
+  root_path = file.path(tempdir(), "raindrop_wien"),
+  dir_input  = "<root_path>/models/<modelname>/input",
+  dir_output = "<root_path>/models/<modelname>/output",
   dir_target_output = "<dir_output>/<dir_target>",
-  file_base = "<modelname>.h5",
   file_errors_hdf5 = "Fehlerprotokoll.h5",
-  file_exe = "Regenwasserbewirtschaftung_2026-02-24.exe", #"Regenwasserbewirtschaftung_2025-12-10.exe",
-  file_et = "<modelname>_ET0_2011-2025.csv",
-  file_rain = "<modelname>_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv",
   file_results_hdf5_element = "Mulde_Rigole.h5",
   file_results_hdf5_flaeche = "Dach.h5",
   file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
-  file_results_txt = "Mulde_Rigole_RAINDROP.txt", 
-  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt", 
+  file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
   file_target = "<dir_target>.h5",
-  path_base = "<dir_base>/<file_base>",
-  path_exe = "<dir_exe>/<file_exe>",
-  path_et = "<dir_data>/<file_et>",
-  path_rain = "<dir_data>/<file_rain>",
+  # Inputs (data source: GeoSphere Austria, period 2011-2025)
+  path_base = system.file("extdata/models/wien/base.h5",  package = "kwb.raindrop"),
+  path_exe  = if (is_windows && !is_ghactions) kwb.raindrop::download_engine() else NA_character_,
+  path_et   = system.file("extdata/models/wien/et.csv",   package = "kwb.raindrop"),
+  path_rain = system.file("extdata/models/wien/rain.csv.gz", package = "kwb.raindrop"),
+  # Output paths (still templated against tempdir scratch root)
   path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
   path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
   path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
-  path_results_txt = "<dir_target_output>/<file_results_txt>", 
-  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>", 
+  path_results_txt = "<dir_target_output>/<file_results_txt>",
+  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
   path_target_input = "<dir_input>/<file_target>"
 )
 
@@ -73,6 +80,10 @@ DT::datatable(parameters,
               filter = "top",
               options = list(pageLength = 25,
                              autoWidth = TRUE))
+```
+
+``` r
+
 
 
 connected_area <- 1000
@@ -124,6 +135,8 @@ scenarios_with_single_parameter_variation <- kwb.raindrop::find_single_param_var
   ref_scenario = ref_scenario
   ) %>% 
   dplyr::pull(scenario_name) %>% unique()
+#> Rows with exactly one differing parameter: 14 of 432
+#> Single-parameter variations per parameter: connected_area=0, mulde_area=7, mulde_height=2, filter_hydraulicconductivity=2, filter_height=0, storage_height=2, bottom_hydraulicconductivity=0, rain_factor=0, lai=1
 
 param_grid <- param_grid_all_combinations  %>% 
   dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)
@@ -133,6 +146,10 @@ DT::datatable(param_grid,
               filter = "top",
               options = list(pageLength = 25,
                              autoWidth = TRUE))
+```
+
+``` r
+
 
 htmlwidgets::saveWidget(DT::datatable(parameters,
                                       filter = "top",
@@ -165,6 +182,14 @@ timeseries_rain <- readr::read_csv(paths$path_rain) %>%
   dplyr::filter(!is.na(value)) %>% 
   dplyr::select(-datetime, -station) %>% 
   dplyr::relocate(time,.before = value)
+#> Rows: 788833 Columns: 3
+#> ── Column specification ────────────────────────────────────────────────────────
+#> Delimiter: ","
+#> dbl  (2): station, rr
+#> dttm (1): time
+#> 
+#> ℹ Use `spec()` to retrieve the full column specification for this data.
+#> ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 timeseries_rain$time[nrow(timeseries_rain)] <- ceiling(timeseries_rain$time[nrow(timeseries_rain)])
 
@@ -217,6 +242,7 @@ txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Wer
         sum(timeseries_rain$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
 
 message(txt)
+#> Für den Datensatz 'D:/a/_temp/Library/kwb.raindrop/extdata/models/wien/rain.csv.gz' gibt es 0.00 % NA Werte und 96.04 % Werte die gleich Null sind. (Regenmenge: 647.465225 mm/a)
 
 txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
         paths$path_et,
@@ -225,6 +251,7 @@ txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Wer
         sum(timeseries_et$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
 
 message(txt)
+#> Für den Datensatz 'D:/a/_temp/Library/kwb.raindrop/extdata/models/wien/et.csv' gibt es 0.00 % NA Werte und 0.00 % Werte die gleich Null sind. (Verdunstungs: 888.173330 mm/a)
 
 
 ### Convert rain from mm to mm/h

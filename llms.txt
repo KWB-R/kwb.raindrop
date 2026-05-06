@@ -30,6 +30,8 @@ remotes::install_github("KWB-R/kwb.raindrop")
 - [`add_overflow_events_and_waterbalance()`](https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.md)
   : Add overflow-event metrics and water-balance shares (percent) to
   simulation results
+- [`download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md)
+  : Download the Tandler "Regenwasserbewirtschaftung" calculation engine
 - [`find_single_param_variations()`](https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.md)
   : Find scenarios that differ from a reference in exactly one parameter
 - [`get_simulation_results_all()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.md)
@@ -81,14 +83,13 @@ remotes::install_github("KWB-R/kwb.raindrop")
 
 ### All vignettes
 
-- [Workflow](https://kwb-r.github.io/kwb.raindrop/articles/workflow.md):
-- [Workflow
-  120min_40mm](https://kwb-r.github.io/kwb.raindrop/articles/workflow_120min_40mm.md):
+- [Minimal example: Wien, 2 scenarios, no LAI
+  sweep](https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.md):
 - [Workflow Bad Aussee (2011 -
   2025)](https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.md):
 - [Workflow Eisenstadt
   2005](https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005.md):
 - [Workflow Eisenstadt (2005, neuer Rechenkern
-  2025-01-22)](https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005_neu.md):
+  2026-01-22)](https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005_neu.md):
 - [Workflow Wien (2011 -
   2025)](https://kwb-r.github.io/kwb.raindrop/articles/workflow_wien.md):

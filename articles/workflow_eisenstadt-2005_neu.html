@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22) • kwb.raindrop</title>
+<title>Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22) • kwb.raindrop</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -33,11 +33,10 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/workflow.html">Workflow</a></li>
-    <li><a class="dropdown-item" href="../articles/workflow_120min_40mm.html">Workflow 120min_40mm</a></li>
+<li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, 2 scenarios, no LAI sweep</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
-    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_wien.html">Workflow Wien (2011 - 2025)</a></li>
   </ul>
 </li>
@@ -67,7 +66,7 @@
 <script src="workflow_eisenstadt-2005_neu_files/crosstalk-1.2.2/js/crosstalk.min.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)</h1>
+      <h1>Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/KWB-R/kwb.raindrop/blob/main/vignettes/workflow_eisenstadt-2005_neu.Rmd" class="external-link"><code>vignettes/workflow_eisenstadt-2005_neu.Rmd</code></a></small>
@@ -77,41 +76,43 @@
     
     
 <div class="section level3">
+<h3 id="input-data">Input data<a class="anchor" aria-label="anchor" href="#input-data"></a>
+</h3>
+<p>The HDF5 model template (<code>base.h5</code>) ships with the package
+under <code>inst/extdata/models/eisenstadt-2005/</code> and is produced
+with the Tandler “Regenwasserbewirtschaftung” calculation engine. This
+vignette pins engine version <code>2026-01-22</code> (newer Rechenkern);
+the engine is downloaded from the
+<code>KWB-R/kwb.raindrop.binaries</code> GitHub Release on demand via
+<code>kwb.raindrop::download_engine("2026-01-22")</code>.</p>
+</div>
+<div class="section level3">
 <h3 id="define-paths-and-scenarios">Define Paths and Scenarios<a class="anchor" aria-label="anchor" href="#define-paths-and-scenarios"></a>
 </h3>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/KWB-R/kwb.raindrop" class="external-link">kwb.raindrop</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">path_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  root_path <span class="op">=</span> <span class="st">"C:/raindrop/2026-01-22_Raindrop_Daten"</span>,</span>
-<span>  dir_base <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall"</span>,</span>
-<span>  dir_data <span class="op">=</span> <span class="st">"&lt;dir_base&gt;/data"</span>,</span>
-<span>  dir_exe <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Berechnungskern"</span>,</span>
 <span>  modelname <span class="op">=</span> <span class="st">"Eisenstadt_2005"</span>,</span>
-<span>  dir_input <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall/models/&lt;modelname&gt;/input"</span>,</span>
-<span>  dir_output <span class="op">=</span> <span class="st">"&lt;root_path&gt;/Optimierungsfall/models/&lt;modelname&gt;/output"</span>, </span>
+<span>  root_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"raindrop_eisenstadt_2005_neu"</span><span class="op">)</span>,</span>
+<span>  dir_input  <span class="op">=</span> <span class="st">"&lt;root_path&gt;/models/&lt;modelname&gt;/input"</span>,</span>
+<span>  dir_output <span class="op">=</span> <span class="st">"&lt;root_path&gt;/models/&lt;modelname&gt;/output"</span>,</span>
 <span>  dir_target_output <span class="op">=</span> <span class="st">"&lt;dir_output&gt;/&lt;dir_target&gt;"</span>,</span>
-<span>  file_base <span class="op">=</span> <span class="st">"&lt;modelname&gt;.h5"</span>,</span>
 <span>  file_errors_hdf5 <span class="op">=</span> <span class="st">"Fehlerprotokoll.h5"</span>,</span>
-<span>  file_exe <span class="op">=</span> <span class="st">"Regenwasserbewirtschaftung_2026-01-22.exe"</span>, <span class="co">#"Regenwasserbewirtschaftung_2025-12-10.exe",</span></span>
-<span>  file_et <span class="op">=</span> <span class="st">"&lt;modelname&gt;_ET0_2011-2025.csv"</span>,</span>
-<span>  file_rain <span class="op">=</span> <span class="st">"&lt;modelname&gt;_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv"</span>,</span>
 <span>  file_results_hdf5_element <span class="op">=</span> <span class="st">"Mulde_Rigole.h5"</span>,</span>
 <span>  file_results_hdf5_flaeche <span class="op">=</span> <span class="st">"Dach.h5"</span>,</span>
 <span>  file_results_hdf5_verschaltungen <span class="op">=</span> <span class="st">"&lt;dir_target&gt;_Verschaltungen.h5"</span>,</span>
-<span>  file_results_txt <span class="op">=</span> <span class="st">"Mulde_Rigole_RAINDROP.txt"</span>, </span>
-<span>  file_results_txt_multilayer <span class="op">=</span> <span class="st">"Mulde_Rigole_RAINDROP_multi_layer.txt"</span>, </span>
+<span>  file_results_txt <span class="op">=</span> <span class="st">"Mulde_Rigole_RAINDROP.txt"</span>,</span>
+<span>  file_results_txt_multilayer <span class="op">=</span> <span class="st">"Mulde_Rigole_RAINDROP_multi_layer.txt"</span>,</span>
 <span>  file_target <span class="op">=</span> <span class="st">"&lt;dir_target&gt;.h5"</span>,</span>
-<span>  path_base <span class="op">=</span> <span class="st">"&lt;dir_base&gt;/&lt;file_base&gt;"</span>,</span>
-<span>  path_exe <span class="op">=</span> <span class="st">"&lt;dir_exe&gt;/&lt;file_exe&gt;"</span>,</span>
-<span>  path_et <span class="op">=</span> <span class="st">"&lt;dir_data&gt;/&lt;file_et&gt;"</span>,</span>
-<span>  path_rain <span class="op">=</span> <span class="st">"&lt;dir_data&gt;/&lt;file_rain&gt;"</span>,</span>
+<span>  path_base <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata/models/eisenstadt-2005/base.h5"</span>, package <span class="op">=</span> <span class="st">"kwb.raindrop"</span><span class="op">)</span>,</span>
+<span>  path_exe  <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="va">is_windows</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="va">is_ghactions</span><span class="op">)</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/download_engine.html">download_engine</a></span><span class="op">(</span><span class="va">engine_version</span><span class="op">)</span> <span class="kw">else</span> <span class="cn">NA_character_</span>,</span>
 <span>  path_errors_hdf5 <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_errors_hdf5&gt;"</span>,</span>
 <span>  path_results_hdf5_element <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_hdf5_element&gt;"</span>,</span>
 <span>  path_results_hdf5_flaeche <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_hdf5_flaeche&gt;"</span>,</span>
 <span>  path_results_hdf5_verschaltungen <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_hdf5_verschaltungen&gt;"</span>,</span>
-<span>  path_results_txt <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_txt&gt;"</span>, </span>
-<span>  path_results_txt_multilayer <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_txt_multilayer&gt;"</span>, </span>
+<span>  path_results_txt <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_txt&gt;"</span>,</span>
+<span>  path_results_txt_multilayer <span class="op">=</span> <span class="st">"&lt;dir_target_output&gt;/&lt;file_results_txt_multilayer&gt;"</span>,</span>
 <span>  path_target_input <span class="op">=</span> <span class="st">"&lt;dir_input&gt;/&lt;file_target&gt;"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -339,7 +340,7 @@
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"scenario_name"</span> <span class="op">=</span> <span class="st">"s_name"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/relocate.html" class="external-link">relocate</a></span><span class="op">(</span><span class="va">scenario_name</span>, .before <span class="op">=</span> <span class="va">connected_area</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">readr</span><span class="fu">::</span><span class="fu">write_csv</span><span class="op">(</span><span class="va">simulation_results_optimisation</span>, </span>
+<span><span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/write_delim.html" class="external-link">write_csv</a></span><span class="op">(</span><span class="va">simulation_results_optimisation</span>, </span>
 <span>                 file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s.csv"</span>,</span>
 <span>                                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
 <span>                 <span class="op">)</span></span>

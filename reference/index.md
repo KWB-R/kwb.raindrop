@@ -5,6 +5,8 @@
 - [`add_overflow_events_and_waterbalance()`](https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.md)
   : Add overflow-event metrics and water-balance shares (percent) to
   simulation results
+- [`download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md)
+  : Download the Tandler "Regenwasserbewirtschaftung" calculation engine
 - [`find_single_param_variations()`](https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.md)
   : Find scenarios that differ from a reference in exactly one parameter
 - [`get_simulation_results_all()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.md)

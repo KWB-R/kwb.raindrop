@@ -2,6 +2,7 @@
 
 export("%>%")
 export(add_overflow_events_and_waterbalance)
+export(download_engine)
 export(find_single_param_variations)
 export(get_simulation_results_all)
 export(get_simulation_results_optim)

@@ -34,10 +34,11 @@ Imports:
     stringr,
     tibble,
     tidyr
-Suggests: 
+Suggests:
     covr,
     DT,
     knitr,
+    readr,
     rmarkdown
 VignetteBuilder: 
     knitr

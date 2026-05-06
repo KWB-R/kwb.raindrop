@@ -65,7 +65,7 @@ download_engine <- function(version = default_engine_version(),
   if (force || !fs::file_exists(exe)) {
     fs::dir_create(dir, recurse = TRUE)
     url <- sprintf(
-      "https://github.com/KWB-R/kwb.raindrop/releases/download/engine-%s/Regenwasserbewirtschaftung.exe",
+      "https://github.com/KWB-R/kwb.raindrop.binaries/releases/download/engine-%s/Regenwasserbewirtschaftung.exe",
       version
     )
     utils::download.file(url, destfile = exe, mode = "wb")

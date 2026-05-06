@@ -14,43 +14,45 @@ knitr::opts_chunk$set(
 )
 is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true" ||
   tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
+
+# base.h5 ships in inst/extdata/models/eisenstadt-2005/. The vignette only
+# renders if that file is present; the engine .exe is fetched from the
+# kwb.raindrop.binaries Release on demand and only runs on Windows.
+# This vignette pins engine 2026-01-22 — that release must exist in the
+# binaries repo for the model chunks to run, otherwise download_engine()
+# falls back to NA_character_ via the is_windows guard.
+path_base <- system.file("extdata/models/eisenstadt-2005/base.h5", package = "kwb.raindrop")
+data_available <- nzchar(path_base) && file.exists(path_base)
+is_windows <- Sys.info()[["sysname"]] == "Windows"
+engine_version <- "2026-01-22"
 ```
 
 ### Define Paths and Scenarios
 
-```{r preparation, eval = TRUE}
+```{r preparation, eval = data_available}
 library(kwb.raindrop)
 
 path_list <- list(
-  root_path = "C:/raindrop/2026-01-22_Raindrop_Daten",
-  dir_base = "<root_path>/Optimierungsfall",
-  dir_data = "<dir_base>/data",
-  dir_exe = "<root_path>/Berechnungskern",
   modelname = "Eisenstadt_2005",
-  dir_input = "<root_path>/Optimierungsfall/models/<modelname>/input",
-  dir_output = "<root_path>/Optimierungsfall/models/<modelname>/output", 
+  root_path = file.path(tempdir(), "raindrop_eisenstadt_2005_neu"),
+  dir_input  = "<root_path>/models/<modelname>/input",
+  dir_output = "<root_path>/models/<modelname>/output",
   dir_target_output = "<dir_output>/<dir_target>",
-  file_base = "<modelname>.h5",
   file_errors_hdf5 = "Fehlerprotokoll.h5",
-  file_exe = "Regenwasserbewirtschaftung_2026-01-22.exe", #"Regenwasserbewirtschaftung_2025-12-10.exe",
-  file_et = "<modelname>_ET0_2011-2025.csv",
-  file_rain = "<modelname>_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv",
   file_results_hdf5_element = "Mulde_Rigole.h5",
   file_results_hdf5_flaeche = "Dach.h5",
   file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
-  file_results_txt = "Mulde_Rigole_RAINDROP.txt", 
-  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt", 
+  file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
   file_target = "<dir_target>.h5",
-  path_base = "<dir_base>/<file_base>",
-  path_exe = "<dir_exe>/<file_exe>",
-  path_et = "<dir_data>/<file_et>",
-  path_rain = "<dir_data>/<file_rain>",
+  path_base = system.file("extdata/models/eisenstadt-2005/base.h5", package = "kwb.raindrop"),
+  path_exe  = if (is_windows) kwb.raindrop::download_engine(engine_version) else NA_character_,
   path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
   path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
   path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
-  path_results_txt = "<dir_target_output>/<file_results_txt>", 
-  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>", 
+  path_results_txt = "<dir_target_output>/<file_results_txt>",
+  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
   path_target_input = "<dir_input>/<file_target>"
 )
 
@@ -157,7 +159,7 @@ paths <- kwb.utils::resolve(path_list)
 
 ### Run Model
 
-```{r run_model, eval =  !is_ghactions}
+```{r run_model, eval = data_available && is_windows}
 run_one <- function(i,
                     timestep_hours,
                     debug = FALSE,
@@ -252,7 +254,7 @@ x$Fehlerbeschreibung
 
 ### Analyse Results
 
-```{r analyse_results, eval = !is_ghactions}
+```{r analyse_results, eval = data_available && is_windows}
 system.time(
 simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
   paths = paths, 

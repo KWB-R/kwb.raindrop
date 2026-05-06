@@ -1,8 +1,8 @@
 ---
-title: "Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)"
+title: "Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Workflow Eisenstadt (2005, neuer Rechenkern 2025-01-22)}
+  %\VignetteIndexEntry{Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

@@ -267,7 +267,7 @@ timeseries_rain$value <- timeseries_rain$value / period
 
 ### Run Model
 
-```{r run_model, eval = data_available && is_windows}
+```{r run_model, eval = data_available && is_windows && !is_ghactions}
 run_one <- function(i,
                     timestep_hours,
                     debug = FALSE,
@@ -367,7 +367,7 @@ x$Fehlerbeschreibung
 
 ### Analyse Results
 
-```{r analyse_results, eval = data_available && is_windows}
+```{r analyse_results, eval = data_available && is_windows && !is_ghactions}
 system.time(
 simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
   paths = paths, 

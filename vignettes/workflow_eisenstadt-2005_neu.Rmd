@@ -27,6 +27,15 @@ is_windows <- Sys.info()[["sysname"]] == "Windows"
 engine_version <- "2026-01-22"
 ```
 
+### Input data
+
+The HDF5 model template (`base.h5`) ships with the package under
+`inst/extdata/models/eisenstadt-2005/` and is produced with the
+Tandler "Regenwasserbewirtschaftung" calculation engine. This vignette
+pins engine version `2026-01-22` (newer Rechenkern); the engine is
+downloaded from the `KWB-R/kwb.raindrop.binaries` GitHub Release on
+demand via `kwb.raindrop::download_engine("2026-01-22")`.
+
 ### Define Paths and Scenarios
 
 ```{r preparation, eval = data_available}

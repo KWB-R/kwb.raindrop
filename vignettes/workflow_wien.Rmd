@@ -24,6 +24,17 @@ data_available <- nzchar(path_base) && file.exists(path_base)
 is_windows <- Sys.info()[["sysname"]] == "Windows"
 ```
 
+### Input data
+
+Precipitation (10-minute resolution) and evapotranspiration (daily ET0)
+for 2011-2025 are provided by [GeoSphere Austria](https://www.geosphere.at/)
+(Österreichischer Wetterdienst, formerly ZAMG) and ship with the package
+under `inst/extdata/models/wien/`. The HDF5 model template
+(`base.h5`) is produced with the Tandler "Regenwasserbewirtschaftung"
+calculation engine; the engine itself is downloaded from the
+`KWB-R/kwb.raindrop.binaries` GitHub Release on demand via
+`kwb.raindrop::download_engine()`.
+
 ### Define Paths and Scenarios
 
 ```{r preparation, eval = data_available}

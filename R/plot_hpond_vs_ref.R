@@ -90,7 +90,7 @@ plot_hpond_vs_ref <- function(
       title = title_text,
       x = "Parameter value",
       y = y_lab,
-      caption = "Only scenarios with exactly one differing parameter are included; ▲ marks the reference."
+      caption = "Only scenarios with exactly one differing parameter are included; \u25B2 marks the reference."
     ) +
     ggplot2::theme_bw(base_size = 12)
 }

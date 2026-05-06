@@ -24,8 +24,8 @@ columns: variable, time, value.
 \details{
 Supported dataset layouts:
 \itemize{
-\item k x N   (rows):   \link{1, } = time, \link{2..k, } = values (series)
-\item N x k   (cols):   \link{, 1} = time, \link{, 2..k} = values (series)
+\item k x N   (rows):   \code{[1, ]} = time, \code{[2..k, ]} = values (series)
+\item N x k   (cols):   \code{[, 1]} = time, \code{[, 2..k]} = values (series)
 }
 
 Special handling for names containing "deeperLayers"/"deeper_layers":

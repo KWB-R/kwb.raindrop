@@ -57,7 +57,7 @@ path_list <- list(
   path_base = system.file("extdata/models/badaussee/base.h5", package = "kwb.raindrop"),
   path_exe  = if (is_windows && !is_ghactions) kwb.raindrop::download_engine() else NA_character_,
   path_et   = system.file("extdata/models/badaussee/et.csv",  package = "kwb.raindrop"),
-  path_rain = system.file("extdata/models/badaussee/rain.csv", package = "kwb.raindrop"),
+  path_rain = system.file("extdata/models/badaussee/rain.csv.gz", package = "kwb.raindrop"),
   # Output paths (still templated against tempdir scratch root)
   path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",

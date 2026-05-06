@@ -10,11 +10,11 @@ downloads.
 inst/extdata/models/
 ├── wien/
 │   ├── base.h5    # HDF5 model template
-│   ├── rain.csv   # 10-min precipitation, 2011-2025
+│   ├── rain.csv.gz # 10-min precipitation, 2011-2025 (gzipped)
 │   └── et.csv     # Daily evapotranspiration (ET0), 2011-2025
 ├── badaussee/
 │   ├── base.h5
-│   ├── rain.csv
+│   ├── rain.csv.gz
 │   └── et.csv
 └── eisenstadt-2005/
     └── base.h5
@@ -28,7 +28,7 @@ system.file("extdata/models/wien/base.h5", package = "kwb.raindrop")
 
 ## Sources
 
-### Precipitation (`rain.csv`) and evapotranspiration (`et.csv`)
+### Precipitation (`rain.csv.gz`) and evapotranspiration (`et.csv`)
 
 Wien and Bad Aussee:
 - **Provider**: Österreichischer Wetterdienst (GeoSphere Austria, formerly ZAMG)
@@ -36,7 +36,9 @@ Wien and Bad Aussee:
 - **Original filenames**:
   - `<Station>_Zehnminutendaten_Niederschlag_v2_Datensatz_2011-2025.csv`
   - `<Station>_ET0_2011-2025.csv`
-- **Renamed** to `rain.csv` / `et.csv` for canonical access via `system.file()`.
+- **Renamed** to `rain.csv.gz` (gzipped, ~12× smaller; `readr::read_csv()`
+  reads `.csv.gz` transparently) and `et.csv` for canonical access via
+  `system.file()`.
 
 ### Model templates (`base.h5`)
 

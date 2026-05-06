@@ -103,7 +103,7 @@ path_list <- list(
   path_base = system.file("extdata/models/wien/base.h5",  package = "kwb.raindrop"),
   path_exe  = if (is_windows) kwb.raindrop::download_engine() else NA_character_,
   path_et   = system.file("extdata/models/wien/et.csv",   package = "kwb.raindrop"),
-  path_rain = system.file("extdata/models/wien/rain.csv", package = "kwb.raindrop"),
+  path_rain = system.file("extdata/models/wien/rain.csv.gz", package = "kwb.raindrop"),
   path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
   path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
   path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",

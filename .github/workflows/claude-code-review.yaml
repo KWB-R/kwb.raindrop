@@ -28,7 +28,9 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request. Use the repository's CLAUDE.md for guidance if available.
+            Please review this pull request and think hard about correctness,
+            edge cases, and consistency with the rest of the codebase. Use the
+            repository's CLAUDE.md for guidance if available.
             Focus on:
             - Code quality and R package best practices
             - Potential bugs or logic issues

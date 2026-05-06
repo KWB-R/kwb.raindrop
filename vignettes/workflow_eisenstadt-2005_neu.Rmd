@@ -19,8 +19,10 @@ is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true" ||
 # renders if that file is present; the engine .exe is fetched from the
 # kwb.raindrop.binaries Release on demand and only runs on Windows.
 # This vignette pins engine 2026-01-22 — that release must exist in the
-# binaries repo for the model chunks to run, otherwise download_engine()
-# falls back to NA_character_ via the is_windows guard.
+# binaries repo for the run_model chunk to succeed locally on Windows.
+# On CI the engine is never downloaded (preparation builds path_exe via
+# the is_windows && !is_ghactions guard, and run_model itself is gated
+# off with !is_ghactions).
 path_base <- system.file("extdata/models/eisenstadt-2005/base.h5", package = "kwb.raindrop")
 data_available <- nzchar(path_base) && file.exists(path_base)
 is_windows <- Sys.info()[["sysname"]] == "Windows"

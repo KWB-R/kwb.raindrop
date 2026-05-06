@@ -13,7 +13,8 @@ download_engine(
 \arguments{
 \item{version}{\code{character(1)}
 Engine release version, matching the part after \code{engine-} in the
-GitHub Release tag. Defaults to the package's pinned version.}
+\code{KWB-R/kwb.raindrop.binaries} Release tag. Defaults to the
+package's pinned version.}
 
 \item{cache_dir}{\code{character(1)}
 Directory where engine binaries are cached. A sub-directory named after
@@ -29,13 +30,15 @@ cache. Default: \code{FALSE}.}
 }
 \description{
 Fetches the Windows executable from the corresponding GitHub Release of
-this repository and caches it under a per-version sub-directory of the
-user cache. Subsequent calls are no-ops once the file is present.
+the companion \code{KWB-R/kwb.raindrop.binaries} repository and caches it
+under a per-version sub-directory of the user cache. Subsequent calls
+are no-ops once the file is present.
 }
 \details{
-Releases follow the tag scheme \code{engine-<version>} and contain a single
-asset named \code{Regenwasserbewirtschaftung.exe} (the version is encoded in
-the tag, not in the filename, so multiple engine versions can coexist
+Releases in \code{KWB-R/kwb.raindrop.binaries} follow the tag scheme
+\code{engine-<version>} and contain a single asset named
+\code{Regenwasserbewirtschaftung.exe} (the version is encoded in the
+tag, not in the filename, so multiple engine versions can coexist
 side-by-side in the cache).
 
 The executable is a Windows binary; on non-Windows platforms the file is

@@ -2,6 +2,8 @@
 
 export("%>%")
 export(add_overflow_events_and_waterbalance)
+export(compute_costs)
+export(default_cost_rates)
 export(download_engine)
 export(find_single_param_variations)
 export(get_simulation_results_all)

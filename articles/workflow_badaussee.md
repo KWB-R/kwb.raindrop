@@ -381,10 +381,11 @@ simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterba
   )
 )
 
-simulation_results_optimisation <- param_grid %>% 
+simulation_results_optimisation <- param_grid %>%
   dplyr::left_join(simulation_results_optimisation,
-                   by = c("scenario_name" = "s_name")) %>% 
-  dplyr::relocate(scenario_name, .before = connected_area)
+                   by = c("scenario_name" = "s_name")) %>%
+  dplyr::relocate(scenario_name, .before = connected_area) %>%
+  kwb.raindrop::compute_costs()
 
 readr::write_csv(simulation_results_optimisation, 
                  file = sprintf("simulation_results_optimisation_%s.csv",

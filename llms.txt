@@ -30,6 +30,10 @@ remotes::install_github("KWB-R/kwb.raindrop")
 - [`add_overflow_events_and_waterbalance()`](https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.md)
   : Add overflow-event metrics and water-balance shares (percent) to
   simulation results
+- [`compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md)
+  : Compute construction costs for an infiltration-swale parameter grid
+- [`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md)
+  : Default unit-cost rates for infiltration-swale installations
 - [`download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md)
   : Download the Tandler "Regenwasserbewirtschaftung" calculation engine
 - [`find_single_param_variations()`](https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.md)

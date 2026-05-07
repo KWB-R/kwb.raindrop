@@ -261,9 +261,26 @@ results <- param_grid |>
   dplyr::left_join(simulation_results_optimisation, by = c("scenario_name" = "s_name")) |>
   dplyr::relocate(scenario_name, .before = connected_area)
 
+# Attach construction-cost columns (storage layer assumed infiltration box;
+# switch to gravel trench via storage_type = "gravel_trench" or a per-row
+# storage_type column in param_grid).
+results <- kwb.raindrop::compute_costs(results)
+
 DT::datatable(
   results,
+  filter = "top",
   options = list(pageLength = 5, autoWidth = TRUE),
-  caption = "Two-scenario simulation results (water balance + overflow events)"
+  caption = "Two-scenario simulation results — water balance + overflow events + construction costs (EUR). The cost_* columns are filterable / sortable."
 )
 ```
+
+The `cost_*` columns enable cost-aware optimisation: filter or sort the
+table by `cost_total` to find the cheapest scenario that still meets a
+hydraulic target (low overflow count, high evapotranspiration share, …).
+Switching the storage layer between **infiltration box** (Austrian
+“Sickerbox”, ≈ 95 % porosity, 350 EUR/m³) and **gravel trench**
+(Austrian “Schotterrigol”, ≈ 30 % porosity, 50 EUR/m³) trades storage
+volume against cost; pass `storage_type = "gravel_trench"` to
+[`compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md)
+(or add a `storage_type` column to `param_grid`) to explore that
+trade-off.

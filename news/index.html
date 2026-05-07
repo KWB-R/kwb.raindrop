@@ -41,11 +41,53 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9000" id="kwbraindrop-0009000">kwb.raindrop 0.0.0.9000<a class="anchor" aria-label="anchor" href="#kwbraindrop-0009000"></a></h2>
-<ul><li><p>Added a <code>NEWS.md</code> file to track changes to the package.</p></li>
-<li><p>see <a href="https://style.tidyverse.org/news.html" class="external-link uri">https://style.tidyverse.org/news.html</a> for writing a good <code>NEWS.md</code></p></li>
+<h2 class="pkg-version" data-toc-text="development version" id="kwbraindrop-development-version">kwb.raindrop (development version)<a class="anchor" aria-label="anchor" href="#kwbraindrop-development-version"></a></h2>
+<div class="section level3">
+<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<ul><li><p><code><a href="../reference/download_engine.html">download_engine()</a></code> fetches the Tandler “Regenwasserbewirtschaftung” Windows executable from the companion repository <a href="https://github.com/KWB-R/kwb.raindrop.binaries/releases" class="external-link"><code>KWB-R/kwb.raindrop.binaries</code></a> and caches it under <code>tools::R_user_dir("kwb.raindrop", "cache")/&lt;version&gt;/</code>. Multiple engine versions can coexist side-by-side because the version is encoded in the release tag (<code>engine-&lt;YYYY-MM-DD&gt;</code>), not in the asset filename. The download is atomic (temp file + rename) and rejects obviously broken responses (&lt; 1 KB ⇒ likely a 404 HTML page).</p></li>
+<li><p><code><a href="../reference/compute_costs.html">compute_costs()</a></code> and <code><a href="../reference/default_cost_rates.html">default_cost_rates()</a></code> attach a per-scenario construction-cost breakdown (<code>cost_excavation</code>, <code>cost_profiling</code>, <code>cost_filter</code>, <code>cost_storage</code>, <code>cost_total</code>) to a parameter grid using the Austrian unit-cost rates supplied by Johannes Leimgruber (OeStaP, 2026-03-27). Pass <code>storage_type = "infiltration_box"</code> (Sickerbox, default, ~95 % porosity) or <code>"gravel_trench"</code> (Schotterrigol, ~30 % porosity) — or a per-row <code>storage_type</code> column on the grid — to switch the storage layer. The new columns are wired into the <code>example_wien_minimal</code>, <code>workflow_wien</code> and <code>workflow_badaussee</code> vignettes so the solution-space datatables become filterable and sortable by cost.</p></li>
+<li><p>New vignette <code>example_wien_minimal</code>: a self-contained smoke test of the full input → engine → results loop on Wien with two scenarios (Daniel’s reference design plus one mulde-area variation, no LAI sweep). Prints a complete static-parameter overview from <code>base.h5</code> for review of every default that drives the model. This vignette is designed to render on Windows CI; the four heavy case-study vignettes only render their parameter grids on CI and skip the model runs.</p></li>
 </ul></div>
-  </main></div>
+<div class="section level3">
+<h3 id="inputs-and-data-shipping-development-version">Inputs and data shipping<a class="anchor" aria-label="anchor" href="#inputs-and-data-shipping-development-version"></a></h3>
+<ul><li><p>Per-scenario input data ships under <code>inst/extdata/models/&lt;scenario&gt;/</code> for Wien, Bad Aussee and Eisenstadt 2005 (<code>base.h5</code> HDF5 model templates plus <code>rain.csv.gz</code> and <code>et.csv</code> time series for the two GeoSphere-Austria sites). Vignettes read inputs via <code><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file()</a></code> and write model outputs to a <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> scratch root, so they are hermetic and reproducible.</p></li>
+<li><p>Rain timeseries are shipped gzipped (<code>rain.csv.gz</code>); <code><a href="https://readr.tidyverse.org/reference/read_delim.html" class="external-link">readr::read_csv()</a></code> reads the compressed files transparently. Total <code>inst/extdata/</code> footprint is ~6.8 MB (down from ~53 MB raw).</p></li>
+<li><p>Provenance documented in <code>inst/extdata/SOURCES.md</code> and an “Input data” section in each rendered vignette: precipitation and evapotranspiration come from <a href="https://www.geosphere.at/" class="external-link">GeoSphere Austria</a> (Österreichischer Wetterdienst, formerly ZAMG); HDF5 templates are produced with the Tandler engine.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="ci--packaging-development-version">CI / packaging<a class="anchor" aria-label="anchor" href="#ci--packaging-development-version"></a></h3>
+<ul><li><p>GitHub Actions workflows for Claude Code (<code>@claude</code> mention bot and automatic PR review) added; both pinned to Opus 4.7 with <code>think hard</code> reasoning on the review prompt.</p></li>
+<li><p><code>R-CMD-check</code> matrix restricted to <code>windows-latest</code> (devel/oldrel/release) — the calculation engine is a Windows <code>.exe</code>, so non-Windows runners cannot exercise the workflow. Aligns with the existing <code>test-coverage</code> and <code>pkgdown</code> jobs.</p></li>
+<li><p>Bumped <code>actions/checkout</code> to v5 and pinned <code>actions/upload-artifact</code> to v4 (Node.js 24 readiness ahead of the 2026-09-16 Node 20 removal).</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="dependency-hygiene-development-version">Dependency hygiene<a class="anchor" aria-label="anchor" href="#dependency-hygiene-development-version"></a></h3>
+<ul><li>
+<code>tidyr</code>, <code>rlang</code>: moved to <code>Imports</code> (used in package code).</li>
+<li>
+<code>plotly</code>: moved from <code>Imports</code> to <code>Suggests</code> (only used in vignettes).</li>
+<li>
+<code>htmlwidgets</code>, <code>readr</code>: added to <code>Suggests</code> (used in vignettes).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<code>R/plot_hpond_vs_ref.R</code>: replace literal <code>▲</code> glyph in the caption with <code>▲</code> so the source file is ASCII-only (R-CMD-check WARNING).</li>
+<li>
+<code>R/read_hdf5_timeseries.R</code>: wrap array-indexing notation (<code>[1, ]</code>, <code>[2..k, ]</code>, <code>[, 1]</code>, <code>[, 2..k]</code>) in backticks so roxygen2’s markdown parser does not turn them into broken <code>\link{...}</code> entries.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="disabled-development-version">Disabled<a class="anchor" aria-label="anchor" href="#disabled-development-version"></a></h3>
+<ul><li>
+<code>vignettes/workflow.Rmd</code> and <code>vignettes/workflow_120min_40mm.Rmd</code> reference the obsolete <code>Optimierungsfall_kurz.h5</code> layout and have been dot-prefixed (<code>R CMD build</code> excludes them as invalid file names). They will be revisited in a future release.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.0.0.9000" id="kwbraindrop-0009000">kwb.raindrop 0.0.0.9000<a class="anchor" aria-label="anchor" href="#kwbraindrop-0009000"></a></h2>
+<ul><li>Added a <code>NEWS.md</code> file to track changes to the package.</li>
+</ul></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

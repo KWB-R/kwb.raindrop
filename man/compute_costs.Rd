@@ -2,11 +2,11 @@
 % Please edit documentation in R/compute_costs.R
 \name{compute_costs}
 \alias{compute_costs}
-\title{Compute construction costs for a Mulde-Rigole parameter grid}
+\title{Compute construction costs for an infiltration-swale parameter grid}
 \usage{
 compute_costs(
   param_grid,
-  storage_type = c("Sickerbox", "Schotterrigol"),
+  storage_type = c("infiltration_box", "gravel_trench"),
   cost_rates = default_cost_rates()
 )
 }
@@ -14,9 +14,10 @@ compute_costs(
 \item{param_grid}{\code{data.frame} / \code{tibble} — must contain the four geometry
 columns listed above. Other columns are passed through unchanged.}
 
-\item{storage_type}{\code{character(1)} — \code{"Sickerbox"} (default; ~95\% porosity)
-or \code{"Schotterrigol"} (~30\% porosity). Only used when \code{param_grid} does
-not have a \code{storage_type} column.}
+\item{storage_type}{\code{character(1)} — \code{"infiltration_box"} (default;
+~95\% porosity, the Austrian "Sickerbox") or \code{"gravel_trench"}
+(~30\% porosity, the Austrian "Schotterrigol"). Only used when
+\code{param_grid} does not have a \code{storage_type} column.}
 
 \item{cost_rates}{\code{list} — unit costs as returned by
 \code{\link[=default_cost_rates]{default_cost_rates()}}. Override individual entries to run cost
@@ -24,8 +25,8 @@ sensitivity analyses.}
 }
 \value{
 The input \code{param_grid} with the columns \code{storage_type},
-\code{cost_aushub}, \code{cost_profilierung}, \code{cost_bodenfilter},
-\code{cost_speicher}, \code{cost_total} (all in EUR) appended.
+\code{cost_excavation}, \code{cost_profiling}, \code{cost_filter},
+\code{cost_storage}, \code{cost_total} (all in EUR) appended.
 }
 \description{
 Given a parameter grid that drives the simulation, attach a per-scenario
@@ -41,17 +42,17 @@ Required columns in \code{param_grid}:
 \item \code{storage_height} — storage layer thickness in \strong{mm}
 }
 
-Optional column \code{storage_type} (character: \code{"Sickerbox"} or
-\code{"Schotterrigol"}) selects the per-scenario storage rate. If absent, the
+Optional column \code{storage_type} (character: \code{"infiltration_box"} or
+\code{"gravel_trench"}) selects the per-scenario storage rate. If absent, the
 value of the \code{storage_type} argument is used for every row.
 
-Cost formulas (Johannes Leimgruber, 27.03.2026):
+Cost formulas (Leimgruber, 2026-03-27):
 \preformatted{
-  cost_aushub       = mulde_area * (mulde_h + filter_h + storage_h)/1000 * 70
-  cost_profilierung = mulde_area * 10
-  cost_bodenfilter  = mulde_area * filter_h/1000 * 200
-  cost_speicher     = mulde_area * storage_h/1000 * <350 | 50>
-  cost_total        = sum of the four above
+  cost_excavation = mulde_area * (mulde_h + filter_h + storage_h)/1000 * 70
+  cost_profiling  = mulde_area * 10
+  cost_filter     = mulde_area * filter_h/1000 * 200
+  cost_storage    = mulde_area * storage_h/1000 * <350 | 50>
+  cost_total      = sum of the four above
 }
 }
 \examples{
@@ -63,14 +64,15 @@ grid <- tibble::tibble(
   storage_height = c(600, 600)
 )
 
-# Sickerbox (default)
+# Infiltration box (default)
 compute_costs(grid)
 
-# Schotterrigol
-compute_costs(grid, storage_type = "Schotterrigol")
+# Gravel trench
+compute_costs(grid, storage_type = "gravel_trench")
 
 # Per-scenario storage type
 compute_costs(dplyr::mutate(grid,
-                            storage_type = c("Sickerbox", "Schotterrigol")))
+                            storage_type = c("infiltration_box",
+                                             "gravel_trench")))
 
 }

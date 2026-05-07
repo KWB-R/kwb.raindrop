@@ -2,30 +2,29 @@
 % Please edit documentation in R/compute_costs.R
 \name{default_cost_rates}
 \alias{default_cost_rates}
-\title{Default unit-cost rates for Mulde-Rigole infiltration installations}
+\title{Default unit-cost rates for infiltration-swale installations}
 \usage{
 default_cost_rates()
 }
 \value{
 A named \code{list} of rates in EUR per m² or m³:
-\code{aushub_eur_per_m3}, \code{profilierung_eur_per_m2},
-\code{bodenfilter_eur_per_m3}, \code{sickerbox_eur_per_m3},
-\code{schotterrigol_eur_per_m3}.
+\code{excavation_eur_per_m3}, \code{profiling_eur_per_m2},
+\code{filter_eur_per_m3}, \code{infiltration_box_eur_per_m3},
+\code{gravel_trench_eur_per_m3}.
 }
 \description{
 Returns the default Austrian unit-cost rates used by \code{\link[=compute_costs]{compute_costs()}}.
 Rates were provided by Johannes Leimgruber (OeStaP) on 2026-03-27 for the
 RAINDROP cost-optimisation work.
 }
-\section{References}{
+\section{Source rates (Leimgruber, 2026-03-27, "Kostenansätze Optimierung")}{
 
-Johannes Leimgruber, 27.03.2026 — "Kostenansätze Optimierung":
 \itemize{
-\item Aushub (incl. loading + transport):   70 EUR/m³
-\item Profilierung und Begrünung:           10 EUR/m²
-\item Bodenfilter (incl. installation):    200 EUR/m³
-\item Sickerbox (incl. installation):      350 EUR/m³
-\item Schotterrigol (incl. installation):   50 EUR/m³
+\item Aushub (excavation, incl. loading + transport):    70 EUR/m³
+\item Profilierung und Begrünung (profiling + greening): 10 EUR/m²
+\item Bodenfilter (soil filter, incl. installation):    200 EUR/m³
+\item Sickerbox (infiltration box, incl. installation): 350 EUR/m³
+\item Schotterrigol (gravel trench, incl. installation): 50 EUR/m³
 }
 }
 

@@ -52,10 +52,19 @@ export_wien_swmm_timeseries <- function(
 
   # ---- Rainfall (10-minute totals, mm) ------------------------------------
   rain <- utils::read.csv(path_rain, stringsAsFactors = FALSE)
-  rain$datetime <- as.POSIXct(rain$time, format = "%Y-%m-%dT%H:%M%z",
+  # ISO 8601 with colon-separated offset ("...+00:00") is not portable
+  # for `%z` (Windows R rejects the colon). All values are UTC anyway —
+  # strip the trailing offset and parse as plain naive UTC.
+  rain$time <- sub("[+-][0-9]{2}:?[0-9]{2}$", "", rain$time)
+  rain$datetime <- as.POSIXct(rain$time, format = "%Y-%m-%dT%H:%M",
                               tz = "UTC")
   rain <- rain[!is.na(rain$datetime) & !is.na(rain$rr), ]
   rain <- rain[order(rain$datetime), ]
+  if (nrow(rain) == 0L) {
+    stop("export_wien_swmm_timeseries(): rainfall input parsed to 0 rows. ",
+         "Check the format of `path_rain` (expected ISO 8601 datetimes, ",
+         "column `time`, and a numeric column `rr`).")
+  }
 
   rain_lines <- c(
     "; SWMM 5 external rainfall time series",

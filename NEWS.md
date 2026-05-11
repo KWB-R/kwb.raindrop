@@ -24,13 +24,19 @@
   sortable by cost.
 
 * New vignette `example_wien_minimal`: a self-contained smoke test of
-  the full input → engine → results loop on Wien with two scenarios
-  (Daniel's reference design plus one mulde-area variation, no LAI
-  sweep). Prints a complete static-parameter overview from `base.h5`
-  for review of every default that drives the model. This vignette is
-  designed to render on Windows CI; the four heavy case-study
-  vignettes only render their parameter grids on CI and skip the model
-  runs.
+  the full input → engine → results loop on Wien. Now extended into
+  an ET-diagnostics grid that sweeps three engine switches —
+  `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
+  `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
+  Daniel's reference geometry (12 scenarios total). After the model
+  loop the per-scenario `*.h5` inputs are dumped to a single XLSX
+  (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
+  plus a `base` sheet, so the exact engine input for any row can be
+  diffed in Excel. Prints a complete static-parameter overview from
+  `base.h5` for review of every default that drives the model.
+  Designed to render on Windows CI; the four heavy case-study
+  vignettes only render their parameter grids on CI and skip the
+  model runs.
 
 ## Inputs and data shipping
 
@@ -71,7 +77,8 @@
 
 * `tidyr`, `rlang`: moved to `Imports` (used in package code).
 * `plotly`: moved from `Imports` to `Suggests` (only used in vignettes).
-* `htmlwidgets`, `readr`: added to `Suggests` (used in vignettes).
+* `htmlwidgets`, `readr`, `writexl`: added to `Suggests` (used in
+  vignettes).
 
 ## Bug fixes
 

@@ -40,7 +40,8 @@ Suggests:
     knitr,
     plotly,
     readr,
-    rmarkdown
+    rmarkdown,
+    writexl
 VignetteBuilder: 
     knitr
 Remotes:

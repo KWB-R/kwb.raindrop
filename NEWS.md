@@ -38,6 +38,16 @@
   vignettes only render their parameter grids on CI and skip the
   model runs.
 
+## Helper scripts
+
+* `inst/extdata/scripts/prepare_wien_swmm_timeseries.R` converts the
+  shipped Wien rainfall (10-minute, mm) and reference ET0 (daily,
+  mm/day) series to SWMM-5 external time-series files
+  (`wien_rain.dat`, `wien_et0.dat`) for direct import into a SWMM
+  `[TIMESERIES]` / `[RAINGAGES]` / `[EVAPORATION]` block. Output
+  directory defaults to `tempdir()`; pass `out_dir` (R) or a positional
+  CLI argument (`Rscript`) to redirect.
+
 ## Inputs and data shipping
 
 * Per-scenario input data ships under `inst/extdata/models/<scenario>/`

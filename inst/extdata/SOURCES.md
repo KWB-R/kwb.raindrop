@@ -68,14 +68,14 @@ deterministic.
 
 ### Helper scripts
 
-`inst/extdata/scripts/` contains ad-hoc R scripts that consume the
-shipped data:
+`inst/scripts/` contains ad-hoc R scripts that consume the shipped
+data:
 
 * `prepare_wien_swmm_timeseries.R` — converts the Wien rain (10-min
   totals, mm) and ET0 (daily, mm/day) series to SWMM-5 external
   time-series files (`wien_rain.dat`, `wien_et0.dat`) ready to be
   wired into a SWMM `[TIMESERIES]` / `[RAINGAGES]` / `[EVAPORATION]`
   block. Default output directory is `tempdir()`. Invoke from R via
-  `source(system.file("extdata/scripts/prepare_wien_swmm_timeseries.R",
+  `source(system.file("scripts/prepare_wien_swmm_timeseries.R",
   package = "kwb.raindrop")); export_wien_swmm_timeseries(out_dir = ...)`
   or from the shell via `Rscript prepare_wien_swmm_timeseries.R <out_dir>`.

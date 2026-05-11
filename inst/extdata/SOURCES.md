@@ -65,3 +65,17 @@ canonical landing page for their open-data portal is
 <https://data.hub.geosphere.at/>; record the exact dataset / DOI / API
 call once retrieval is automated, so future regenerations are
 deterministic.
+
+### Helper scripts
+
+`inst/scripts/` contains ad-hoc R scripts that consume the shipped
+data:
+
+* `prepare_wien_swmm_timeseries.R` — converts the Wien rain (10-min
+  totals, mm) and ET0 (daily, mm/day) series to SWMM-5 external
+  time-series files (`wien_rain.dat`, `wien_et0.dat`) ready to be
+  wired into a SWMM `[TIMESERIES]` / `[RAINGAGES]` / `[EVAPORATION]`
+  block. Default output directory is `tempdir()`. Invoke from R via
+  `source(system.file("scripts/prepare_wien_swmm_timeseries.R",
+  package = "kwb.raindrop")); export_wien_swmm_timeseries(out_dir = ...)`
+  or from the shell via `Rscript prepare_wien_swmm_timeseries.R <out_dir>`.

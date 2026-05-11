@@ -24,13 +24,32 @@
   sortable by cost.
 
 * New vignette `example_wien_minimal`: a self-contained smoke test of
-  the full input → engine → results loop on Wien with two scenarios
-  (Daniel's reference design plus one mulde-area variation, no LAI
-  sweep). Prints a complete static-parameter overview from `base.h5`
-  for review of every default that drives the model. This vignette is
-  designed to render on Windows CI; the four heavy case-study
-  vignettes only render their parameter grids on CI and skip the model
-  runs.
+  the full input → engine → results loop on Wien. Now extended into
+  an ET-diagnostics grid that sweeps three engine switches —
+  `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
+  `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
+  Daniel's reference geometry (12 scenarios total). After the model
+  loop the per-scenario `*.h5` inputs are dumped to a single XLSX
+  (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
+  plus a `base` sheet for the un-modified template, a
+  `timeseries_info` sheet summarising the rain / ET0 series fed to
+  every run (identical across scenarios), and an `applied_settings`
+  sheet listing the diff of every key the package writes on top of
+  `base.h5` per scenario. Prints a complete static-parameter overview
+  from `base.h5` for review of every default that drives the model.
+  Designed to render on Windows CI; the four heavy case-study
+  vignettes only render their parameter grids on CI and skip the
+  model runs.
+
+## Helper scripts
+
+* `inst/scripts/prepare_wien_swmm_timeseries.R` converts the
+  shipped Wien rainfall (10-minute, mm) and reference ET0 (daily,
+  mm/day) series to SWMM-5 external time-series files
+  (`wien_rain.dat`, `wien_et0.dat`) for direct import into a SWMM
+  `[TIMESERIES]` / `[RAINGAGES]` / `[EVAPORATION]` block. Output
+  directory defaults to `tempdir()`; pass `out_dir` (R) or a positional
+  CLI argument (`Rscript`) to redirect.
 
 ## Inputs and data shipping
 
@@ -71,7 +90,8 @@
 
 * `tidyr`, `rlang`: moved to `Imports` (used in package code).
 * `plotly`: moved from `Imports` to `Suggests` (only used in vignettes).
-* `htmlwidgets`, `readr`: added to `Suggests` (used in vignettes).
+* `htmlwidgets`, `readr`, `writexl`: added to `Suggests` (used in
+  vignettes).
 
 ## Bug fixes
 

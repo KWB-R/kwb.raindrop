@@ -1,15 +1,37 @@
-# Minimal example: Wien, 2 scenarios, no LAI sweep
+# Minimal example: Wien, ET-diagnostics scenario grid
 
 This vignette is a small, self-contained reduction of the full Wien
-workflow used for end-to-end checks (CI and review). It runs only **two
-scenarios** (Daniel’s reference design plus one mulde-area variation)
-and intentionally does **not** sweep `LAI` so that the default value
-baked into `base.h5` is left in place.
+workflow used for end-to-end checks (CI and review) and — since
+2026-05-07 — for diagnosing the very high modelled ET share (~47-58 %)
+versus the SWIMM Urban Eva reference of ~7 % for a comparable
+parametrisation. Geometry is fixed at Daniel’s reference design
+(`mulde_area = 75`, `mulde_height = 200`, `filter_height = 300`,
+`storage_height = 500`, `filter_kf = 36`, `bottom_kf = 12`) and `LAI` is
+left at the `base.h5` default — Michael’s May 2026 sweep showed LAI 3.9
+vs 8.5 changes ET by only ~0.1 pp.
 
-The companion full-grid vignette (`workflow_wien.Rmd`) varies LAI as
-part of a 432-row parameter grid; see Michael’s analysis (May 2026)
-which showed that LAI between 3.9 and 8.5 changes the modelled ET share
-by ~0.1 percentage points only.
+The 12-scenario grid varies three engine-side switches that are
+candidate ET-discrepancy drivers:
+
+- `//Berechnungsparameter/keineVerdunstungBeiRegen` — `0` (default, ET
+  active during rain — physically suspect) vs `1` (ET suppressed while
+  raining).
+- `//Berechnungsparameter/Hoernschemeyer_aktiv` — `0` (default, generic
+  ET model) vs `1` (Hoernschemeyer et al. 2023 scheme with seasonal
+  Growth/Shading modulation; with the current flat
+  `Growth_1 = Shading_1 = 1` curves the legacy path effectively
+  unmodulates ET).
+- `//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/ET0ref_GrasReferenzverdunstung`
+  — default `0.01` looks like a scaling factor, not a reference ET₀
+  value. Sweep `0`, `1`, `100` to check whether the parameter acts as a
+  multiplier on the ET₀ curve (in which case `1` is “normal” behaviour
+  and the `0.01` default is what is currently throttling / unbalancing
+  ET).
+
+After the run, the per-scenario `*.h5` inputs are dumped to a single
+XLSX file (`raindrop_wien_minimal_params.xlsx`) with one sheet per
+scenario and a `base` sheet for the un-modified template, so the exact
+engine input for any row can be diffed against the others.
 
 ### Input data
 
@@ -25,12 +47,10 @@ engine; the engine itself is downloaded from the
 
 ### Static `base.h5` parameter overview
 
-All values present in the shipped `base.h5` template. The two scenarios
-below override only a small subset (`connected_area`, `mulde_area`,
-`mulde_height`, `filter_hydraulicconductivity`, filter/storage
-Schichtdicken, `Endversickerungsrate`, `LAI` is *not* touched).
-Everything else listed here is the static default that drives the
-simulation.
+All values present in the shipped `base.h5` template. The scenarios
+below override only a small subset (geometry, three ET-related engine
+switches; `LAI` is *not* touched). Everything else listed here is the
+static default that drives the simulation.
 
 ``` r
 
@@ -65,9 +85,11 @@ DT::datatable(
 )
 ```
 
-### Two-scenario parameter grid
+### Twelve-scenario parameter grid
 
-Daniel’s reference design plus one variation (`mulde_area` doubled).
+Daniel’s reference geometry at every row; the cross product of
+`keineVerdunstungBeiRegen × Hoernschemeyer_aktiv × ET0ref` gives 2 × 2 ×
+3 = 12 scenarios.
 
 ``` r
 
@@ -97,22 +119,32 @@ path_list <- list(
   path_target_input = "<dir_input>/<file_target>"
 )
 
-param_grid <- tibble::tibble(
-  scenario_name = c("s00001", "s00002"),
-  connected_area               = 1000,
-  mulde_area                   = c(75, 150),
-  mulde_height                 = 200,
-  filter_hydraulicconductivity = 36,
-  filter_height                = 300,
-  storage_height               = 500,
-  bottom_hydraulicconductivity = 12,
-  rain_factor                  = 1
+param_grid <- expand.grid(
+  keineVerdunstungBeiRegen = c(0L, 1L),
+  Hoernschemeyer_aktiv     = c(0L, 1L),
+  ET0ref_factor            = c(0, 1, 100),
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
 )
+param_grid <- tibble::as_tibble(param_grid) |>
+  dplyr::mutate(
+    scenario_name                = sprintf("s%05d", seq_len(dplyr::n())),
+    connected_area               = 1000,
+    mulde_area                   = 75,
+    mulde_height                 = 200,
+    filter_hydraulicconductivity = 36,
+    filter_height                = 300,
+    storage_height               = 500,
+    bottom_hydraulicconductivity = 12,
+    rain_factor                  = 1
+  ) |>
+  dplyr::relocate(scenario_name, .before = dplyr::everything())
 
 DT::datatable(
   param_grid,
-  options = list(pageLength = 5, autoWidth = TRUE),
-  caption = "Variable parameters (everything not listed here stays at the base.h5 default)"
+  filter = "top",
+  options = list(pageLength = 12, autoWidth = TRUE),
+  caption = "Twelve scenarios — fixed Daniel-reference geometry, sweep of three ET-related engine switches."
 )
 ```
 
@@ -162,7 +194,7 @@ period <- c(diff(timeseries_rain$time), mean(diff(timeseries_rain$time)))
 timeseries_rain$value <- timeseries_rain$value / period
 ```
 
-### Run the two scenarios
+### Run the twelve scenarios
 
 ``` r
 
@@ -189,6 +221,12 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Berechnungsparameter/R-Plots` <- 0
   vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung"
   vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+
+  # ET-diagnostics sweep dimensions
+  vals$`//Berechnungsparameter/keineVerdunstungBeiRegen` <- param_grid_tmp$keineVerdunstungBeiRegen
+  vals$`//Berechnungsparameter/Hoernschemeyer_aktiv` <- param_grid_tmp$Hoernschemeyer_aktiv
+  vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/ET0ref_GrasReferenzverdunstung` <-
+    param_grid_tmp$ET0ref_factor
 
   vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
   vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
@@ -238,6 +276,154 @@ kwb.raindrop::run_scenarios(
 #> 
 #> [[2]]
 #> NULL
+#> 
+#> [[3]]
+#> NULL
+#> 
+#> [[4]]
+#> NULL
+#> 
+#> [[5]]
+#> NULL
+#> 
+#> [[6]]
+#> NULL
+#> 
+#> [[7]]
+#> NULL
+#> 
+#> [[8]]
+#> NULL
+#> 
+#> [[9]]
+#> NULL
+#> 
+#> [[10]]
+#> NULL
+#> 
+#> [[11]]
+#> NULL
+#> 
+#> [[12]]
+#> NULL
+```
+
+### Persist per-scenario engine inputs to XLSX
+
+The XLSX dump bundles, in one file:
+
+- `base` — full flattened list of `base.h5` values (un-modified
+  template).
+- `timeseries_info` — period and water-balance totals for the rain and
+  ET0 series fed to every scenario (these are identical across runs).
+- `applied_settings` — long-format diff of every key the package writes
+  on top of `base.h5`, per scenario
+  (`scenario × parameter × base_value × scenario_value`). Use this to
+  see at a glance exactly what RAINDROP is being told to change.
+- `s00001`, `s00002`, …, `s00012` — full per-scenario H5 dump (the same
+  view as `base`, but for each scenario’s modified input file).
+
+``` r
+
+format_h5_value <- function(v) {
+  if (is.null(v)) {
+    "<NULL>"
+  } else if (is.data.frame(v)) {
+    sprintf("[time series: %d rows; cols: %s]",
+            nrow(v), paste(names(v), collapse = ", "))
+  } else if (length(v) > 1L) {
+    paste(format(v, trim = TRUE), collapse = ", ")
+  } else {
+    format(v, trim = TRUE)
+  }
+}
+
+vals_to_tibble <- function(vals) {
+  tibble::tibble(
+    parameter = names(vals),
+    value     = vapply(vals, format_h5_value, character(1L))
+  ) |>
+    dplyr::arrange(parameter)
+}
+
+vals_equal <- function(a, b) {
+  if (is.null(a) || is.null(b)) return(identical(a, b))
+  isTRUE(all.equal(a, b))
+}
+
+# --- Base sheet -----------------------------------------------------------
+h5_base <- hdf5r::H5File$new(path_base, mode = "r")
+base_vals <- kwb.raindrop::h5_read_values(h5_base)
+h5_base$close_all()
+
+sheets <- list(base = vals_to_tibble(base_vals))
+
+# --- Timeseries info (identical across all scenarios) ---------------------
+# `timeseries_rain$value` is mm/h after the per-interval scaling earlier;
+# multiply by the original interval (in h) to recover total mm.
+rain_period_h <- c(diff(timeseries_rain$time),
+                   mean(diff(timeseries_rain$time)))
+rain_total_mm <- sum(timeseries_rain$value * rain_period_h)
+sim_period_h  <- max(timeseries_rain$time) - min(timeseries_rain$time)
+sim_period_yr <- sim_period_h / (24 * 365.25)
+
+sheets$timeseries_info <- tibble::tibble(
+  series        = c("Rain (//Kurven/Regen)", "ET0 (//Kurven/ET0)"),
+  n_rows        = c(nrow(timeseries_rain), nrow(timeseries_et)),
+  unit          = c("mm/h (engine input; convert via *period_h to mm)",
+                    "mm/day"),
+  period_hours  = round(c(sim_period_h, max(timeseries_et$time) -
+                                          min(timeseries_et$time)), 1),
+  period_years  = round(rep(sim_period_yr, 2), 2),
+  total_mm      = round(c(rain_total_mm, sum(timeseries_et$value)), 1),
+  mean_per_year = round(c(rain_total_mm, sum(timeseries_et$value)) /
+                          sim_period_yr, 1),
+  min_value     = c(min(timeseries_rain$value), min(timeseries_et$value)),
+  max_value     = c(max(timeseries_rain$value), max(timeseries_et$value))
+)
+
+# --- Applied settings: per-scenario diff vs. base.h5 ----------------------
+applied_rows <- list()
+for (sname in param_grid$scenario_name) {
+  p <- kwb.utils::resolve(path_list, dir_target = sname)
+  h5_s <- hdf5r::H5File$new(p$path_target_input, mode = "r")
+  scenario_vals <- kwb.raindrop::h5_read_values(h5_s)
+  h5_s$close_all()
+  sheets[[sname]] <- vals_to_tibble(scenario_vals)
+
+  for (k in union(names(base_vals), names(scenario_vals))) {
+    if (!vals_equal(base_vals[[k]], scenario_vals[[k]])) {
+      applied_rows[[length(applied_rows) + 1L]] <- tibble::tibble(
+        scenario       = sname,
+        parameter      = k,
+        base_value     = format_h5_value(base_vals[[k]]),
+        scenario_value = format_h5_value(scenario_vals[[k]])
+      )
+    }
+  }
+}
+sheets$applied_settings <- if (length(applied_rows) > 0L) {
+  dplyr::bind_rows(applied_rows) |>
+    dplyr::arrange(parameter, scenario)
+} else {
+  tibble::tibble(scenario = character(),
+                 parameter = character(),
+                 base_value = character(),
+                 scenario_value = character())
+}
+
+# Re-order: base + timeseries_info + applied_settings + per-scenario sheets.
+sheets <- c(sheets[c("base", "timeseries_info", "applied_settings")],
+            sheets[param_grid$scenario_name])
+
+xlsx_path <- file.path(tempdir(), "raindrop_wien_minimal_params.xlsx")
+writexl::write_xlsx(sheets, path = xlsx_path)
+message("Wrote XLSX (", length(sheets),
+        " sheets: base + timeseries_info + applied_settings + ",
+        nrow(param_grid), " scenarios) to:\n  ",
+        xlsx_path)
+#> Wrote XLSX (15 sheets: base + timeseries_info + applied_settings + 12 scenarios) to:
+#>   C:\Users\RUNNER~1\AppData\Local\Temp\RtmpiSU3cD/raindrop_wien_minimal_params.xlsx
 ```
 
 ### Results
@@ -250,7 +436,7 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
   simulation_names = param_grid$scenario_name,
   debug = FALSE
 )
-#> Reading results files in parallel ('Mulde_Rigole.h5|Dach.h5') for 2 model runs
+#> Reading results files in parallel ('Mulde_Rigole.h5|Dach.h5') for 12 model runs
 
 simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
   simulation_results = simulation_results,
@@ -269,8 +455,8 @@ results <- kwb.raindrop::compute_costs(results)
 DT::datatable(
   results,
   filter = "top",
-  options = list(pageLength = 5, autoWidth = TRUE),
-  caption = "Two-scenario simulation results — water balance + overflow events + construction costs (EUR). The cost_* columns are filterable / sortable."
+  options = list(pageLength = 12, autoWidth = TRUE),
+  caption = "Twelve-scenario simulation results — water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%."
 )
 ```
 

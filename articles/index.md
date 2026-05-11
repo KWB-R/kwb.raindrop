@@ -2,8 +2,8 @@
 
 ### All vignettes
 
-- [Minimal example: Wien, 2 scenarios, no LAI
-  sweep](https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.md):
+- [Minimal example: Wien, ET-diagnostics scenario
+  grid](https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.md):
 - [Workflow Bad Aussee (2011 -
   2025)](https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.md):
 - [Workflow Eisenstadt

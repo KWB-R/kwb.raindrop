@@ -18,7 +18,7 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, 2 scenarios, no LAI sweep</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, ET-diagnostics scenario grid</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)</a></li>
@@ -46,7 +46,12 @@
 <h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
 <ul><li><p><code><a href="../reference/download_engine.html">download_engine()</a></code> fetches the Tandler “Regenwasserbewirtschaftung” Windows executable from the companion repository <a href="https://github.com/KWB-R/kwb.raindrop.binaries/releases" class="external-link"><code>KWB-R/kwb.raindrop.binaries</code></a> and caches it under <code>tools::R_user_dir("kwb.raindrop", "cache")/&lt;version&gt;/</code>. Multiple engine versions can coexist side-by-side because the version is encoded in the release tag (<code>engine-&lt;YYYY-MM-DD&gt;</code>), not in the asset filename. The download is atomic (temp file + rename) and rejects obviously broken responses (&lt; 1 KB ⇒ likely a 404 HTML page).</p></li>
 <li><p><code><a href="../reference/compute_costs.html">compute_costs()</a></code> and <code><a href="../reference/default_cost_rates.html">default_cost_rates()</a></code> attach a per-scenario construction-cost breakdown (<code>cost_excavation</code>, <code>cost_profiling</code>, <code>cost_filter</code>, <code>cost_storage</code>, <code>cost_total</code>) to a parameter grid using the Austrian unit-cost rates supplied by Johannes Leimgruber (OeStaP, 2026-03-27). Pass <code>storage_type = "infiltration_box"</code> (Sickerbox, default, ~95 % porosity) or <code>"gravel_trench"</code> (Schotterrigol, ~30 % porosity) — or a per-row <code>storage_type</code> column on the grid — to switch the storage layer. The new columns are wired into the <code>example_wien_minimal</code>, <code>workflow_wien</code> and <code>workflow_badaussee</code> vignettes so the solution-space datatables become filterable and sortable by cost.</p></li>
-<li><p>New vignette <code>example_wien_minimal</code>: a self-contained smoke test of the full input → engine → results loop on Wien with two scenarios (Daniel’s reference design plus one mulde-area variation, no LAI sweep). Prints a complete static-parameter overview from <code>base.h5</code> for review of every default that drives the model. This vignette is designed to render on Windows CI; the four heavy case-study vignettes only render their parameter grids on CI and skip the model runs.</p></li>
+<li><p>New vignette <code>example_wien_minimal</code>: a self-contained smoke test of the full input → engine → results loop on Wien. Now extended into an ET-diagnostics grid that sweeps three engine switches — <code>keineVerdunstungBeiRegen</code>, <code>Hoernschemeyer_aktiv</code> and the <code>ET0ref_GrasReferenzverdunstung</code> factor (<code>0</code>, <code>1</code>, <code>100</code>) — at Daniel’s reference geometry (12 scenarios total). After the model loop the per-scenario <code>*.h5</code> inputs are dumped to a single XLSX (<code>raindrop_wien_minimal_params.xlsx</code>) with one sheet per scenario plus a <code>base</code> sheet for the un-modified template, a <code>timeseries_info</code> sheet summarising the rain / ET0 series fed to every run (identical across scenarios), and an <code>applied_settings</code> sheet listing the diff of every key the package writes on top of <code>base.h5</code> per scenario. Prints a complete static-parameter overview from <code>base.h5</code> for review of every default that drives the model. Designed to render on Windows CI; the four heavy case-study vignettes only render their parameter grids on CI and skip the model runs.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="helper-scripts-development-version">Helper scripts<a class="anchor" aria-label="anchor" href="#helper-scripts-development-version"></a></h3>
+<ul><li>
+<code>inst/scripts/prepare_wien_swmm_timeseries.R</code> converts the shipped Wien rainfall (10-minute, mm) and reference ET0 (daily, mm/day) series to SWMM-5 external time-series files (<code>wien_rain.dat</code>, <code>wien_et0.dat</code>) for direct import into a SWMM <code>[TIMESERIES]</code> / <code>[RAINGAGES]</code> / <code>[EVAPORATION]</code> block. Output directory defaults to <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>; pass <code>out_dir</code> (R) or a positional CLI argument (<code>Rscript</code>) to redirect.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="inputs-and-data-shipping-development-version">Inputs and data shipping<a class="anchor" aria-label="anchor" href="#inputs-and-data-shipping-development-version"></a></h3>
@@ -67,7 +72,7 @@
 <li>
 <code>plotly</code>: moved from <code>Imports</code> to <code>Suggests</code> (only used in vignettes).</li>
 <li>
-<code>htmlwidgets</code>, <code>readr</code>: added to <code>Suggests</code> (used in vignettes).</li>
+<code>htmlwidgets</code>, <code>readr</code>, <code>writexl</code>: added to <code>Suggests</code> (used in vignettes).</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>

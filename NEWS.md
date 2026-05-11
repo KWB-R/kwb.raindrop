@@ -31,9 +31,12 @@
   Daniel's reference geometry (12 scenarios total). After the model
   loop the per-scenario `*.h5` inputs are dumped to a single XLSX
   (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
-  plus a `base` sheet, so the exact engine input for any row can be
-  diffed in Excel. Prints a complete static-parameter overview from
-  `base.h5` for review of every default that drives the model.
+  plus a `base` sheet for the un-modified template, a
+  `timeseries_info` sheet summarising the rain / ET0 series fed to
+  every run (identical across scenarios), and an `applied_settings`
+  sheet listing the diff of every key the package writes on top of
+  `base.h5` per scenario. Prints a complete static-parameter overview
+  from `base.h5` for review of every default that drives the model.
   Designed to render on Windows CI; the four heavy case-study
   vignettes only render their parameter grids on CI and skip the
   model runs.

@@ -286,49 +286,115 @@ kwb.raindrop::run_scenarios(
 
 ### Persist per-scenario engine inputs to XLSX
 
-One sheet for the un-modified `base.h5` template plus one sheet per
-scenario, each containing the complete flattened list of HDF5 values
-the engine actually saw on that run. Useful for diffing — pick two
-sheets in Excel and you can read the exact parameter delta that
-caused a given output change.
+The XLSX dump bundles, in one file:
+
+* `base` — full flattened list of `base.h5` values (un-modified template).
+* `timeseries_info` — period and water-balance totals for the rain and
+  ET0 series fed to every scenario (these are identical across runs).
+* `applied_settings` — long-format diff of every key the package writes
+  on top of `base.h5`, per scenario (`scenario × parameter × base_value
+  × scenario_value`). Use this to see at a glance exactly what RAINDROP
+  is being told to change.
+* `s00001`, `s00002`, ..., `s00012` — full per-scenario H5 dump (the
+  same view as `base`, but for each scenario's modified input file).
 
 ```{r xlsx_dump, eval = data_available && is_windows}
+format_h5_value <- function(v) {
+  if (is.null(v)) {
+    "<NULL>"
+  } else if (is.data.frame(v)) {
+    sprintf("[time series: %d rows; cols: %s]",
+            nrow(v), paste(names(v), collapse = ", "))
+  } else if (length(v) > 1L) {
+    paste(format(v, trim = TRUE), collapse = ", ")
+  } else {
+    format(v, trim = TRUE)
+  }
+}
+
 vals_to_tibble <- function(vals) {
   tibble::tibble(
     parameter = names(vals),
-    value = vapply(vals, function(v) {
-      if (is.data.frame(v)) {
-        sprintf("[time series: %d rows; cols: %s]",
-                nrow(v), paste(names(v), collapse = ", "))
-      } else if (length(v) > 1L) {
-        paste(format(v, trim = TRUE), collapse = ", ")
-      } else {
-        format(v, trim = TRUE)
-      }
-    }, character(1L))
+    value     = vapply(vals, format_h5_value, character(1L))
   ) |>
     dplyr::arrange(parameter)
 }
 
-# Base sheet — un-modified template
+vals_equal <- function(a, b) {
+  if (is.null(a) || is.null(b)) return(identical(a, b))
+  isTRUE(all.equal(a, b))
+}
+
+# --- Base sheet -----------------------------------------------------------
 h5_base <- hdf5r::H5File$new(path_base, mode = "r")
 base_vals <- kwb.raindrop::h5_read_values(h5_base)
 h5_base$close_all()
+
 sheets <- list(base = vals_to_tibble(base_vals))
 
-# One sheet per scenario — read back the modified input H5 the engine saw
+# --- Timeseries info (identical across all scenarios) ---------------------
+# `timeseries_rain$value` is mm/h after the per-interval scaling earlier;
+# multiply by the original interval (in h) to recover total mm.
+rain_period_h <- c(diff(timeseries_rain$time),
+                   mean(diff(timeseries_rain$time)))
+rain_total_mm <- sum(timeseries_rain$value * rain_period_h)
+sim_period_h  <- max(timeseries_rain$time) - min(timeseries_rain$time)
+sim_period_yr <- sim_period_h / (24 * 365.25)
+
+sheets$timeseries_info <- tibble::tibble(
+  series        = c("Rain (//Kurven/Regen)", "ET0 (//Kurven/ET0)"),
+  n_rows        = c(nrow(timeseries_rain), nrow(timeseries_et)),
+  unit          = c("mm/h (engine input; convert via *period_h to mm)",
+                    "mm/day"),
+  period_hours  = round(c(sim_period_h, max(timeseries_et$time) -
+                                          min(timeseries_et$time)), 1),
+  period_years  = round(rep(sim_period_yr, 2), 2),
+  total_mm      = round(c(rain_total_mm, sum(timeseries_et$value)), 1),
+  mean_per_year = round(c(rain_total_mm, sum(timeseries_et$value)) /
+                          sim_period_yr, 1),
+  min_value     = c(min(timeseries_rain$value), min(timeseries_et$value)),
+  max_value     = c(max(timeseries_rain$value), max(timeseries_et$value))
+)
+
+# --- Applied settings: per-scenario diff vs. base.h5 ----------------------
+applied_rows <- list()
 for (sname in param_grid$scenario_name) {
   p <- kwb.utils::resolve(path_list, dir_target = sname)
   h5_s <- hdf5r::H5File$new(p$path_target_input, mode = "r")
   scenario_vals <- kwb.raindrop::h5_read_values(h5_s)
   h5_s$close_all()
   sheets[[sname]] <- vals_to_tibble(scenario_vals)
+
+  for (k in union(names(base_vals), names(scenario_vals))) {
+    if (!vals_equal(base_vals[[k]], scenario_vals[[k]])) {
+      applied_rows[[length(applied_rows) + 1L]] <- tibble::tibble(
+        scenario       = sname,
+        parameter      = k,
+        base_value     = format_h5_value(base_vals[[k]]),
+        scenario_value = format_h5_value(scenario_vals[[k]])
+      )
+    }
+  }
 }
+sheets$applied_settings <- if (length(applied_rows) > 0L) {
+  dplyr::bind_rows(applied_rows) |>
+    dplyr::arrange(parameter, scenario)
+} else {
+  tibble::tibble(scenario = character(),
+                 parameter = character(),
+                 base_value = character(),
+                 scenario_value = character())
+}
+
+# Re-order: base + timeseries_info + applied_settings + per-scenario sheets.
+sheets <- c(sheets[c("base", "timeseries_info", "applied_settings")],
+            sheets[param_grid$scenario_name])
 
 xlsx_path <- file.path(tempdir(), "raindrop_wien_minimal_params.xlsx")
 writexl::write_xlsx(sheets, path = xlsx_path)
 message("Wrote XLSX (", length(sheets),
-        " sheets: base + ", nrow(param_grid), " scenarios) to:\n  ",
+        " sheets: base + timeseries_info + applied_settings + ",
+        nrow(param_grid), " scenarios) to:\n  ",
         xlsx_path)
 ```
 

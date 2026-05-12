@@ -28,8 +28,16 @@
   an ET-diagnostics grid that sweeps three engine switches —
   `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
-  Daniel's reference geometry (12 scenarios total). After the model
-  loop the per-scenario `*.h5` inputs are dumped to a single XLSX
+  Daniel's reference geometry (12 scenarios total). After the XLSX
+  review of the SWIMM-UrbanEva comparison run, the vignette now also
+  unconditionally corrects three further `base.h5` defaults on every
+  row: `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
+  (impervious roof, no vegetation),
+  `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond = 0`
+  (no open-water ET while the grass is submerged), and
+  `Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
+  (Hörnschemeyer grass value, was `8.5`). After the model loop the
+  per-scenario `*.h5` inputs are dumped to a single XLSX
   (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
   plus a `base` sheet for the un-modified template, a
   `timeseries_info` sheet summarising the rain / ET0 series fed to

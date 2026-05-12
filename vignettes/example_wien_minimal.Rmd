@@ -437,10 +437,26 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
   debug = FALSE
 )
 
-simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
-  simulation_results = simulation_results,
-  event_separation_hours = 4
-)
+# Defensive: with Dach/Evapotranspiration_aktiv = 0 (and other tweaks under
+# investigation) some scenarios produce an empty/NULL component that
+# add_overflow_events_and_waterbalance() can't pivot_wider. Run it per
+# scenario in a tryCatch so the failing rows don't kill the rest of the
+# table — emit a message naming the offenders.
+wb_per_scenario <- lapply(seq_along(simulation_results), function(i) {
+  sname <- names(simulation_results)[i]
+  if (is.null(sname) || !nzchar(sname)) sname <- param_grid$scenario_name[i]
+  tryCatch(
+    kwb.raindrop::add_overflow_events_and_waterbalance(
+      simulation_results = simulation_results[i],
+      event_separation_hours = 4
+    ),
+    error = function(e) {
+      message("[", sname, "] water-balance failed: ", conditionMessage(e))
+      NULL
+    }
+  )
+})
+simulation_results_optimisation <- dplyr::bind_rows(wb_per_scenario)
 
 results <- param_grid |>
   dplyr::left_join(simulation_results_optimisation, by = c("scenario_name" = "s_name")) |>
@@ -455,7 +471,7 @@ DT::datatable(
   results,
   filter = "top",
   options = list(pageLength = 12, autoWidth = TRUE),
-  caption = "Twelve-scenario simulation results — water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%."
+  caption = "Twelve-scenario simulation results — water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%. Scenarios whose water-balance step errored (see chunk log) are present in the table but have NA in the result columns."
 )
 ```
 

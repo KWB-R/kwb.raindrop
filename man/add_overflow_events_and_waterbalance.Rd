@@ -51,6 +51,21 @@ time step (\code{time[i+1] - time[i]}; the last sample inherits the previous
 step). A warning is emitted if the time step is non-uniform, and
 \code{sum_overflows} is returned as \code{NA} if it cannot be determined (single
 sample).
+
+Missing components are tolerated: scenarios whose entry in \code{simulation_results}
+is \code{NULL} (or which lack any of \code{element}, \code{element$water_balance},
+\code{connected_area}, \code{connected_area$water_balance} or \code{element$rates}) still
+produce a row of the output tibble. The four "headline" columns (\code{s_name},
+\code{n_overflows}, \code{median_duration_overflows_hours}, \code{sum_overflows}) are
+always present and filled with \code{NA} where they cannot be computed. The
+\verb{element.*_} and \verb{connectedarea.*_} water-balance columns follow
+\code{dplyr::bind_rows()} semantics: a column is added to the output as soon as
+at least one scenario contributes it, with \code{NA} for the rows that don't. If
+\emph{every} scenario in \code{simulation_results} lacks a side (e.g. every run
+disables roof ET, so no scenario contributes any \verb{connectedarea.*_}), that
+side's columns are absent from the output entirely. Downstream code that
+addresses those columns by name should therefore check for their presence
+rather than assume they exist.
 }
 \examples{
 \dontrun{

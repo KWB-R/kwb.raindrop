@@ -42,7 +42,10 @@ a temporary \code{future::multisession} plan is set.}
 \code{progressr::handler_txtprogressbar}). If NULL, no handler is set.}
 }
 \value{
-Named list (see \code{\link{get_simulation_results_optim}}).
+Named list (see \code{\link{get_simulation_results_optim}}). As with
+the non-parallel sibling, the entry for a run is \code{NULL} only when the
+element HDF5 is missing; a missing connected-area HDF5 yields a partial
+result with \code{connected_area = NULL}.
 }
 \description{
 Parallel variant of \code{get_simulation_results_optim()} using

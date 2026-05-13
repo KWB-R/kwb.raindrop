@@ -13,7 +13,10 @@
 #' @param progress_handler A progressr handler function (default:
 #'   \code{progressr::handler_txtprogressbar}). If NULL, no handler is set.
 #'
-#' @return Named list (see \code{\link{get_simulation_results_optim}}).
+#' @return Named list (see \code{\link{get_simulation_results_optim}}). As with
+#'   the non-parallel sibling, the entry for a run is \code{NULL} only when the
+#'   element HDF5 is missing; a missing connected-area HDF5 yields a partial
+#'   result with \code{connected_area = NULL}.
 #'
 #' @export
 #' @importFrom stats setNames
@@ -68,41 +71,61 @@ get_simulation_results_optim_parallel <- function(paths,
   
   # worker
   run_one <- function(s_name, p = NULL) {
-    
+
     if (!is.null(p)) p(sprintf("Reading %s", s_name))
-    
+
     run_paths <- kwb.utils::resolve(path_list, dir_target = s_name)
-    
-    if (!all(file.exists(c(run_paths$path_results_hdf5_element,
-                           run_paths$path_results_hdf5_flaeche)))) {
+
+    has_element <- file.exists(run_paths$path_results_hdf5_element)
+    has_flaeche <- file.exists(run_paths$path_results_hdf5_flaeche)
+
+    # The element (Mulde_Rigole) H5 is the indispensable artefact; without it
+    # nothing downstream is useful. A missing connected_area (Dach) file is
+    # tolerated -- for example when Dach/Berechnungsparameter/Evapotranspiration_aktiv
+    # is disabled the engine skips writing Dach.h5 -- and that branch falls
+    # back to connected_area = NULL.
+    if (!has_element) {
       if (isTRUE(debug)) {
-        message(sprintf("Missing files for %s -> returning NULL", s_name))
+        message(sprintf(
+          "Missing element H5 for %s ('%s') -> returning NULL",
+          s_name, run_paths$path_results_hdf5_element
+        ))
       }
       return(NULL)
     }
-    
+
     res_hdf5_element <- hdf5r::H5File$new(run_paths$path_results_hdf5_element, mode = "r")
-    res_hdf5_flaeche <- hdf5r::H5File$new(run_paths$path_results_hdf5_flaeche, mode = "r")
-    
-    on.exit({
-      try(res_hdf5_element$close_all(), silent = TRUE)
-      try(res_hdf5_flaeche$close_all(), silent = TRUE)
-    }, add = TRUE)
-    
-    list(
-      element = list(
-        meta = read_hdf5_scalars(res_hdf5_element[["Metainfo"]], numeric_only = FALSE),
-        rates = read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
-        water_balance = read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
-        states = read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
-      ),
-      connected_area = list(
-        meta = read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]], numeric_only = FALSE),
-        rates = read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
-        water_balance = read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
-        states = read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
-      )
+    on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
+
+    element <- list(
+      meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
+                                        numeric_only = FALSE),
+      rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
+      water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
+      states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
     )
+
+    connected_area <- if (has_flaeche) {
+      res_hdf5_flaeche <- hdf5r::H5File$new(run_paths$path_results_hdf5_flaeche, mode = "r")
+      on.exit(try(res_hdf5_flaeche$close_all(), silent = TRUE), add = TRUE)
+      list(
+        meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
+                                          numeric_only = FALSE),
+        rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
+        water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
+        states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
+      )
+    } else {
+      if (isTRUE(debug)) {
+        message(sprintf(
+          "No connected_area H5 for %s ('%s') -> connected_area = NULL",
+          s_name, run_paths$path_results_hdf5_flaeche
+        ))
+      }
+      NULL
+    }
+
+    list(element = element, connected_area = connected_area)
   }
   
   # --- try with_progress; fallback if nested handlers exist -----------------

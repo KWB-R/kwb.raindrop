@@ -30,18 +30,15 @@
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
   Daniel's reference geometry (12 scenarios total). After Daniel's
   XLSX review of the SWIMM-UrbanEva comparison run, the vignette now
-  also unconditionally corrects two further `base.h5` defaults on
+  also unconditionally corrects three further `base.h5` defaults on
   every row:
+  `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
+  (impervious roof, no vegetation; the engine then skips writing
+  Dach.h5, see "Minor improvements and bug fixes" below),
   `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond = 0`
   (no open-water ET while the grass is submerged), and
   `Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
-  (Hörnschemeyer grass value, was `8.5`).
-  Daniel's third request, `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`,
-  is deferred: with the flag off the engine skips writing the
-  connected-area Dach.h5 and `get_simulation_results_optim_parallel()`
-  returns `NULL` for every scenario, which the downstream water-balance
-  cannot aggregate. To be re-enabled once the package can parse a
-  scenario from `Mulde_Rigole.h5` alone. After the model loop the
+  (Hörnschemeyer grass value, was `8.5`). After the model loop the
   per-scenario `*.h5` inputs are dumped to a single XLSX
   (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
   plus a `base` sheet for the un-modified template, a
@@ -108,6 +105,18 @@
 
 ## Bug fixes
 
+* `get_simulation_results_optim()` and
+  `get_simulation_results_optim_parallel()` no longer return `NULL`
+  when only the connected-area H5 (Dach.h5) is missing; they now
+  return a partial result with `connected_area = NULL` while still
+  populating the element side. This unblocks scenarios where
+  `//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv`
+  is `0` and the engine consequently skips writing Dach.h5.
+* `add_overflow_events_and_waterbalance()` tolerates per-scenario
+  `NULL` and missing components (`element`, `connected_area`,
+  `*$water_balance`, `element$rates`). Affected scenarios still
+  produce a row of the output tibble with the available metrics
+  computed and the missing columns left as `NA`.
 * `R/plot_hpond_vs_ref.R`: replace literal `▲` glyph in the caption
   with `▲` so the source file is ASCII-only (R-CMD-check WARNING).
 * `R/read_hdf5_timeseries.R`: wrap array-indexing notation

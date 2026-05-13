@@ -26,10 +26,19 @@ comparable parametrisation. Geometry is fixed at Daniel's reference
 design (`mulde_area = 75`, `mulde_height = 200`, `filter_height = 300`,
 `storage_height = 500`, `filter_kf = 36`, `bottom_kf = 12`).
 
-Two corrections to the `base.h5` defaults are also applied
+Three corrections to the `base.h5` defaults are also applied
 unconditionally on every row, after Daniel's review of the XLSX diff
 against the SWIMM-UrbanEva run:
 
+* `Dach/Berechnungsparameter/Evapotranspiration_aktiv` is forced to
+  `0` — the 1000 m² roof is impervious and has no vegetation, so the
+  full crop-ET pathway should not run there. The shipped `base.h5`
+  ships this on, which silently activated all of the vegetation-ET
+  parameters on the roof. With this flag at `0` the engine skips
+  writing the connected-area `Dach.h5`; the package's result reader
+  and water-balance pipeline now handle a missing connected-area H5
+  by reporting only the element side (`element.*_` columns
+  populated, `connectedarea.*_` columns left as `NA`).
 * `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond` is forced to `0`
   — when the grass is submerged in a ponded swale, the open-water
   pond-ET pathway must not run alongside the crop-coefficient one on
@@ -40,15 +49,6 @@ against the SWIMM-UrbanEva run:
   `base.h5` value is `8.5`. Michael's May 2026 sweep already showed
   LAI 3.9 vs 8.5 only changes the modelled ET share by ~0.1 pp, so
   this is mostly a hygiene fix rather than the smoking gun.
-
-A third correction — `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
-on the impervious 1000 m² roof — that Daniel also requested is **not**
-applied yet. With that flag off the engine skips writing the
-connected-area Dach.h5, and `get_simulation_results_optim_parallel()`
-currently refuses to parse a scenario whose connected-area H5 is
-missing (all 12 scenarios end up `NULL`). The roof-ET-off scenario
-will be re-enabled once the package can read a scenario from
-`Mulde_Rigole.h5` alone.
 
 The 12-scenario grid varies three engine-side switches that are
 candidate ET-discrepancy drivers:
@@ -262,17 +262,12 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/ET0ref_GrasReferenzverdunstung` <-
     param_grid_tmp$ET0ref_factor
 
-  # NOTE: Daniel asked for Dach/Evapotranspiration_aktiv = 0 on the
-  # impervious 1000 m² roof. The engine then skips writing Dach.h5 entirely,
-  # and kwb.raindrop's get_simulation_results_optim_parallel() refuses to
-  # parse a scenario without the connected-area H5 (it returns NULL early
-  # at R/get_simulation_results_optim_parallel.R:76-82). All 12 scenarios
-  # end up NULL and the water-balance pipeline can't aggregate.
-  # Leave the flag at 1 here as a hotfix until the package is robust to a
-  # missing connected_area file; tracked separately. With the flag on,
-  # the Wien roof still produces a Dach.h5 with valid wb tables that the
-  # downstream code can pivot_wider().
-  vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+  # Roof: no vegetation, no ET — the 1000 m² Dach is impervious in this
+  # case study. With the flag at 0 the engine skips writing Dach.h5
+  # entirely; the result reader and water-balance pipeline now tolerate
+  # a missing connected_area H5 (see get_simulation_results_optim_parallel
+  # and add_overflow_events_and_waterbalance).
+  vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 0
   vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
 
   vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
@@ -447,47 +442,15 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
   debug = FALSE
 )
 
-# Defensive: with Dach/Evapotranspiration_aktiv = 0 (and other tweaks under
-# investigation) some scenarios produce an empty/NULL component that
-# add_overflow_events_and_waterbalance() can't pivot_wider. Run it per
-# scenario in a tryCatch so the failing rows don't kill the rest of the
-# table — collect the failures and print them as part of the chunk output
-# (cat goes through knitr and shows up in the rendered vignette plus the
-# CI log; message() would be swallowed by the vignette renderer).
-analyse_one <- function(i) {
-  sname <- names(simulation_results)[i]
-  if (is.null(sname) || !nzchar(sname)) sname <- param_grid$scenario_name[i]
-  tryCatch(
-    list(scenario = sname, ok = TRUE,
-         data = kwb.raindrop::add_overflow_events_and_waterbalance(
-           simulation_results = simulation_results[i],
-           event_separation_hours = 4
-         ),
-         msg = NA_character_),
-    error = function(e) list(scenario = sname, ok = FALSE,
-                              data = NULL,
-                              msg = conditionMessage(e))
-  )
-}
-
-analyses <- lapply(seq_along(simulation_results), analyse_one)
-ok_mask  <- vapply(analyses, `[[`, logical(1L), "ok")
-
-cat(sprintf("water-balance summary: %d / %d scenarios succeeded\n",
-            sum(ok_mask), length(analyses)))
-if (any(!ok_mask)) {
-  for (a in analyses[!ok_mask]) {
-    cat(sprintf("  [%s] %s\n", a$scenario, a$msg))
-  }
-}
-
-simulation_results_optimisation <- if (any(ok_mask)) {
-  dplyr::bind_rows(lapply(analyses[ok_mask], `[[`, "data"))
-} else {
-  # All scenarios failed: emit a stub tibble that carries the join key so the
-  # downstream left_join still works and the parameter table renders.
-  tibble::tibble(s_name = character(0))
-}
+# get_simulation_results_optim_parallel() now returns NULL only when the
+# element H5 (Mulde_Rigole.h5) is missing; a missing connected-area H5
+# (Dach.h5) yields a partial result with connected_area = NULL. Both cases
+# are absorbed by add_overflow_events_and_waterbalance(), which emits a
+# warning and fills the corresponding columns with NA.
+simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
+  simulation_results = simulation_results,
+  event_separation_hours = 4
+)
 
 results <- param_grid |>
   dplyr::left_join(simulation_results_optimisation, by = c("scenario_name" = "s_name")) |>

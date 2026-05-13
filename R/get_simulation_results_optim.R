@@ -58,46 +58,68 @@ get_simulation_results_optim <- function(paths,
                   paste0(c(paths$file_results_hdf5_element, paths$file_results_hdf5_flaeche), collapse = "|"),
                   length(simulation_names)))
   stats::setNames(lapply(simulation_names, function(s_name) {
-    
-    
-    s_id <- s_name %>% stringr::str_remove("s") %>%  as.integer()
-    
+
     paths <- kwb.utils::resolve(path_list, dir_target = s_name)
-    
-    if(all(file.exists(c(paths$path_results_hdf5_element, 
-                         paths$path_results_hdf5_flaeche)))) {
-      
-      kwb.utils::catAndRun(messageText = sprintf("(%d/%d)) Reading results files for model run %s",
-                                                 which(simulation_names == s_name),
-                                                 length(simulation_names),
-                                                 paths$dir_target_output),
-                           expr = {
-                             
-                             # "a" = read/write (legt an, falls nicht da); alternativ "r+" = read/write, aber nicht neu anlegen
-                             res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
-                             res_hdf5_flaeche <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
-                             #res_hdf5_verschaltungen <- hdf5r::H5File$new(paths$path_results_hdf5_verschaltungen, mode = "r")
-                             
-                             hdf5_results <- list(
-                               element = list(
-                                 meta = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]], numeric_only = FALSE),
-                                 rates = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
-                                 water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
-                                 #additional_evapotranspiration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zusaetzliche Variablen Evapotranspiration"]]),
-                                 #additional_infiltration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zusaetzliche Variablen Infiltration"]]),
-                                 states = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])),
-                               connected_area = list(
-                                 meta = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]], numeric_only = FALSE),
-                                 rates = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
-                                 water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
-                                 #additional_evapotranspiration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zusaetzliche Variablen Evapotranspiration"]]),
-                                 #additional_infiltration = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zusaetzliche Variablen Infiltration"]]),
-                                 states = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]]))#,
-                               #connections =  kwb.raindrop::read_hdf5_connections(res_hdf5_verschaltungen)
-                             )
-                             
-                             hdf5_results
-                           }, 
-                           dbg = debug)}}), nm = simulation_names)
-} 
+
+    has_element <- file.exists(paths$path_results_hdf5_element)
+    has_flaeche <- file.exists(paths$path_results_hdf5_flaeche)
+
+    # The element (Mulde_Rigole) H5 is the indispensable artefact; without it
+    # nothing downstream is useful. A missing connected_area (Dach) file is
+    # tolerated and yields connected_area = NULL (for example when
+    # //Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv
+    # is 0 the engine skips writing Dach.h5).
+    if (!has_element) {
+      if (isTRUE(debug)) {
+        message(sprintf(
+          "Missing element H5 for %s ('%s') -> returning NULL",
+          s_name, paths$path_results_hdf5_element
+        ))
+      }
+      return(NULL)
+    }
+
+    kwb.utils::catAndRun(
+      messageText = sprintf("(%d/%d)) Reading results files for model run %s",
+                            which(simulation_names == s_name),
+                            length(simulation_names),
+                            paths$dir_target_output),
+      expr = {
+        res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
+        on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
+
+        element <- list(
+          meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
+                                                          numeric_only = FALSE),
+          rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
+          water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
+          states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
+        )
+
+        connected_area <- if (has_flaeche) {
+          res_hdf5_flaeche <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
+          on.exit(try(res_hdf5_flaeche$close_all(), silent = TRUE), add = TRUE)
+          list(
+            meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
+                                                            numeric_only = FALSE),
+            rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
+            water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
+            states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
+          )
+        } else {
+          if (isTRUE(debug)) {
+            message(sprintf(
+              "No connected_area H5 for %s ('%s') -> connected_area = NULL",
+              s_name, paths$path_results_hdf5_flaeche
+            ))
+          }
+          NULL
+        }
+
+        list(element = element, connected_area = connected_area)
+      },
+      dbg = debug
+    )
+  }), nm = simulation_names)
+}
 

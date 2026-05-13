@@ -82,7 +82,7 @@ run-specific paths (must yield <code>path_results_hdf5_element</code>,
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A named list with one entry per <code>simulation_names</code>. Each entry is
-either <code>NULL</code> (missing files) or a nested list:</p><dl><dt>element</dt>
+either <code>NULL</code> (element HDF5 missing) or a nested list:</p><dl><dt>element</dt>
 <dd><dl><dt>meta</dt>
 <dd><p>Data.frame/list of scalar metadata (from <code>Metainfo</code>).</p></dd>
 
@@ -99,7 +99,8 @@ either <code>NULL</code> (missing files) or a nested list:</p><dl><dt>element</d
 </dl></dd>
 
 <dt>connected_area</dt>
-<dd><p>Same structure as <code>element</code>, read from the area HDF5.</p></dd>
+<dd><p>Same structure as <code>element</code>, read from the
+connected-area HDF5, or <code>NULL</code> if that file is missing for the run.</p></dd>
 
 
 </dl></div>
@@ -109,11 +110,13 @@ either <code>NULL</code> (missing files) or a nested list:</p><dl><dt>element</d
 directory via <code>kwb.utils::resolve(path_list, dir_target = s_name)</code> and
 then loads standard result groups from two HDF5 files:</p><ul><li><p><strong>element</strong>: <code>Metainfo</code>, <code>Raten</code>, <code>Wasserbilanz</code>, <code>Zustandsvariablen</code></p></li>
 <li><p><strong>connected_area</strong>: <code>Metainfo</code>, <code>Raten</code>, <code>Wasserbilanz</code>, <code>Zustandsvariablen</code></p></li>
-</ul><p>If either of the expected HDF5 files is missing for a run, the corresponding
-list entry will be <code>NULL</code>.</p>
-<p>The function uses <code>hdf5r::H5File$new(..., mode = "r")</code> to open the files.
-The HDF5 handles are not explicitly closed; depending on your workflow, you
-may want to close them (see <code>hdf5r::H5File$close_all()</code> / <code>$close()</code>).</p>
+</ul><p>If the <strong>element</strong> HDF5 is missing the entry is <code>NULL</code>; if only the
+<strong>connected-area</strong> HDF5 is missing, the entry is a list with the
+<code>element</code> side populated and <code>connected_area = NULL</code>.
+HDF5 handles are closed on exit via <code>on.exit(...$close_all())</code>.</p>
+<p>The function uses <code>hdf5r::H5File$new(..., mode = "r")</code> to open the files
+and registers an <code>on.exit(...$close_all())</code> so handles are released even
+when the iteration body errors out.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -96,6 +96,20 @@ time step (<code>time[i+1] - time[i]</code>; the last sample inherits the previo
 step). A warning is emitted if the time step is non-uniform, and
 <code>sum_overflows</code> is returned as <code>NA</code> if it cannot be determined (single
 sample).</p>
+<p>Missing components are tolerated: scenarios whose entry in <code>simulation_results</code>
+is <code>NULL</code> (or which lack any of <code>element</code>, <code>element$water_balance</code>,
+<code>connected_area</code>, <code>connected_area$water_balance</code> or <code>element$rates</code>) still
+produce a row of the output tibble. The four "headline" columns (<code>s_name</code>,
+<code>n_overflows</code>, <code>median_duration_overflows_hours</code>, <code>sum_overflows</code>) are
+always present and filled with <code>NA</code> where they cannot be computed. The
+<code>element.*_</code> and <code>connectedarea.*_</code> water-balance columns follow
+<code><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">dplyr::bind_rows()</a></code> semantics: a column is added to the output as soon as
+at least one scenario contributes it, with <code>NA</code> for the rows that don't. If
+<em>every</em> scenario in <code>simulation_results</code> lacks a side (e.g. every run
+disables roof ET, so no scenario contributes any <code>connectedarea.*_</code>), that
+side's columns are absent from the output entirely. Downstream code that
+addresses those columns by name should therefore check for their presence
+rather than assume they exist.</p>
     </div>
 
     <div class="section level2">

@@ -111,7 +111,10 @@ a temporary <code><a href="https://future.futureverse.org/reference/multisession
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Named list (see <code><a href="get_simulation_results_optim.html">get_simulation_results_optim</a></code>).</p>
+    <p>Named list (see <code><a href="get_simulation_results_optim.html">get_simulation_results_optim</a></code>). As with
+the non-parallel sibling, the entry for a run is <code>NULL</code> only when the
+element HDF5 is missing; a missing connected-area HDF5 yields a partial
+result with <code>connected_area = NULL</code>.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

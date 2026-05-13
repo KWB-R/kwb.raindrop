@@ -72,3 +72,6 @@ get_simulation_results_optim_parallel(
 
 Named list (see
 [`get_simulation_results_optim`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.md)).
+As with the non-parallel sibling, the entry for a run is `NULL` only
+when the element HDF5 is missing; a missing connected-area HDF5 yields a
+partial result with `connected_area = NULL`.

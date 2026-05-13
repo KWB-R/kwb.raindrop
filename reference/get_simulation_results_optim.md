@@ -39,7 +39,7 @@ get_simulation_results_optim(paths, path_list, simulation_names, debug = TRUE)
 ## Value
 
 A named list with one entry per `simulation_names`. Each entry is either
-`NULL` (missing files) or a nested list:
+`NULL` (element HDF5 missing) or a nested list:
 
 - element:
 
@@ -61,7 +61,8 @@ A named list with one entry per `simulation_names`. Each entry is either
 
 - connected_area:
 
-  Same structure as `element`, read from the area HDF5.
+  Same structure as `element`, read from the connected-area HDF5, or
+  `NULL` if that file is missing for the run.
 
 ## Details
 
@@ -74,13 +75,14 @@ and then loads standard result groups from two HDF5 files:
 - **connected_area**: `Metainfo`, `Raten`, `Wasserbilanz`,
   `Zustandsvariablen`
 
-If either of the expected HDF5 files is missing for a run, the
-corresponding list entry will be `NULL`.
+If the **element** HDF5 is missing the entry is `NULL`; if only the
+**connected-area** HDF5 is missing, the entry is a list with the
+`element` side populated and `connected_area = NULL`. HDF5 handles are
+closed on exit via `on.exit(...$close_all())`.
 
-The function uses `hdf5r::H5File$new(..., mode = "r")` to open the
-files. The HDF5 handles are not explicitly closed; depending on your
-workflow, you may want to close them (see `hdf5r::H5File$close_all()` /
-`$close()`).
+The function uses `hdf5r::H5File$new(..., mode = "r")` to open the files
+and registers an `on.exit(...$close_all())` so handles are released even
+when the iteration body errors out.
 
 ## See also
 

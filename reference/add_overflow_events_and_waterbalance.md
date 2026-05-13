@@ -66,6 +66,23 @@ obtained by integrating each sample over its **local** time step
 warning is emitted if the time step is non-uniform, and `sum_overflows`
 is returned as `NA` if it cannot be determined (single sample).
 
+Missing components are tolerated: scenarios whose entry in
+`simulation_results` is `NULL` (or which lack any of `element`,
+`element$water_balance`, `connected_area`,
+`connected_area$water_balance` or `element$rates`) still produce a row
+of the output tibble. The four "headline" columns (`s_name`,
+`n_overflows`, `median_duration_overflows_hours`, `sum_overflows`) are
+always present and filled with `NA` where they cannot be computed. The
+`element.*_` and `connectedarea.*_` water-balance columns follow
+[`dplyr::bind_rows()`](https://dplyr.tidyverse.org/reference/bind_rows.html)
+semantics: a column is added to the output as soon as at least one
+scenario contributes it, with `NA` for the rows that don't. If *every*
+scenario in `simulation_results` lacks a side (e.g. every run disables
+roof ET, so no scenario contributes any `connectedarea.*_`), that side's
+columns are absent from the output entirely. Downstream code that
+addresses those columns by name should therefore check for their
+presence rather than assume they exist.
+
 ## Examples
 
 ``` r

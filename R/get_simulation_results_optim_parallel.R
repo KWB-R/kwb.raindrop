@@ -81,8 +81,8 @@ get_simulation_results_optim_parallel <- function(paths,
 
     # The element (Mulde_Rigole) H5 is the indispensable artefact; without it
     # nothing downstream is useful. A missing connected_area (Dach) file is
-    # tolerated — for example when Dach/Berechnungsparameter/Evapotranspiration_aktiv
-    # is disabled the engine skips writing Dach.h5 — and that branch falls
+    # tolerated -- for example when Dach/Berechnungsparameter/Evapotranspiration_aktiv
+    # is disabled the engine skips writing Dach.h5 -- and that branch falls
     # back to connected_area = NULL.
     if (!has_element) {
       if (isTRUE(debug)) {

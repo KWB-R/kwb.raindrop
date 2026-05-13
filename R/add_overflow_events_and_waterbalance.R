@@ -172,7 +172,7 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
 
     if (is.null(res)) {
       warning(sprintf(
-        "Scenario '%s' is NULL — returning a row with NA for all metrics.",
+        "Scenario '%s' is NULL -- returning a row with NA for all metrics.",
         s_name
       ))
       return(na_row(s_name))

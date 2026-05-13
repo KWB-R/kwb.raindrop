@@ -298,13 +298,26 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
   vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
 
-  kwb.raindrop::h5_write_values(h5, vals, resize = TRUE,
-                               scalar_strategy = "error", verbose = FALSE)
-  h5$close_all()
-
-  kwb.raindrop::run_model(path_exe = paths$path_exe,
-                          path_input = paths$path_target_input,
-                          debug = debug)
+  # h5_write_values(strict = FALSE) downgrades errors (e.g. a scalar dataset
+  # given a length-2 override) to warnings so the scenario still produces an
+  # input H5 the engine can attempt to run. Combined with the per-scenario
+  # tryCatch below, this means one broken scenario no longer aborts
+  # run_scenarios for everyone else. The diagnostic goes through message()
+  # (not cat()) so it survives the future.apply worker boundary should this
+  # vignette ever switch to parallel = TRUE -- the call below passes
+  # parallel = FALSE today so the choice is forward-looking.
+  tryCatch({
+    kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, strict = FALSE,
+                                 scalar_strategy = "first", verbose = FALSE)
+    if (h5$is_valid) h5$close_all()
+    kwb.raindrop::run_model(path_exe = paths$path_exe,
+                            path_input = paths$path_target_input,
+                            debug = debug)
+  }, error = function(e) {
+    if (h5$is_valid) try(h5$close_all(), silent = TRUE)
+    message(sprintf("[%s] run failed: %s",
+                    param_grid_tmp$scenario_name, conditionMessage(e)))
+  })
   invisible(NULL)
 }
 
@@ -447,9 +460,15 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
 # (Dach.h5) yields a partial result with connected_area = NULL. Both cases
 # are absorbed by add_overflow_events_and_waterbalance(), which emits a
 # warning and fills the corresponding columns with NA.
+# canonical_variables provides a fallback column template so the rendered
+# datatable still exposes element.WB_*_ and connectedarea.WB_*_ columns
+# even when every scenario fails (e.g. the engine crashes for all 12
+# scenarios with a given override combination, leaving simulation_results
+# as a list of NULLs).
 simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
   simulation_results = simulation_results,
-  event_separation_hours = 4
+  event_separation_hours = 4,
+  canonical_variables = kwb.raindrop::default_canonical_wb_variables()
 )
 
 results <- param_grid |>

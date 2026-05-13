@@ -441,22 +441,43 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
 # investigation) some scenarios produce an empty/NULL component that
 # add_overflow_events_and_waterbalance() can't pivot_wider. Run it per
 # scenario in a tryCatch so the failing rows don't kill the rest of the
-# table — emit a message naming the offenders.
-wb_per_scenario <- lapply(seq_along(simulation_results), function(i) {
+# table — collect the failures and print them as part of the chunk output
+# (cat goes through knitr and shows up in the rendered vignette plus the
+# CI log; message() would be swallowed by the vignette renderer).
+analyse_one <- function(i) {
   sname <- names(simulation_results)[i]
   if (is.null(sname) || !nzchar(sname)) sname <- param_grid$scenario_name[i]
   tryCatch(
-    kwb.raindrop::add_overflow_events_and_waterbalance(
-      simulation_results = simulation_results[i],
-      event_separation_hours = 4
-    ),
-    error = function(e) {
-      message("[", sname, "] water-balance failed: ", conditionMessage(e))
-      NULL
-    }
+    list(scenario = sname, ok = TRUE,
+         data = kwb.raindrop::add_overflow_events_and_waterbalance(
+           simulation_results = simulation_results[i],
+           event_separation_hours = 4
+         ),
+         msg = NA_character_),
+    error = function(e) list(scenario = sname, ok = FALSE,
+                              data = NULL,
+                              msg = conditionMessage(e))
   )
-})
-simulation_results_optimisation <- dplyr::bind_rows(wb_per_scenario)
+}
+
+analyses <- lapply(seq_along(simulation_results), analyse_one)
+ok_mask  <- vapply(analyses, `[[`, logical(1L), "ok")
+
+cat(sprintf("water-balance summary: %d / %d scenarios succeeded\n",
+            sum(ok_mask), length(analyses)))
+if (any(!ok_mask)) {
+  for (a in analyses[!ok_mask]) {
+    cat(sprintf("  [%s] %s\n", a$scenario, a$msg))
+  }
+}
+
+simulation_results_optimisation <- if (any(ok_mask)) {
+  dplyr::bind_rows(lapply(analyses[ok_mask], `[[`, "data"))
+} else {
+  # All scenarios failed: emit a stub tibble that carries the join key so the
+  # downstream left_join still works and the parameter table renders.
+  tibble::tibble(s_name = character(0))
+}
 
 results <- param_grid |>
   dplyr::left_join(simulation_results_optimisation, by = c("scenario_name" = "s_name")) |>

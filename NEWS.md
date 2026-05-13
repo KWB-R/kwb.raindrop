@@ -29,14 +29,19 @@
   `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
   Daniel's reference geometry (12 scenarios total). After Daniel's
-  XLSX review of the SWIMM-UrbanEva comparison run, the vignette now also
-  unconditionally corrects three further `base.h5` defaults on every
-  row: `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
-  (impervious roof, no vegetation),
+  XLSX review of the SWIMM-UrbanEva comparison run, the vignette now
+  also unconditionally corrects two further `base.h5` defaults on
+  every row:
   `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond = 0`
   (no open-water ET while the grass is submerged), and
   `Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
-  (Hörnschemeyer grass value, was `8.5`). After the model loop the
+  (Hörnschemeyer grass value, was `8.5`).
+  Daniel's third request, `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`,
+  is deferred: with the flag off the engine skips writing the
+  connected-area Dach.h5 and `get_simulation_results_optim_parallel()`
+  returns `NULL` for every scenario, which the downstream water-balance
+  cannot aggregate. To be re-enabled once the package can parse a
+  scenario from `Mulde_Rigole.h5` alone. After the model loop the
   per-scenario `*.h5` inputs are dumped to a single XLSX
   (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
   plus a `base` sheet for the un-modified template, a

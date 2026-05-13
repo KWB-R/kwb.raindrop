@@ -44,15 +44,16 @@
 #'   (in hours). Defaults to `4`.
 #' @param canonical_variables Optional `character()` vector of water-balance
 #'   variable names (without the `element.` / `connectedarea.` prefix and
-#'   without the trailing `_`), e.g.
-#'   `c("WB_Regen", "WB_Evapotranspiration", "WB_InfiltrationNetto",
-#'   "WB_Oberflaechenablauf_Ueberlauf", "WB_Oberflaechenablauf_Verschaltungen")`.
-#'   When **every** scenario in `simulation_results` is `NULL` (or otherwise
-#'   provides no water-balance data), the function would normally return only
-#'   the four headline columns. Pass `canonical_variables` to attach
-#'   `element.<var>_` and `connectedarea.<var>_` `NA`-filled stub columns to
-#'   such rows so the rendered datatable still exposes the expected column
-#'   structure. Defaults to `NULL` (no canonical fallback).
+#'   without the trailing `_`), e.g. `default_canonical_wb_variables()`.
+#'   This is a **per-scenario** fallback: for any scenario whose
+#'   `wb_element` and `wb_connectedarea` are both empty after the regular
+#'   pivot / mirror logic (including scenarios that are entirely `NULL`),
+#'   the function attaches `element.<var>_` and `connectedarea.<var>_`
+#'   `NA`-filled stub columns built from this list. This guarantees the
+#'   output tibble keeps the expected water-balance column structure even
+#'   when no scenario contributes real data — `dplyr::bind_rows()` would
+#'   otherwise drop columns that no row supplies. Defaults to `NULL` (no
+#'   canonical fallback).
 #'
 #' @return A tibble with one row per scenario containing:
 #'   - `s_name`
@@ -82,6 +83,9 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
                                                  event_separation_hours = 4,
                                                  canonical_variables = NULL) {
 
+  # Build the canonical NA stub templates once -- canonical_variables is a
+  # closure-captured constant, so the two tibbles are reused by every
+  # fallback branch below instead of rebuilt per scenario.
   canonical_stub <- function(prefix) {
     if (is.null(canonical_variables) || length(canonical_variables) == 0L) {
       return(tibble::tibble())
@@ -92,6 +96,16 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
       stub_names
     ))
   }
+  element_stub_template       <- canonical_stub("element")
+  connectedarea_stub_template <- canonical_stub("connectedarea")
+
+  # Diagnostic accumulators: scenario names that hit each fallback path.
+  # Aggregated into one summary message at the end of the function, instead
+  # of one near-identical line per affected scenario.
+  null_scenarios            <- character()
+  mirrored_from_element     <- character()
+  mirrored_from_connected   <- character()
+  fallback_canonical        <- character()
 
   na_row <- function(s_name) {
     tibble::tibble(
@@ -100,8 +114,8 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
       median_duration_overflows_hours = NA_real_,
       sum_overflows = NA_real_
     ) %>%
-      dplyr::bind_cols(canonical_stub("element")) %>%
-      dplyr::bind_cols(canonical_stub("connectedarea"))
+      dplyr::bind_cols(element_stub_template) %>%
+      dplyr::bind_cols(connectedarea_stub_template)
   }
 
   has_rows <- function(x) !is.null(x) && nrow(x) > 0L
@@ -201,6 +215,10 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
   # scenario contributed, and the final table loses the entire side --
   # which is what happens to connectedarea.*_ when every scenario in a
   # batch disables roof ET (the engine then skips writing Dach.h5).
+  #
+  # Naming contract: this depends on wb_percent() emitting column names
+  # of shape `<prefix>.<variable>_` (sprintf("%s.%s_", prefix, variable)).
+  # If wb_percent's naming scheme changes, the regex below has to follow.
   # Names are sliced positionally with the known reference prefix and
   # trailing "_" so columns that don't match the wb_percent contract are
   # dropped rather than turned into a misnamed stub.
@@ -223,10 +241,7 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     res <- simulation_results[[s_name]]
 
     if (is.null(res)) {
-      warning(sprintf(
-        "Scenario '%s' is NULL -- returning a row with NA for all metrics.",
-        s_name
-      ))
+      null_scenarios <<- c(null_scenarios, s_name)
       return(na_row(s_name))
     }
 
@@ -242,10 +257,7 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
                                       reference_prefix = "element",
                                       target_prefix    = "connectedarea")
       if (ncol(wb_connectedarea) > 0L) {
-        message(sprintf(
-          "[%s] connected_area absent -- mirrored %d NA stub column(s) from element",
-          s_name, ncol(wb_connectedarea)
-        ))
+        mirrored_from_element <<- c(mirrored_from_element, s_name)
       }
     }
     if (ncol(wb_element) == 0L && ncol(wb_connectedarea) > 0L) {
@@ -253,24 +265,19 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
                                 reference_prefix = "connectedarea",
                                 target_prefix    = "element")
       if (ncol(wb_element) > 0L) {
-        message(sprintf(
-          "[%s] element absent -- mirrored %d NA stub column(s) from connected_area",
-          s_name, ncol(wb_element)
-        ))
+        mirrored_from_connected <<- c(mirrored_from_connected, s_name)
       }
     }
-    # If both sides are empty for this scenario fall back to the caller's
-    # canonical variable list so the column structure still appears in the
-    # rendered datatable (otherwise dplyr::bind_rows downstream drops every
-    # wb column when no scenario in the batch contributes any).
+    # If both sides are still empty for this scenario, fall back to the
+    # caller's canonical variable list so the column structure still
+    # appears in the rendered datatable (otherwise dplyr::bind_rows
+    # downstream drops every wb column when no scenario in the batch
+    # contributes any).
     if (ncol(wb_element) == 0L && ncol(wb_connectedarea) == 0L) {
-      wb_element       <- canonical_stub("element")
-      wb_connectedarea <- canonical_stub("connectedarea")
+      wb_element       <- element_stub_template
+      wb_connectedarea <- connectedarea_stub_template
       if (ncol(wb_element) > 0L || ncol(wb_connectedarea) > 0L) {
-        message(sprintf(
-          "[%s] both wb sides absent -- using %d canonical NA stub column(s)",
-          s_name, ncol(wb_element) + ncol(wb_connectedarea)
-        ))
+        fallback_canonical <<- c(fallback_canonical, s_name)
       }
     }
 
@@ -286,5 +293,36 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
       dplyr::bind_cols(wb_connectedarea)
   }
 
-  dplyr::bind_rows(lapply(names(simulation_results), compute_one))
+  out <- dplyr::bind_rows(lapply(names(simulation_results), compute_one))
+
+  # One summary line per fallback path, instead of one line per scenario.
+  if (length(null_scenarios) > 0L) {
+    warning(sprintf(
+      "Scenario(s) NULL -- row(s) with NA for all metrics: %s",
+      paste(null_scenarios, collapse = ", ")
+    ), call. = FALSE)
+  }
+  if (length(mirrored_from_element) > 0L) {
+    message(sprintf(
+      "connected_area absent for %d scenario(s); mirrored NA stub columns from element: %s",
+      length(mirrored_from_element),
+      paste(mirrored_from_element, collapse = ", ")
+    ))
+  }
+  if (length(mirrored_from_connected) > 0L) {
+    message(sprintf(
+      "element absent for %d scenario(s); mirrored NA stub columns from connected_area: %s",
+      length(mirrored_from_connected),
+      paste(mirrored_from_connected, collapse = ", ")
+    ))
+  }
+  if (length(fallback_canonical) > 0L) {
+    message(sprintf(
+      "Both wb sides absent for %d scenario(s); using canonical NA stub columns: %s",
+      length(fallback_canonical),
+      paste(fallback_canonical, collapse = ", ")
+    ))
+  }
+
+  out
 }

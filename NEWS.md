@@ -126,9 +126,22 @@
   least one scenario contributes), which left the results table
   with no `connectedarea.*_` columns at all when every scenario
   disabled roof ET. The mirror keeps the column structure visible
-  in the rendered datatable and emits a one-line `message()` per
-  affected scenario as a breadcrumb that the user can match to
-  the all-NA columns.
+  in the rendered datatable and the function emits one summary
+  `message()` per fallback path (instead of one per scenario)
+  naming all affected scenarios, so the user can match the
+  diagnostic to the all-NA rows.
+
+* New exported `default_canonical_wb_variables()` returns the
+  canonical set of water-balance variable names the Tandler engine
+  writes (`WB_Regen`, `WB_Evapotranspiration`,
+  `WB_InfiltrationNetto`, `WB_Oberflaechenablauf_Ueberlauf`,
+  `WB_Oberflaechenablauf_Verschaltungen`). All five vignettes now
+  pass it as `canonical_variables = default_canonical_wb_variables()`
+  to `add_overflow_events_and_waterbalance()`, so the rendered
+  datatables keep the expected `element.WB_*_` and
+  `connectedarea.WB_*_` columns even when every scenario in a
+  batch is `NULL` (e.g. the engine returns Status 1 for every
+  input and writes no result HDF5).
 
 * `example_wien_minimal` vignette: the per-scenario `run_one()`
   helper now wraps the H5 input write + engine call in `tryCatch`

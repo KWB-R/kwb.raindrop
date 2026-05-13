@@ -11,8 +11,10 @@
 #'   \item \strong{connected_area}: \code{Metainfo}, \code{Raten}, \code{Wasserbilanz}, \code{Zustandsvariablen}
 #' }
 #'
-#' If either of the expected HDF5 files is missing for a run, the corresponding
-#' list entry will be \code{NULL}.
+#' If the \strong{element} HDF5 is missing the entry is \code{NULL}; if only the
+#' \strong{connected-area} HDF5 is missing, the entry is a list with the
+#' \code{element} side populated and \code{connected_area = NULL}.
+#' HDF5 handles are closed on exit via \code{on.exit(...$close_all())}.
 #'
 #' @param paths A list of path definitions. Used for messaging and expected to
 #'   contain \code{file_results_hdf5_element} and \code{file_results_hdf5_flaeche}
@@ -25,7 +27,7 @@
 #'   (e.g. \code{c("s00001", "s00002")}).
 #' @param debug print debug messages (default: TRUE)
 #' @return A named list with one entry per \code{simulation_names}. Each entry is
-#'   either \code{NULL} (missing files) or a nested list:
+#'   either \code{NULL} (element HDF5 missing) or a nested list:
 #' \describe{
 #'   \item{element}{\describe{
 #'     \item{meta}{Data.frame/list of scalar metadata (from \code{Metainfo}).}
@@ -33,13 +35,14 @@
 #'     \item{water_balance}{Scalars table (from \code{Wasserbilanz}).}
 #'     \item{states}{Time series table (from \code{Zustandsvariablen}).}
 #'   }}
-#'   \item{connected_area}{Same structure as \code{element}, read from the area HDF5.}
+#'   \item{connected_area}{Same structure as \code{element}, read from the
+#'     connected-area HDF5, or \code{NULL} if that file is missing for the run.}
 #' }
 #'
 #' @details
-#' The function uses \code{hdf5r::H5File$new(..., mode = "r")} to open the files.
-#' The HDF5 handles are not explicitly closed; depending on your workflow, you
-#' may want to close them (see \code{hdf5r::H5File$close_all()} / \code{$close()}).
+#' The function uses \code{hdf5r::H5File$new(..., mode = "r")} to open the files
+#' and registers an \code{on.exit(...$close_all())} so handles are released even
+#' when the iteration body errors out.
 #'
 #' @seealso
 #' \code{\link[kwb.utils]{resolve}},
@@ -79,15 +82,32 @@ get_simulation_results_optim <- function(paths,
       return(NULL)
     }
 
+    # Open H5 handles outside catAndRun so on.exit binds to *this* lambda's
+    # frame, not catAndRun's internal frame. Handles are guaranteed to close
+    # whichever way the iteration unwinds.
+    res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
+    on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
+
+    res_hdf5_flaeche <- if (has_flaeche) {
+      h <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
+      on.exit(try(h$close_all(), silent = TRUE), add = TRUE)
+      h
+    } else {
+      if (isTRUE(debug)) {
+        message(sprintf(
+          "No connected_area H5 for %s ('%s') -> connected_area = NULL",
+          s_name, paths$path_results_hdf5_flaeche
+        ))
+      }
+      NULL
+    }
+
     kwb.utils::catAndRun(
       messageText = sprintf("(%d/%d)) Reading results files for model run %s",
                             which(simulation_names == s_name),
                             length(simulation_names),
                             paths$dir_target_output),
       expr = {
-        res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
-        on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
-
         element <- list(
           meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
                                                           numeric_only = FALSE),
@@ -96,9 +116,7 @@ get_simulation_results_optim <- function(paths,
           states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
         )
 
-        connected_area <- if (has_flaeche) {
-          res_hdf5_flaeche <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
-          on.exit(try(res_hdf5_flaeche$close_all(), silent = TRUE), add = TRUE)
+        connected_area <- if (!is.null(res_hdf5_flaeche)) {
           list(
             meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
                                                             numeric_only = FALSE),
@@ -107,12 +125,6 @@ get_simulation_results_optim <- function(paths,
             states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
           )
         } else {
-          if (isTRUE(debug)) {
-            message(sprintf(
-              "No connected_area H5 for %s ('%s') -> connected_area = NULL",
-              s_name, paths$path_results_hdf5_flaeche
-            ))
-          }
           NULL
         }
 

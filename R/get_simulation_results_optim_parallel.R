@@ -13,7 +13,10 @@
 #' @param progress_handler A progressr handler function (default:
 #'   \code{progressr::handler_txtprogressbar}). If NULL, no handler is set.
 #'
-#' @return Named list (see \code{\link{get_simulation_results_optim}}).
+#' @return Named list (see \code{\link{get_simulation_results_optim}}). As with
+#'   the non-parallel sibling, the entry for a run is \code{NULL} only when the
+#'   element HDF5 is missing; a missing connected-area HDF5 yields a partial
+#'   result with \code{connected_area = NULL}.
 #'
 #' @export
 #' @importFrom stats setNames
@@ -95,22 +98,22 @@ get_simulation_results_optim_parallel <- function(paths,
     on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
 
     element <- list(
-      meta          = read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
+      meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
                                         numeric_only = FALSE),
-      rates         = read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
-      water_balance = read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
-      states        = read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
+      rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
+      water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
+      states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
     )
 
     connected_area <- if (has_flaeche) {
       res_hdf5_flaeche <- hdf5r::H5File$new(run_paths$path_results_hdf5_flaeche, mode = "r")
       on.exit(try(res_hdf5_flaeche$close_all(), silent = TRUE), add = TRUE)
       list(
-        meta          = read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
+        meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
                                           numeric_only = FALSE),
-        rates         = read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
-        water_balance = read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
-        states        = read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
+        rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
+        water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
+        states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
       )
     } else {
       if (isTRUE(debug)) {

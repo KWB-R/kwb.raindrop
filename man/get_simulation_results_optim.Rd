@@ -23,7 +23,7 @@ run-specific paths (must yield \code{path_results_hdf5_element},
 }
 \value{
 A named list with one entry per \code{simulation_names}. Each entry is
-either \code{NULL} (missing files) or a nested list:
+either \code{NULL} (element HDF5 missing) or a nested list:
 \describe{
 \item{element}{\describe{
 \item{meta}{Data.frame/list of scalar metadata (from \code{Metainfo}).}
@@ -31,7 +31,8 @@ either \code{NULL} (missing files) or a nested list:
 \item{water_balance}{Scalars table (from \code{Wasserbilanz}).}
 \item{states}{Time series table (from \code{Zustandsvariablen}).}
 }}
-\item{connected_area}{Same structure as \code{element}, read from the area HDF5.}
+\item{connected_area}{Same structure as \code{element}, read from the
+connected-area HDF5, or \code{NULL} if that file is missing for the run.}
 }
 }
 \description{
@@ -47,12 +48,14 @@ then loads standard result groups from two HDF5 files:
 \item \strong{connected_area}: \code{Metainfo}, \code{Raten}, \code{Wasserbilanz}, \code{Zustandsvariablen}
 }
 
-If either of the expected HDF5 files is missing for a run, the corresponding
-list entry will be \code{NULL}.
+If the \strong{element} HDF5 is missing the entry is \code{NULL}; if only the
+\strong{connected-area} HDF5 is missing, the entry is a list with the
+\code{element} side populated and \code{connected_area = NULL}.
+HDF5 handles are closed on exit via \code{on.exit(...$close_all())}.
 
-The function uses \code{hdf5r::H5File$new(..., mode = "r")} to open the files.
-The HDF5 handles are not explicitly closed; depending on your workflow, you
-may want to close them (see \code{hdf5r::H5File$close_all()} / \code{$close()}).
+The function uses \code{hdf5r::H5File$new(..., mode = "r")} to open the files
+and registers an \code{on.exit(...$close_all())} so handles are released even
+when the iteration body errors out.
 }
 \seealso{
 \code{\link[kwb.utils]{resolve}},

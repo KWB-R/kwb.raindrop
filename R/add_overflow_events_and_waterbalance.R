@@ -20,12 +20,17 @@
 #' Missing components are tolerated: scenarios whose entry in `simulation_results`
 #' is `NULL` (or which lack any of `element`, `element$water_balance`,
 #' `connected_area`, `connected_area$water_balance` or `element$rates`) still
-#' produce a row of the output tibble — the corresponding columns are simply
-#' filled with `NA`. This means, for example, a run with
-#' `//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
-#' (which makes the engine skip writing the connected-area H5) is reported
-#' with `element.*_` columns populated and `connectedarea.*_` columns left out
-#' / aligned to `NA` by `dplyr::bind_rows()`.
+#' produce a row of the output tibble. The four "headline" columns (`s_name`,
+#' `n_overflows`, `median_duration_overflows_hours`, `sum_overflows`) are
+#' always present and filled with `NA` where they cannot be computed. The
+#' `element.*_` and `connectedarea.*_` water-balance columns follow
+#' `dplyr::bind_rows()` semantics: a column is added to the output as soon as
+#' at least one scenario contributes it, with `NA` for the rows that don't. If
+#' *every* scenario in `simulation_results` lacks a side (e.g. every run
+#' disables roof ET, so no scenario contributes any `connectedarea.*_`), that
+#' side's columns are absent from the output entirely. Downstream code that
+#' addresses those columns by name should therefore check for their presence
+#' rather than assume they exist.
 #'
 #' @param simulation_results Named list of scenario results. Each entry is expected
 #'   to contain:
@@ -57,6 +62,7 @@
 #' @importFrom tibble tibble
 #' @importFrom magrittr %>%
 #' @importFrom kwb.event hsEvents
+#' @importFrom rlang .data
 #' @export
 add_overflow_events_and_waterbalance <- function(simulation_results,
                                                  event_separation_hours = 4) {
@@ -74,16 +80,15 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
 
   wb_percent <- function(wb_raw, prefix, denom_fn) {
     if (!has_rows(wb_raw)) return(tibble::tibble())
-    denom <- wb_raw %>%
-      tidyr::pivot_wider(names_from = variable, values_from = value) %>%
-      dplyr::transmute(denom = denom_fn(.data)) %>%
-      dplyr::pull(denom)
+    wb_wide <- wb_raw %>%
+      tidyr::pivot_wider(names_from = "variable", values_from = "value")
+    denom <- denom_fn(wb_wide)
     wb_raw %>%
       dplyr::mutate(
-        variable = sprintf("%s.%s_", prefix, variable),
-        value_percent = round(100 * value / denom, 2)
+        variable      = sprintf("%s.%s_", prefix, .data$variable),
+        value_percent = round(100 * .data$value / denom, 2)
       ) %>%
-      dplyr::select(-value) %>%
+      dplyr::select(-"value") %>%
       tidyr::pivot_wider(names_from = "variable",
                          values_from = "value_percent")
   }
@@ -105,8 +110,8 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     }
 
     rates_all <- rates %>%
-      dplyr::filter(variable == "Oberflaechenablauf_Ueberlauf") %>%
-      dplyr::arrange(time)
+      dplyr::filter(.data$variable == "Oberflaechenablauf_Ueberlauf") %>%
+      dplyr::arrange(.data$time)
     n_rates <- nrow(rates_all)
 
     if (n_rates >= 2) {
@@ -132,9 +137,9 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     }
 
     xx <- rates_all %>%
-      dplyr::filter(value > 0) %>%
-      dplyr::mutate(datetime = lubridate::as_datetime(time * 3600)) %>%
-      dplyr::relocate(datetime, .before = time)
+      dplyr::filter(.data$value > 0) %>%
+      dplyr::mutate(datetime = lubridate::as_datetime(.data$time * 3600)) %>%
+      dplyr::relocate("datetime", .before = "time")
 
     if (nrow(xx) == 0L) {
       return(list(n = 0L, med_dur = NA_real_, sum = 0))
@@ -174,11 +179,11 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     }
 
     wb_element       <- wb_percent(res$element$water_balance,
-                                   prefix    = "element",
-                                   denom_fn  = denom_element)
+                                   prefix   = "element",
+                                   denom_fn = denom_element)
     wb_connectedarea <- wb_percent(res$connected_area$water_balance,
-                                   prefix    = "connectedarea",
-                                   denom_fn  = denom_connectedarea)
+                                   prefix   = "connectedarea",
+                                   denom_fn = denom_connectedarea)
 
     ov <- compute_overflows(res$element$rates, s_name)
 

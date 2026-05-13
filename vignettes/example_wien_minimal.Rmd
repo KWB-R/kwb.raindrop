@@ -298,13 +298,23 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
   vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
 
-  kwb.raindrop::h5_write_values(h5, vals, resize = TRUE,
-                               scalar_strategy = "error", verbose = FALSE)
-  h5$close_all()
-
-  kwb.raindrop::run_model(path_exe = paths$path_exe,
-                          path_input = paths$path_target_input,
-                          debug = debug)
+  # h5_write_values uses scalar_strategy = "warn" (instead of "error") so a
+  # mis-typed override on a scalar dataset emits a warning and the scenario
+  # still produces an input H5 the engine can attempt to run. Combined with
+  # the per-scenario tryCatch below, this means one broken scenario no longer
+  # aborts run_scenarios for everyone else.
+  tryCatch({
+    kwb.raindrop::h5_write_values(h5, vals, resize = TRUE,
+                                 scalar_strategy = "warn", verbose = FALSE)
+    h5$close_all()
+    kwb.raindrop::run_model(path_exe = paths$path_exe,
+                            path_input = paths$path_target_input,
+                            debug = debug)
+  }, error = function(e) {
+    try(h5$close_all(), silent = TRUE)
+    cat(sprintf("  [%s] run failed: %s\n",
+                param_grid_tmp$scenario_name, conditionMessage(e)))
+  })
   invisible(NULL)
 }
 

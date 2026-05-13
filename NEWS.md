@@ -28,8 +28,8 @@
   an ET-diagnostics grid that sweeps three engine switches —
   `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
-  Daniel's reference geometry (12 scenarios total). After the XLSX
-  review of the SWIMM-UrbanEva comparison run, the vignette now also
+  Daniel's reference geometry (12 scenarios total). After Daniel's
+  XLSX review of the SWIMM-UrbanEva comparison run, the vignette now also
   unconditionally corrects three further `base.h5` defaults on every
   row: `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
   (impervious roof, no vegetation),

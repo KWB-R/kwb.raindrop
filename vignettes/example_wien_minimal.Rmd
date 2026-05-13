@@ -27,8 +27,8 @@ design (`mulde_area = 75`, `mulde_height = 200`, `filter_height = 300`,
 `storage_height = 500`, `filter_kf = 36`, `bottom_kf = 12`).
 
 Three corrections to the `base.h5` defaults are also applied
-unconditionally on every row, after Michael's review of the XLSX
-diff against the SWIMM-UrbanEva run:
+unconditionally on every row, after Daniel's review of the XLSX diff
+against the SWIMM-UrbanEva run:
 
 * `Dach/Berechnungsparameter/Evapotranspiration_aktiv` is forced to
   `0` — the 1000 m² roof is impervious and has no vegetation, so the

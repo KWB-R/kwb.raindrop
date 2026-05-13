@@ -57,15 +57,18 @@ is \code{NULL} (or which lack any of \code{element}, \code{element$water_balance
 \code{connected_area}, \code{connected_area$water_balance} or \code{element$rates}) still
 produce a row of the output tibble. The four "headline" columns (\code{s_name},
 \code{n_overflows}, \code{median_duration_overflows_hours}, \code{sum_overflows}) are
-always present and filled with \code{NA} where they cannot be computed. The
-\verb{element.*_} and \verb{connectedarea.*_} water-balance columns follow
-\code{dplyr::bind_rows()} semantics: a column is added to the output as soon as
-at least one scenario contributes it, with \code{NA} for the rows that don't. If
-\emph{every} scenario in \code{simulation_results} lacks a side (e.g. every run
-disables roof ET, so no scenario contributes any \verb{connectedarea.*_}), that
-side's columns are absent from the output entirely. Downstream code that
-addresses those columns by name should therefore check for their presence
-rather than assume they exist.
+always present and filled with \code{NA} where they cannot be computed.
+
+For the \verb{element.*_} and \verb{connectedarea.*_} water-balance columns: if one
+side is missing in a given scenario but the other side has data, a stub of
+\code{NA}-filled columns is fabricated for the missing side by mirroring the
+populated side's variable names. This preserves the table's column
+structure when, for example, every run disables roof ET (so the engine
+skips writing Dach.h5 and every scenario has \code{connected_area = NULL}):
+the \verb{connectedarea.*_} columns are kept and filled with \code{NA}, instead of
+being dropped from the output entirely. The mirror is a best-effort hint
+for the user, not a guarantee that the names match what a populated
+\code{connected_area} would have produced.
 }
 \examples{
 \dontrun{

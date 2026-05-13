@@ -117,6 +117,16 @@
   `*$water_balance`, `element$rates`). Affected scenarios still
   produce a row of the output tibble with the available metrics
   computed and the missing columns left as `NA`.
+
+* `add_overflow_events_and_waterbalance()` now fabricates an
+  `NA`-filled column stub when one side's water balance is missing
+  while the other side has data, by mirroring the populated side's
+  variable names. Previously the missing side's columns were
+  dropped entirely (`dplyr::bind_rows()` only adds columns that at
+  least one scenario contributes), which left the results table
+  with no `connectedarea.*_` columns at all when every scenario
+  disabled roof ET. The mirror keeps the column structure visible
+  in the rendered datatable.
 * `R/plot_hpond_vs_ref.R`: replace literal `▲` glyph in the caption
   with `▲` so the source file is ASCII-only (R-CMD-check WARNING).
 * `R/read_hdf5_timeseries.R`: wrap array-indexing notation

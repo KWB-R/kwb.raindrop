@@ -22,15 +22,18 @@
 #' `connected_area`, `connected_area$water_balance` or `element$rates`) still
 #' produce a row of the output tibble. The four "headline" columns (`s_name`,
 #' `n_overflows`, `median_duration_overflows_hours`, `sum_overflows`) are
-#' always present and filled with `NA` where they cannot be computed. The
-#' `element.*_` and `connectedarea.*_` water-balance columns follow
-#' `dplyr::bind_rows()` semantics: a column is added to the output as soon as
-#' at least one scenario contributes it, with `NA` for the rows that don't. If
-#' *every* scenario in `simulation_results` lacks a side (e.g. every run
-#' disables roof ET, so no scenario contributes any `connectedarea.*_`), that
-#' side's columns are absent from the output entirely. Downstream code that
-#' addresses those columns by name should therefore check for their presence
-#' rather than assume they exist.
+#' always present and filled with `NA` where they cannot be computed.
+#'
+#' For the `element.*_` and `connectedarea.*_` water-balance columns: if one
+#' side is missing in a given scenario but the other side has data, a stub of
+#' `NA`-filled columns is fabricated for the missing side by mirroring the
+#' populated side's variable names. This preserves the table's column
+#' structure when, for example, every run disables roof ET (so the engine
+#' skips writing Dach.h5 and every scenario has `connected_area = NULL`):
+#' the `connectedarea.*_` columns are kept and filled with `NA`, instead of
+#' being dropped from the output entirely. The mirror is a best-effort hint
+#' for the user, not a guarantee that the names match what a populated
+#' `connected_area` would have produced.
 #'
 #' @param simulation_results Named list of scenario results. Each entry is expected
 #'   to contain:
@@ -167,6 +170,22 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     )
   }
 
+  # If one side's water balance is missing but the other's is populated,
+  # fabricate NA stub columns mirroring the populated side's variable
+  # names. Without this, dplyr::bind_rows() drops columns that no
+  # scenario contributed, and the final table loses the entire side --
+  # which is what happens to connectedarea.*_ when every scenario in a
+  # batch disables roof ET (the engine then skips writing Dach.h5).
+  mirror_stub <- function(reference_wb, prefix) {
+    if (ncol(reference_wb) == 0L) return(tibble::tibble())
+    vars <- sub("^[^.]+\\.(.*)_$", "\\1", names(reference_wb))
+    stub_names <- sprintf("%s.%s_", prefix, vars)
+    tibble::as_tibble(stats::setNames(
+      rep(list(NA_real_), length(stub_names)),
+      stub_names
+    ))
+  }
+
   compute_one <- function(s_name) {
     res <- simulation_results[[s_name]]
 
@@ -184,6 +203,13 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
     wb_connectedarea <- wb_percent(res$connected_area$water_balance,
                                    prefix   = "connectedarea",
                                    denom_fn = denom_connectedarea)
+
+    if (ncol(wb_connectedarea) == 0L && ncol(wb_element) > 0L) {
+      wb_connectedarea <- mirror_stub(wb_element, prefix = "connectedarea")
+    }
+    if (ncol(wb_element) == 0L && ncol(wb_connectedarea) > 0L) {
+      wb_element <- mirror_stub(wb_connectedarea, prefix = "element")
+    }
 
     ov <- compute_overflows(res$element$rates, s_name)
 

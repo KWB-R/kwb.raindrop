@@ -6,7 +6,8 @@
 \usage{
 add_overflow_events_and_waterbalance(
   simulation_results,
-  event_separation_hours = 4
+  event_separation_hours = 4,
+  canonical_variables = NULL
 )
 }
 \arguments{
@@ -20,6 +21,17 @@ to contain:
 
 \item{event_separation_hours}{Numeric. Minimum time between two overflow events
 (in hours). Defaults to \code{4}.}
+
+\item{canonical_variables}{Optional \code{character()} vector of water-balance
+variable names (without the \code{element.} / \code{connectedarea.} prefix and
+without the trailing \verb{_}), e.g.
+\code{c("WB_Regen", "WB_Evapotranspiration", "WB_InfiltrationNetto", "WB_Oberflaechenablauf_Ueberlauf", "WB_Oberflaechenablauf_Verschaltungen")}.
+When \strong{every} scenario in \code{simulation_results} is \code{NULL} (or otherwise
+provides no water-balance data), the function would normally return only
+the four headline columns. Pass \code{canonical_variables} to attach
+\verb{element.<var>_} and \verb{connectedarea.<var>_} \code{NA}-filled stub columns to
+such rows so the rendered datatable still exposes the expected column
+structure. Defaults to \code{NULL} (no canonical fallback).}
 }
 \value{
 A tibble with one row per scenario containing:

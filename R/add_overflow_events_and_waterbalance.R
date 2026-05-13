@@ -42,6 +42,17 @@
 #'   - `element$rates` with columns `time`, `variable`, `value`
 #' @param event_separation_hours Numeric. Minimum time between two overflow events
 #'   (in hours). Defaults to `4`.
+#' @param canonical_variables Optional `character()` vector of water-balance
+#'   variable names (without the `element.` / `connectedarea.` prefix and
+#'   without the trailing `_`), e.g.
+#'   `c("WB_Regen", "WB_Evapotranspiration", "WB_InfiltrationNetto",
+#'   "WB_Oberflaechenablauf_Ueberlauf", "WB_Oberflaechenablauf_Verschaltungen")`.
+#'   When **every** scenario in `simulation_results` is `NULL` (or otherwise
+#'   provides no water-balance data), the function would normally return only
+#'   the four headline columns. Pass `canonical_variables` to attach
+#'   `element.<var>_` and `connectedarea.<var>_` `NA`-filled stub columns to
+#'   such rows so the rendered datatable still exposes the expected column
+#'   structure. Defaults to `NULL` (no canonical fallback).
 #'
 #' @return A tibble with one row per scenario containing:
 #'   - `s_name`
@@ -68,7 +79,19 @@
 #' @importFrom rlang .data
 #' @export
 add_overflow_events_and_waterbalance <- function(simulation_results,
-                                                 event_separation_hours = 4) {
+                                                 event_separation_hours = 4,
+                                                 canonical_variables = NULL) {
+
+  canonical_stub <- function(prefix) {
+    if (is.null(canonical_variables) || length(canonical_variables) == 0L) {
+      return(tibble::tibble())
+    }
+    stub_names <- sprintf("%s.%s_", prefix, canonical_variables)
+    tibble::as_tibble(stats::setNames(
+      rep(list(NA_real_), length(stub_names)),
+      stub_names
+    ))
+  }
 
   na_row <- function(s_name) {
     tibble::tibble(
@@ -76,7 +99,9 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
       n_overflows = NA_integer_,
       median_duration_overflows_hours = NA_real_,
       sum_overflows = NA_real_
-    )
+    ) %>%
+      dplyr::bind_cols(canonical_stub("element")) %>%
+      dplyr::bind_cols(canonical_stub("connectedarea"))
   }
 
   has_rows <- function(x) !is.null(x) && nrow(x) > 0L
@@ -231,6 +256,20 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
         message(sprintf(
           "[%s] element absent -- mirrored %d NA stub column(s) from connected_area",
           s_name, ncol(wb_element)
+        ))
+      }
+    }
+    # If both sides are empty for this scenario fall back to the caller's
+    # canonical variable list so the column structure still appears in the
+    # rendered datatable (otherwise dplyr::bind_rows downstream drops every
+    # wb column when no scenario in the batch contributes any).
+    if (ncol(wb_element) == 0L && ncol(wb_connectedarea) == 0L) {
+      wb_element       <- canonical_stub("element")
+      wb_connectedarea <- canonical_stub("connectedarea")
+      if (ncol(wb_element) > 0L || ncol(wb_connectedarea) > 0L) {
+        message(sprintf(
+          "[%s] both wb sides absent -- using %d canonical NA stub column(s)",
+          s_name, ncol(wb_element) + ncol(wb_connectedarea)
         ))
       }
     }

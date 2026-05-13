@@ -126,7 +126,19 @@
   least one scenario contributes), which left the results table
   with no `connectedarea.*_` columns at all when every scenario
   disabled roof ET. The mirror keeps the column structure visible
-  in the rendered datatable.
+  in the rendered datatable and emits a one-line `message()` per
+  affected scenario as a breadcrumb that the user can match to
+  the all-NA columns.
+
+* `example_wien_minimal` vignette: the per-scenario `run_one()`
+  helper now wraps the H5 input write + engine call in `tryCatch`
+  and passes `strict = FALSE` + `scalar_strategy = "first"` to
+  `h5_write_values()`. A scenario that errors during write or
+  whose engine returns a non-zero status no longer aborts the
+  whole `run_scenarios` loop; the failure is reported via
+  `message()` and the remaining scenarios still execute, producing
+  a results datatable with NA in the result columns for the
+  failed rows (paired with the new mirror-stub above).
 * `R/plot_hpond_vs_ref.R`: replace literal `▲` glyph in the caption
   with `▲` so the source file is ASCII-only (R-CMD-check WARNING).
 * `R/read_hdf5_timeseries.R`: wrap array-indexing notation

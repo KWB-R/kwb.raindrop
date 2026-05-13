@@ -176,10 +176,18 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
   # scenario contributed, and the final table loses the entire side --
   # which is what happens to connectedarea.*_ when every scenario in a
   # batch disables roof ET (the engine then skips writing Dach.h5).
-  mirror_stub <- function(reference_wb, prefix) {
+  # Names are sliced positionally with the known reference prefix and
+  # trailing "_" so columns that don't match the wb_percent contract are
+  # dropped rather than turned into a misnamed stub.
+  mirror_stub <- function(reference_wb, reference_prefix, target_prefix) {
     if (ncol(reference_wb) == 0L) return(tibble::tibble())
-    vars <- sub("^[^.]+\\.(.*)_$", "\\1", names(reference_wb))
-    stub_names <- sprintf("%s.%s_", prefix, vars)
+    pat <- paste0("^", reference_prefix, "\\..*_$")
+    keep <- grepl(pat, names(reference_wb))
+    if (!any(keep)) return(tibble::tibble())
+    vars <- sub(paste0("^", reference_prefix, "\\."), "",
+                names(reference_wb)[keep])
+    vars <- sub("_$", "", vars)
+    stub_names <- sprintf("%s.%s_", target_prefix, vars)
     tibble::as_tibble(stats::setNames(
       rep(list(NA_real_), length(stub_names)),
       stub_names
@@ -205,10 +213,26 @@ add_overflow_events_and_waterbalance <- function(simulation_results,
                                    denom_fn = denom_connectedarea)
 
     if (ncol(wb_connectedarea) == 0L && ncol(wb_element) > 0L) {
-      wb_connectedarea <- mirror_stub(wb_element, prefix = "connectedarea")
+      wb_connectedarea <- mirror_stub(wb_element,
+                                      reference_prefix = "element",
+                                      target_prefix    = "connectedarea")
+      if (ncol(wb_connectedarea) > 0L) {
+        message(sprintf(
+          "[%s] connected_area absent -- mirrored %d NA stub column(s) from element",
+          s_name, ncol(wb_connectedarea)
+        ))
+      }
     }
     if (ncol(wb_element) == 0L && ncol(wb_connectedarea) > 0L) {
-      wb_element <- mirror_stub(wb_connectedarea, prefix = "element")
+      wb_element <- mirror_stub(wb_connectedarea,
+                                reference_prefix = "connectedarea",
+                                target_prefix    = "element")
+      if (ncol(wb_element) > 0L) {
+        message(sprintf(
+          "[%s] element absent -- mirrored %d NA stub column(s) from connected_area",
+          s_name, ncol(wb_element)
+        ))
+      }
     }
 
     ov <- compute_overflows(res$element$rates, s_name)

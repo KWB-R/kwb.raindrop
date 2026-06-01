@@ -28,17 +28,14 @@
   an ET-diagnostics grid that sweeps three engine switches —
   `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
-  Daniel's reference geometry (12 scenarios total). After Daniel's
-  XLSX review of the SWIMM-UrbanEva comparison run, the vignette now
-  also unconditionally corrects three further `base.h5` defaults on
-  every row:
-  `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
-  (impervious roof, no vegetation; the engine then skips writing
-  Dach.h5, see "Minor improvements and bug fixes" below),
-  `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond = 0`
-  (no open-water ET while the grass is submerged), and
-  `Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
-  (Hörnschemeyer grass value, was `8.5`). After the model loop the
+  Daniel's reference geometry (12 scenarios total). Daniel's three
+  XLSX-review corrections (`Dach/Evapotranspiration_aktiv = 0`,
+  `EvapPond = 0`, `LAI = 3.9`) were applied briefly between PRs #11
+  and the one introducing this NEWS entry but made the Tandler
+  engine return Status 1 for every scenario, so they are reverted
+  for now. They will be re-introduced one-by-one as sweep dimensions
+  in a follow-up diagnostic vignette so the failing combination can
+  be isolated. After the model loop the
   per-scenario `*.h5` inputs are dumped to a single XLSX
   (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
   plus a `base` sheet for the un-modified template, a

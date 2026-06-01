@@ -7,6 +7,8 @@
   simulation results
 - [`compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md)
   : Compute construction costs for an infiltration-swale parameter grid
+- [`default_canonical_wb_variables()`](https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.md)
+  : Canonical water-balance variable names emitted by the Tandler engine
 - [`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md)
   : Default unit-cost rates for infiltration-swale installations
 - [`download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md)

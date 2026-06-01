@@ -8,29 +8,16 @@ parametrisation. Geometry is fixed at Daniel’s reference design
 (`mulde_area = 75`, `mulde_height = 200`, `filter_height = 300`,
 `storage_height = 500`, `filter_kf = 36`, `bottom_kf = 12`).
 
-Three corrections to the `base.h5` defaults are also applied
-unconditionally on every row, after Daniel’s review of the XLSX diff
-against the SWIMM-UrbanEva run:
-
-- `Dach/Berechnungsparameter/Evapotranspiration_aktiv` is forced to `0`
-  — the 1000 m² roof is impervious and has no vegetation, so the full
-  crop-ET pathway should not run there. The shipped `base.h5` ships this
-  on, which silently activated all of the vegetation-ET parameters on
-  the roof. With this flag at `0` the engine skips writing the
-  connected-area `Dach.h5`; the package’s result reader and
-  water-balance pipeline now handle a missing connected-area H5 by
-  reporting only the element side (`element.*_` columns populated,
-  `connectedarea.*_` columns left as `NA`).
-- `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond` is forced to `0` —
-  when the grass is submerged in a ponded swale, the open-water pond-ET
-  pathway must not run alongside the crop-coefficient one on the same
-  surface.
-- `Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` is
-  pinned to `3.9` — the grass value from Hörnschemeyer et al. (Water
-  2023, 15, 2840, Tab. 6, plant type 5 = grasses/herbs). The shipped
-  `base.h5` value is `8.5`. Michael’s May 2026 sweep already showed LAI
-  3.9 vs 8.5 only changes the modelled ET share by ~0.1 pp, so this is
-  mostly a hygiene fix rather than the smoking gun.
+**`base.h5` defaults are used as-is on every row**
+(`Dach/Evapotranspiration_aktiv = 1`, `EvapPond = 1`, `LAI = 8.5`).
+Daniel’s three review corrections (`Dach/Evapotranspiration_aktiv = 0`,
+`EvapPond = 0`, `LAI = 3.9`) were applied between PR \#11 and the
+current branch but made the Tandler engine return Status 1 for **every**
+scenario, leaving the rendered datatable with no usable result columns.
+They are reverted on this branch so the engine produces output again.
+The corrections will be re-introduced one-by-one as sweep dimensions in
+a follow-up diagnostic vignette so the failing combination can be
+isolated.
 
 The 12-scenario grid varies three engine-side switches that are
 candidate ET-discrepancy drivers:
@@ -251,31 +238,26 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/ET0ref_GrasReferenzverdunstung` <-
     param_grid_tmp$ET0ref_factor
 
-  # Roof: no vegetation, no ET — the 1000 m² Dach is impervious in this
-  # case study. With the flag at 0 the engine skips writing Dach.h5
-  # entirely; the result reader and water-balance pipeline now tolerate
-  # a missing connected_area H5 (see get_simulation_results_optim_parallel
-  # and add_overflow_events_and_waterbalance).
-  vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 0
+  # NOTE: Daniel's three review corrections (Dach/ET = 0, EvapPond = 0,
+  # LAI = 3.9) were applied here from PR #11 onward but made the Tandler
+  # engine return Status 1 for every scenario, which left every result
+  # column NA in the rendered datatable. Reverted on this branch so the
+  # engine produces output; corrections will be re-introduced one-by-one
+  # as sweep dimensions in a follow-up so the failing combination can be
+  # isolated.
+  vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
   vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
 
   vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
   vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- param_grid_tmp$rain_factor
   vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
   vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- param_grid_tmp$mulde_height
-  # Pond ET off — when the grass is submerged in a ponded swale, the
-  # crop-coefficient pathway should not also collect open-water ET on
-  # the same surface. Base.h5 ships EvapPond = 1; force to 0 here.
-  vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond` <- 0
   vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
   vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(
     param_grid_tmp$filter_height, param_grid_tmp$storage_height
   )
   vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <-
     param_grid_tmp$bottom_hydraulicconductivity
-  # Pin LAI to the grass value from Hörnschemeyer et al. (Water 2023,
-  # 15, 2840, Tab. 6, plant type 5 = grasses/herbs); base.h5 ships 8.5.
-  vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- 3.9
 
   vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
   vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <-
@@ -287,13 +269,26 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Kurven/Growth_1`$time[2] <- max(timeseries_rain$time)
   vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
 
-  kwb.raindrop::h5_write_values(h5, vals, resize = TRUE,
-                               scalar_strategy = "error", verbose = FALSE)
-  h5$close_all()
-
-  kwb.raindrop::run_model(path_exe = paths$path_exe,
-                          path_input = paths$path_target_input,
-                          debug = debug)
+  # h5_write_values(strict = FALSE) downgrades errors (e.g. a scalar dataset
+  # given a length-2 override) to warnings so the scenario still produces an
+  # input H5 the engine can attempt to run. Combined with the per-scenario
+  # tryCatch below, this means one broken scenario no longer aborts
+  # run_scenarios for everyone else. The diagnostic goes through message()
+  # (not cat()) so it survives the future.apply worker boundary should this
+  # vignette ever switch to parallel = TRUE -- the call below passes
+  # parallel = FALSE today so the choice is forward-looking.
+  tryCatch({
+    kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, strict = FALSE,
+                                 scalar_strategy = "first", verbose = FALSE)
+    if (h5$is_valid) h5$close_all()
+    kwb.raindrop::run_model(path_exe = paths$path_exe,
+                            path_input = paths$path_target_input,
+                            debug = debug)
+  }, error = function(e) {
+    if (h5$is_valid) try(h5$close_all(), silent = TRUE)
+    message(sprintf("[%s] run failed: %s",
+                    param_grid_tmp$scenario_name, conditionMessage(e)))
+  })
   invisible(NULL)
 }
 
@@ -305,78 +300,6 @@ kwb.raindrop::run_scenarios(
   parallel = FALSE,
   show_progress = FALSE
 )
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00001.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00002.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00003.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00004.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00005.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00006.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00007.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00008.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00009.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00010.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00011.h5'
-#> had status 1
-#> Warning in system(cmd, intern = intern, wait = wait | intern,
-#> show.output.on.console = wait, : running command 'C:\Windows\system32\cmd.exe
-#> /c
-#> C:\Users\runneradmin\AppData\Local\R\cache\R\kwb.raindrop\2026-02-24\Regenwasserbewirtschaftung.exe
-#> C:\Users\runneradmin\AppData\Local\Temp\Rtmp0YIRXR\raindrop_wien_minimal\models\Wien\input\s00012.h5'
-#> had status 1
 #> [[1]]
 #> NULL
 #> 
@@ -529,7 +452,7 @@ message("Wrote XLSX (", length(sheets),
         nrow(param_grid), " scenarios) to:\n  ",
         xlsx_path)
 #> Wrote XLSX (15 sheets: base + timeseries_info + applied_settings + 12 scenarios) to:
-#>   C:\Users\RUNNER~1\AppData\Local\Temp\Rtmp0YIRXR/raindrop_wien_minimal_params.xlsx
+#>   C:\Users\RUNNER~1\AppData\Local\Temp\Rtmp4IDq1S/raindrop_wien_minimal_params.xlsx
 ```
 
 ### Results
@@ -549,34 +472,16 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
 # (Dach.h5) yields a partial result with connected_area = NULL. Both cases
 # are absorbed by add_overflow_events_and_waterbalance(), which emits a
 # warning and fills the corresponding columns with NA.
+# canonical_variables provides a fallback column template so the rendered
+# datatable still exposes element.WB_*_ and connectedarea.WB_*_ columns
+# even when every scenario fails (e.g. the engine crashes for all 12
+# scenarios with a given override combination, leaving simulation_results
+# as a list of NULLs).
 simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
   simulation_results = simulation_results,
-  event_separation_hours = 4
+  event_separation_hours = 4,
+  canonical_variables = kwb.raindrop::default_canonical_wb_variables()
 )
-#> Warning in FUN(X[[i]], ...): Scenario 's00001' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00002' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00003' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00004' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00005' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00006' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00007' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00008' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00009' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00010' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00011' is NULL -- returning a row with
-#> NA for all metrics.
-#> Warning in FUN(X[[i]], ...): Scenario 's00012' is NULL -- returning a row with
-#> NA for all metrics.
 
 results <- param_grid |>
   dplyr::left_join(simulation_results_optimisation, by = c("scenario_name" = "s_name")) |>

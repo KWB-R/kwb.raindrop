@@ -375,7 +375,8 @@ simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
 system.time(
 simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
   simulation_results = simulation_results,
-  event_separation_hours = 4
+  event_separation_hours = 4,
+  canonical_variables = kwb.raindrop::default_canonical_wb_variables()
   )
 )
 

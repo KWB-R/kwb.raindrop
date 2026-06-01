@@ -6,7 +6,8 @@
 \usage{
 add_overflow_events_and_waterbalance(
   simulation_results,
-  event_separation_hours = 4
+  event_separation_hours = 4,
+  canonical_variables = NULL
 )
 }
 \arguments{
@@ -20,6 +21,17 @@ to contain:
 
 \item{event_separation_hours}{Numeric. Minimum time between two overflow events
 (in hours). Defaults to \code{4}.}
+
+\item{canonical_variables}{Optional \code{character()} vector of water-balance
+variable names (without the \code{element.} / \code{connectedarea.} prefix and
+without the trailing \verb{_}), e.g.
+\code{c("WB_Regen", "WB_Evapotranspiration", "WB_InfiltrationNetto", "WB_Oberflaechenablauf_Ueberlauf", "WB_Oberflaechenablauf_Verschaltungen")}.
+When \strong{every} scenario in \code{simulation_results} is \code{NULL} (or otherwise
+provides no water-balance data), the function would normally return only
+the four headline columns. Pass \code{canonical_variables} to attach
+\verb{element.<var>_} and \verb{connectedarea.<var>_} \code{NA}-filled stub columns to
+such rows so the rendered datatable still exposes the expected column
+structure. Defaults to \code{NULL} (no canonical fallback).}
 }
 \value{
 A tibble with one row per scenario containing:
@@ -57,15 +69,18 @@ is \code{NULL} (or which lack any of \code{element}, \code{element$water_balance
 \code{connected_area}, \code{connected_area$water_balance} or \code{element$rates}) still
 produce a row of the output tibble. The four "headline" columns (\code{s_name},
 \code{n_overflows}, \code{median_duration_overflows_hours}, \code{sum_overflows}) are
-always present and filled with \code{NA} where they cannot be computed. The
-\verb{element.*_} and \verb{connectedarea.*_} water-balance columns follow
-\code{dplyr::bind_rows()} semantics: a column is added to the output as soon as
-at least one scenario contributes it, with \code{NA} for the rows that don't. If
-\emph{every} scenario in \code{simulation_results} lacks a side (e.g. every run
-disables roof ET, so no scenario contributes any \verb{connectedarea.*_}), that
-side's columns are absent from the output entirely. Downstream code that
-addresses those columns by name should therefore check for their presence
-rather than assume they exist.
+always present and filled with \code{NA} where they cannot be computed.
+
+For the \verb{element.*_} and \verb{connectedarea.*_} water-balance columns: if one
+side is missing in a given scenario but the other side has data, a stub of
+\code{NA}-filled columns is fabricated for the missing side by mirroring the
+populated side's variable names. This preserves the table's column
+structure when, for example, every run disables roof ET (so the engine
+skips writing Dach.h5 and every scenario has \code{connected_area = NULL}):
+the \verb{connectedarea.*_} columns are kept and filled with \code{NA}, instead of
+being dropped from the output entirely. The mirror is a best-effort hint
+for the user, not a guarantee that the names match what a populated
+\code{connected_area} would have produced.
 }
 \examples{
 \dontrun{

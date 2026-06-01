@@ -28,17 +28,14 @@
   an ET-diagnostics grid that sweeps three engine switches —
   `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
-  Daniel's reference geometry (12 scenarios total). After Daniel's
-  XLSX review of the SWIMM-UrbanEva comparison run, the vignette now
-  also unconditionally corrects three further `base.h5` defaults on
-  every row:
-  `Dach/Berechnungsparameter/Evapotranspiration_aktiv = 0`
-  (impervious roof, no vegetation; the engine then skips writing
-  Dach.h5, see "Minor improvements and bug fixes" below),
-  `Mulde_Rigole/Eigenschaften_Oberflaeche/EvapPond = 0`
-  (no open-water ET while the grass is submerged), and
-  `Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
-  (Hörnschemeyer grass value, was `8.5`). After the model loop the
+  Daniel's reference geometry (12 scenarios total). Daniel's three
+  XLSX-review corrections (`Dach/Evapotranspiration_aktiv = 0`,
+  `EvapPond = 0`, `LAI = 3.9`) were applied briefly between PRs #11
+  and the one introducing this NEWS entry but made the Tandler
+  engine return Status 1 for every scenario, so they are reverted
+  for now. They will be re-introduced one-by-one as sweep dimensions
+  in a follow-up diagnostic vignette so the failing combination can
+  be isolated. After the model loop the
   per-scenario `*.h5` inputs are dumped to a single XLSX
   (`raindrop_wien_minimal_params.xlsx`) with one sheet per scenario
   plus a `base` sheet for the un-modified template, a
@@ -117,6 +114,41 @@
   `*$water_balance`, `element$rates`). Affected scenarios still
   produce a row of the output tibble with the available metrics
   computed and the missing columns left as `NA`.
+
+* `add_overflow_events_and_waterbalance()` now fabricates an
+  `NA`-filled column stub when one side's water balance is missing
+  while the other side has data, by mirroring the populated side's
+  variable names. Previously the missing side's columns were
+  dropped entirely (`dplyr::bind_rows()` only adds columns that at
+  least one scenario contributes), which left the results table
+  with no `connectedarea.*_` columns at all when every scenario
+  disabled roof ET. The mirror keeps the column structure visible
+  in the rendered datatable and the function emits one summary
+  `message()` per fallback path (instead of one per scenario)
+  naming all affected scenarios, so the user can match the
+  diagnostic to the all-NA rows.
+
+* New exported `default_canonical_wb_variables()` returns the
+  canonical set of water-balance variable names the Tandler engine
+  writes (`WB_Regen`, `WB_Evapotranspiration`,
+  `WB_InfiltrationNetto`, `WB_Oberflaechenablauf_Ueberlauf`,
+  `WB_Oberflaechenablauf_Verschaltungen`). All five vignettes now
+  pass it as `canonical_variables = default_canonical_wb_variables()`
+  to `add_overflow_events_and_waterbalance()`, so the rendered
+  datatables keep the expected `element.WB_*_` and
+  `connectedarea.WB_*_` columns even when every scenario in a
+  batch is `NULL` (e.g. the engine returns Status 1 for every
+  input and writes no result HDF5).
+
+* `example_wien_minimal` vignette: the per-scenario `run_one()`
+  helper now wraps the H5 input write + engine call in `tryCatch`
+  and passes `strict = FALSE` + `scalar_strategy = "first"` to
+  `h5_write_values()`. A scenario that errors during write or
+  whose engine returns a non-zero status no longer aborts the
+  whole `run_scenarios` loop; the failure is reported via
+  `message()` and the remaining scenarios still execute, producing
+  a results datatable with NA in the result columns for the
+  failed rows (paired with the new mirror-stub above).
 * `R/plot_hpond_vs_ref.R`: replace literal `▲` glyph in the caption
   with `▲` so the source file is ASCII-only (R-CMD-check WARNING).
 * `R/read_hdf5_timeseries.R`: wrap array-indexing notation

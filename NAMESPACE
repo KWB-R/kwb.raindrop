@@ -3,6 +3,7 @@
 export("%>%")
 export(add_overflow_events_and_waterbalance)
 export(compute_costs)
+export(default_canonical_wb_variables)
 export(default_cost_rates)
 export(download_engine)
 export(find_single_param_variations)

@@ -26,6 +26,13 @@
 #' @param simulation_names Character vector of simulation run identifiers
 #'   (e.g. \code{c("s00001", "s00002")}).
 #' @param debug print debug messages (default: TRUE)
+#' @param lean Logical. If \code{TRUE}, read only the fields consumed by
+#'   \code{\link{add_overflow_events_and_waterbalance}} -- \code{element$rates},
+#'   \code{element$water_balance} and \code{connected_area$water_balance} -- and
+#'   leave \code{meta}/\code{states} (both sides) and \code{connected_area$rates}
+#'   as \code{NULL}. This keeps per-run memory and I/O minimal when each run is
+#'   thinned to its optimisation row immediately instead of collecting every
+#'   run's full results first. Defaults to \code{FALSE} (read everything).
 #' @return A named list with one entry per \code{simulation_names}. Each entry is
 #'   either \code{NULL} (element HDF5 missing) or a nested list:
 #' \describe{
@@ -53,13 +60,16 @@
 #' @importFrom stats setNames
 #' @importFrom hdf5r H5File
 get_simulation_results_optim <- function(paths,
-                                         path_list, 
+                                         path_list,
                                          simulation_names,
-                                         debug = TRUE) {
-  
-  message(sprintf("Reading results files ('%s') for %d model runs",
-                  paste0(c(paths$file_results_hdf5_element, paths$file_results_hdf5_flaeche), collapse = "|"),
-                  length(simulation_names)))
+                                         debug = TRUE,
+                                         lean = FALSE) {
+
+  if (isTRUE(debug)) {
+    message(sprintf("Reading results files ('%s') for %d model runs",
+                    paste0(c(paths$file_results_hdf5_element, paths$file_results_hdf5_flaeche), collapse = "|"),
+                    length(simulation_names)))
+  }
   stats::setNames(lapply(simulation_names, function(s_name) {
 
     paths <- kwb.utils::resolve(path_list, dir_target = s_name)
@@ -109,20 +119,20 @@ get_simulation_results_optim <- function(paths,
                             paths$dir_target_output),
       expr = {
         element <- list(
-          meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
+          meta          = if (lean) NULL else kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
                                                           numeric_only = FALSE),
           rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
           water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
-          states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
+          states        = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
         )
 
         connected_area <- if (!is.null(res_hdf5_flaeche)) {
           list(
-            meta          = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
+            meta          = if (lean) NULL else kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
                                                             numeric_only = FALSE),
-            rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
+            rates         = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
             water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
-            states        = kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
+            states        = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
           )
         } else {
           NULL

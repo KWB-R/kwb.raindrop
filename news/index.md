@@ -4,15 +4,37 @@
 
 ### Bug fixes
 
-- `vignettes/example_wien_minimal.Rmd` now converts ET0 from mm/day to
+- `vignettes/example_wien_minimal.Rmd`, `vignettes/workflow_wien.Rmd`
+  and `vignettes/workflow_badaussee.Rmd` now convert ET0 from mm/day to
   mm/h (`value / period_et`) before writing `//Kurven/ET0`, mirroring
   the existing rain conversion. The engine reads the ET0 curve as a mm/h
   rate, so the unconverted daily values were integrated 24× too high —
-  the cause of the implausibly large modelled ET share. The
-  timeseries-info summary now labels ET0 as mm/h and recovers its total
-  via `value * period_h`.
+  the cause of the implausibly large modelled ET share. The minimal
+  vignette’s timeseries-info summary now labels ET0 as mm/h and recovers
+  its total via `value * period_h`.
 
 ### New features
+
+- The Wien and Bad Aussee workflows now thin each run to its
+  optimisation row **inside** `run_one()` (via
+  `get_simulation_results_optim(..., lean = TRUE)`
+
+  - [`add_overflow_events_and_waterbalance()`](https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.md))
+    and
+    [`run_scenarios()`](https://kwb-r.github.io/kwb.raindrop/reference/run_scenarios.md)
+    returns those one-row tibbles for a final
+    [`dplyr::bind_rows()`](https://dplyr.tidyverse.org/reference/bind_rows.html).
+    This replaces the previous “run everything, then read every run’s
+    full results into memory at once” pass
+    ([`get_simulation_results_optim_parallel()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim_parallel.md)),
+    drastically cutting peak RAM for large parameter grids.
+
+- [`get_simulation_results_optim()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.md)
+  gains a `lean` argument. When `TRUE` it reads only the fields consumed
+  downstream (`element$rates`, `element$water_balance`,
+  `connected_area$water_balance`) and leaves the unused `meta`/`states`
+  and `connected_area$rates` as `NULL`, minimising per-run memory and
+  I/O. Its intro message is now gated behind `debug`.
 
 - `inst/scripts/prepare_eisenstadt_swmm_timeseries.R` extracts the rain
   (`/Kurven/Regen`) and ET0 (`/Kurven/ET0`) curves from an engine HDF5

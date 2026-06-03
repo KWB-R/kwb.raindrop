@@ -1,0 +1,150 @@
+---
+title: "RainDrop Optimierung – Brute Force"
+author: "Michael Rustler"
+date: "2026-02-25"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+sites <- c("Eisenstadt_2005", "Wien", "BadAussee")
+
+# index.html liegt im gleichen Verzeichnis wie der Ordner "brute-force"
+base_dir <- "."
+
+design_spaces <- paste0(
+  "mulde-area_vs_",
+  c("filter_hydraulicconductivity", "mulde_height", "storage_height")
+)
+
+rel <- function(...) file.path(..., fsep = "/")
+
+md_link_line <- function(label, href) sprintf("- [%s](%s)", label, href)
+
+md_list <- function(lines) knitr::asis_output(paste(lines, collapse = "\n"))
+```
+
+# Hintergrund
+
+xxx
+
+# Methodik 
+
+Die Modellierung erfolgte in R mit dem R Paket [kwb.raindrop](https://github.com/kwb-r/kwb.raindrop).
+Das genaue Vorgehen ist für jede Fallstudie im folgenden im R Markdown reproduzierbar
+dokumentiert.
+
+```{r brute_force_rmarkdown, echo = FALSE, results='asis'}
+for (site in sites) {
+  cat(sprintf(
+    "- [%s](%s/workflow_%s.html)\n",
+    site,
+    base_dir,
+    site
+  ))
+}
+```
+
+# Ergebnisse
+
+Die Ergebnisse für die einjährige Berechnung (Eisenstadt für Jahr 2005) und die 
+beiden 15 jährigen Zeitreihen (2011-2025) für Wien und Bad Aussee finden sich in 
+unten stehenden Links:
+
+## Tabellen  
+
+```{r brute_force_tabelle, echo = FALSE, results='asis'}
+for (site in sites) {
+  cat(sprintf(
+    "- [%s](%s/simulation_results_optimisation_%s.html)\n",
+    site,
+    base_dir,
+    site
+  ))
+}
+
+```
+
+## CSV
+
+Die in den [obenstehenden Tabellen](#tabellen) dargestellten Ergebnisse können auch als `.csv` Datei 
+heruntergeladen werden.
+
+```{r brute_force_csv, echo = FALSE, results='asis'}
+for (site in sites) {
+  cat(sprintf(
+    "- [%s](%s/simulation_results_optimisation_%s.csv)\n",
+    site,
+    base_dir,
+    site
+  ))
+}
+```
+
+## Interaktive Visualisierungen 
+
+### Sensitive Modellparameter
+
+```{r brute_force_plots_main, echo = FALSE, results='asis'}
+for (site in sites) {
+  cat(sprintf(
+    "- [%s](%s/simulation_results_optimisation_%s_main-effects.html)\n",
+    site,
+    base_dir,
+    site
+  ))
+}
+```
+
+### Design Spaces
+
+In den nachfolgende Abbildungen wird die **Muldenfläche** (x-Achse) mit 
+**einem weiteren Parameter** (y-Achse) dargestellt. Diese sind im folgenden:
+
+- ***Muldenhöhe*** 
+
+- ***Speicherhöhe***
+
+- ***hydraulische Leitfähigkeit*** des Bodenfilters
+
+```{r brute_force_plots_design-spaches, echo = FALSE, results='asis'}
+cat("| Design Space |", paste(sites, collapse = " | "), "|\n")
+cat("|---|", paste(rep("---", length(sites)), collapse = "|"), "|\n")
+
+for (ds in design_spaces) {
+
+  ds_label <- sub("^mulde-area_vs_", "", ds)
+
+  row_links <- sapply(sites, function(site) {
+    sprintf(
+      "[%s](%s/simulation_results_optimisation_%s_design-space_%s.html)",
+      ds_label,
+      base_dir,
+      site,
+      ds
+    )
+  })
+
+  cat("|", ds_label, "|", paste(row_links, collapse = " | "), "|\n")
+}
+```
+
+### Wasserbilanz
+
+```{r brute_force_plots_water-balance, echo = FALSE, results='asis'}
+for (site in sites) {
+  cat(sprintf(
+    "- [%s](%s/simulation_results_optimisation_%s_water-balance.html)\n",
+    site,
+    base_dir,
+    site
+  ))
+}
+```
+
+

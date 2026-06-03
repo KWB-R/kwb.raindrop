@@ -51,7 +51,13 @@ connected area results and returns a named list (one entry per simulation)."></h
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_simulation_results_optim</span><span class="op">(</span><span class="va">paths</span>, <span class="va">path_list</span>, <span class="va">simulation_names</span>, debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_simulation_results_optim</span><span class="op">(</span></span>
+<span>  <span class="va">paths</span>,</span>
+<span>  <span class="va">path_list</span>,</span>
+<span>  <span class="va">simulation_names</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  lean <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -78,6 +84,16 @@ run-specific paths (must yield <code>path_results_hdf5_element</code>,
 
 <dt id="arg-debug">debug<a class="anchor" aria-label="anchor" href="#arg-debug"></a></dt>
 <dd><p>print debug messages (default: TRUE)</p></dd>
+
+
+<dt id="arg-lean">lean<a class="anchor" aria-label="anchor" href="#arg-lean"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, read only the fields consumed by
+<code><a href="add_overflow_events_and_waterbalance.html">add_overflow_events_and_waterbalance</a></code> – <code>element$rates</code>,
+<code>element$water_balance</code> and <code>connected_area$water_balance</code> – and
+leave <code>meta</code>/<code>states</code> (both sides) and <code>connected_area$rates</code>
+as <code>NULL</code>. This keeps per-run memory and I/O minimal when each run is
+thinned to its optimisation row immediately instead of collecting every
+run's full results first. Defaults to <code>FALSE</code> (read everything).</p></dd>
 
 </dl></div>
     <div class="section level2">

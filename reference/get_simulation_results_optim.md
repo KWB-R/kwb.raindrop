@@ -7,7 +7,13 @@ simulation).
 ## Usage
 
 ``` r
-get_simulation_results_optim(paths, path_list, simulation_names, debug = TRUE)
+get_simulation_results_optim(
+  paths,
+  path_list,
+  simulation_names,
+  debug = TRUE,
+  lean = FALSE
+)
 ```
 
 ## Arguments
@@ -35,6 +41,17 @@ get_simulation_results_optim(paths, path_list, simulation_names, debug = TRUE)
 - debug:
 
   print debug messages (default: TRUE)
+
+- lean:
+
+  Logical. If `TRUE`, read only the fields consumed by
+  [`add_overflow_events_and_waterbalance`](https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.md)
+  – `element$rates`, `element$water_balance` and
+  `connected_area$water_balance` – and leave `meta`/`states` (both
+  sides) and `connected_area$rates` as `NULL`. This keeps per-run memory
+  and I/O minimal when each run is thinned to its optimisation row
+  immediately instead of collecting every run's full results first.
+  Defaults to `FALSE` (read everything).
 
 ## Value
 

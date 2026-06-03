@@ -4,17 +4,27 @@ Two SWMM-5 external time-series files extracted from the Eisenstadt engine
 template `../base.h5`, for cross-checking the Tandler calculation kernel
 against SWMM-UrbanEVA:
 
-| File                 | Content                         | Units in file                  | Rows   |
-|----------------------|---------------------------------|--------------------------------|--------|
-| `eisenstadt_rain.dat`| Rainfall, year 2005, 10-min     | mm per 10-min interval (VOLUME)| 52 560 |
-| `eisenstadt_et0.dat` | Reference ET0, year 2005, daily | mm/day                         | 365    |
+| File                     | Content                         | Units in file                   | Rows   |
+|--------------------------|---------------------------------|---------------------------------|--------|
+| `eisenstadt_rain.dat`    | Rainfall, year 2005, 10-min     | mm per 10-min interval (VOLUME) | 52 560 |
+| `eisenstadt_rain_mmh.dat`| Rainfall, year 2005, 10-min     | mm/h, native (INTENSITY)        | 52 560 |
+| `eisenstadt_et0.dat`     | Reference ET0, year 2005, daily | mm/day                          | 365    |
+
+The rain is the **standard rain** baked into the engine template and is
+**already correct in mm/h** — the Eisenstadt run uses it as-is (no
+conversion). The two rain files are the *same* series in two SWMM-gage
+flavours: `*_mmh.dat` are the native mm/h intensities (peak 49.2 mm/h);
+`*_rain.dat` is the identical rain as depth per 10-min interval (peak
+8.2 mm = 49.2 / 6). Pick whichever your rain gage expects (INTENSITY vs
+VOLUME). **The rain is not where the unit problem is — only ET0 is.**
 
 Regenerate with:
 
 ```r
 source(system.file("scripts/prepare_eisenstadt_swmm_timeseries.R",
                    package = "kwb.raindrop"))
-export_eisenstadt_swmm_timeseries(out_dir = "<target>")
+export_eisenstadt_swmm_timeseries(out_dir = "<target>")                       # VOLUME rain + ET0
+export_eisenstadt_swmm_timeseries(out_dir = "<target>", rain_format = "intensity") # mm/h rain
 ```
 
 ## The units question (mm/h vs mm/d) — short answer

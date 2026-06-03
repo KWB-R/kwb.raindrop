@@ -213,6 +213,15 @@ if (max(timeseries_et$time) > max(timeseries_rain$time)) {
 # Convert rain from mm to mm/h (per 10-min interval)
 period <- c(diff(timeseries_rain$time), mean(diff(timeseries_rain$time)))
 timeseries_rain$value <- timeseries_rain$value / period
+
+# Convert ET0 from mm/day to mm/h. The engine reads //Kurven/ET0 as a rate in
+# mm/h (same convention as //Kurven/Regen on the hour-based time axis), so the
+# daily ET0 values must be divided by their interval in hours (= 24 for daily
+# data) — exactly the symmetric step rain already gets. Without it the kernel
+# integrates ET0 24x too high, which is the cause of the implausibly large
+# modelled ET share.
+period_et <- c(diff(timeseries_et$time), mean(diff(timeseries_et$time)))
+timeseries_et$value <- timeseries_et$value / period_et
 ```
 
 ### Run the twelve scenarios
@@ -361,25 +370,27 @@ h5_base$close_all()
 sheets <- list(base = vals_to_tibble(base_vals))
 
 # --- Timeseries info (identical across all scenarios) ---------------------
-# `timeseries_rain$value` is mm/h after the per-interval scaling earlier;
-# multiply by the original interval (in h) to recover total mm.
+# `timeseries_rain$value` and `timeseries_et$value` are both mm/h after the
+# per-interval scaling earlier; multiply by the original interval (in h) to
+# recover total mm.
 rain_period_h <- c(diff(timeseries_rain$time),
                    mean(diff(timeseries_rain$time)))
 rain_total_mm <- sum(timeseries_rain$value * rain_period_h)
+et0_period_h  <- c(diff(timeseries_et$time),
+                   mean(diff(timeseries_et$time)))
+et0_total_mm  <- sum(timeseries_et$value * et0_period_h)
 sim_period_h  <- max(timeseries_rain$time) - min(timeseries_rain$time)
 sim_period_yr <- sim_period_h / (24 * 365.25)
 
 sheets$timeseries_info <- tibble::tibble(
   series        = c("Rain (//Kurven/Regen)", "ET0 (//Kurven/ET0)"),
   n_rows        = c(nrow(timeseries_rain), nrow(timeseries_et)),
-  unit          = c("mm/h (engine input; convert via *period_h to mm)",
-                    "mm/day"),
+  unit          = rep("mm/h (engine input; convert via *period_h to mm)", 2),
   period_hours  = round(c(sim_period_h, max(timeseries_et$time) -
                                           min(timeseries_et$time)), 1),
   period_years  = round(rep(sim_period_yr, 2), 2),
-  total_mm      = round(c(rain_total_mm, sum(timeseries_et$value)), 1),
-  mean_per_year = round(c(rain_total_mm, sum(timeseries_et$value)) /
-                          sim_period_yr, 1),
+  total_mm      = round(c(rain_total_mm, et0_total_mm), 1),
+  mean_per_year = round(c(rain_total_mm, et0_total_mm) / sim_period_yr, 1),
   min_value     = c(min(timeseries_rain$value), min(timeseries_et$value)),
   max_value     = c(max(timeseries_rain$value), max(timeseries_et$value))
 )

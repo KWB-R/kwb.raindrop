@@ -4,6 +4,18 @@
 
 ### Bug fixes
 
+- [`get_simulation_results_optim()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.md)
+  now treats a result HDF5 that exists but cannot be opened/read
+  (e.g. the engine crashed mid-write for a scenario, or a file briefly
+  locked just after the run) like a missing file: it
+  [`warning()`](https://rdrr.io/r/base/warning.html)s, names the
+  scenario, and returns `NULL` instead of throwing. Because the Wien /
+  Bad Aussee / Eisenstadt workflows now read results per run inside
+  `run_one()`, a single unreadable file used to abort the entire
+  `future_lapply` batch (seen as an `H5File.open()` “unable to open
+  file” error mid-render); the run now completes with NA rows for the
+  affected scenarios.
+
 - `vignettes/example_wien_minimal.Rmd`, `vignettes/workflow_wien.Rmd`
   and `vignettes/workflow_badaussee.Rmd` now convert ET0 from mm/day to
   mm/h (`value / period_et`) before writing `//Kurven/ET0`, mirroring

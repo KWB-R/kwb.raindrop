@@ -217,7 +217,7 @@ timeseries_rain$value <- timeseries_rain$value / period
 # Convert ET0 from mm/day to mm/h. The engine reads //Kurven/ET0 as a rate in
 # mm/h (same convention as //Kurven/Regen on the hour-based time axis), so the
 # daily ET0 values must be divided by their interval in hours (= 24 for daily
-# data) — exactly the symmetric step rain already gets. Without it the kernel
+# data) -- exactly the symmetric step rain already gets. Without it the kernel
 # integrates ET0 24x too high, which is the cause of the implausibly large
 # modelled ET share.
 period_et <- c(diff(timeseries_et$time), mean(diff(timeseries_et$time)))

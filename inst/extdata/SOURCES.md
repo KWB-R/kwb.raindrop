@@ -17,7 +17,11 @@ inst/extdata/models/
 │   ├── rain.csv.gz
 │   └── et.csv
 └── eisenstadt-2005/
-    └── base.h5
+    ├── base.h5
+    └── swmm/        # SWMM-5 rain / ET0 exported from base.h5 (see README)
+        ├── eisenstadt_rain.dat
+        ├── eisenstadt_et0.dat
+        └── README.md
 ```
 
 Access from R:
@@ -79,3 +83,12 @@ data:
   `source(system.file("scripts/prepare_wien_swmm_timeseries.R",
   package = "kwb.raindrop")); export_wien_swmm_timeseries(out_dir = ...)`
   or from the shell via `Rscript prepare_wien_swmm_timeseries.R <out_dir>`.
+
+* `prepare_eisenstadt_swmm_timeseries.R` — the Eisenstadt counterpart.
+  Eisenstadt ships no station CSVs, so this reads the rain (`/Kurven/Regen`)
+  and ET0 (`/Kurven/ET0`) curves straight from an engine `.h5` and writes
+  `eisenstadt_rain.dat` / `eisenstadt_et0.dat`. Crucially it converts out of
+  the engine's **mm/h** curve convention (rain → mm per interval, ET0 →
+  mm/day); see `models/eisenstadt-2005/swmm/README.md` for the mm/h-vs-mm/day
+  unit pitfall. Point `path_h5 =` at a real server input file to export the
+  measured Eisenstadt series.

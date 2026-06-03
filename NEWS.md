@@ -1,6 +1,26 @@
 # kwb.raindrop (development version)
 
+## Bug fixes
+
+* `vignettes/example_wien_minimal.Rmd` now converts ET0 from mm/day to mm/h
+  (`value / period_et`) before writing `//Kurven/ET0`, mirroring the existing
+  rain conversion. The engine reads the ET0 curve as a mm/h rate, so the
+  unconverted daily values were integrated 24× too high — the cause of the
+  implausibly large modelled ET share. The timeseries-info summary now labels
+  ET0 as mm/h and recovers its total via `value * period_h`.
+
 ## New features
+
+* `inst/scripts/prepare_eisenstadt_swmm_timeseries.R` extracts the rain
+  (`/Kurven/Regen`) and ET0 (`/Kurven/ET0`) curves from an engine HDF5 and
+  writes SWMM-5 external time-series files. It converts **out** of the
+  engine's mm/h convention (rain → mm per interval for `[RAINGAGES]` VOLUME,
+  ET0 → mm/day for `[EVAPORATION]`). Pre-generated files for the bundled
+  Eisenstadt 2005 template ship under
+  `inst/extdata/models/eisenstadt-2005/swmm/` together with a README that
+  documents the mm/h-vs-mm/day pitfall: the kernel reads `/Kurven/ET0` as
+  **mm/h**, so a daily ET0 (mm/d) written there without dividing by 24 is
+  integrated 24× too high.
 
 * `download_engine()` fetches the Tandler "Regenwasserbewirtschaftung"
   Windows executable from the companion repository

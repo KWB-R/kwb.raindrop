@@ -92,56 +92,70 @@ get_simulation_results_optim <- function(paths,
       return(NULL)
     }
 
-    # Open H5 handles outside catAndRun so on.exit binds to *this* lambda's
-    # frame, not catAndRun's internal frame. Handles are guaranteed to close
-    # whichever way the iteration unwinds.
-    res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
-    on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
+    # Open + read in an inner function so its on.exit() handle-closing binds to
+    # *its own* frame and always fires (even on error) before we decide what to
+    # return. The surrounding tryCatch makes a result file that exists but is
+    # unreadable -- e.g. the engine crashed mid-write for that scenario --
+    # behave like a missing file (NULL + warning) instead of aborting the whole
+    # (possibly parallel) batch. Downstream add_overflow_events_and_waterbalance()
+    # then emits an NA row for the scenario.
+    read_result <- function() {
+      res_hdf5_element <- hdf5r::H5File$new(paths$path_results_hdf5_element, mode = "r")
+      on.exit(try(res_hdf5_element$close_all(), silent = TRUE), add = TRUE)
 
-    res_hdf5_flaeche <- if (has_flaeche) {
-      h <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
-      on.exit(try(h$close_all(), silent = TRUE), add = TRUE)
-      h
-    } else {
-      if (isTRUE(debug)) {
-        message(sprintf(
-          "No connected_area H5 for %s ('%s') -> connected_area = NULL",
-          s_name, paths$path_results_hdf5_flaeche
-        ))
+      res_hdf5_flaeche <- if (has_flaeche) {
+        h <- hdf5r::H5File$new(paths$path_results_hdf5_flaeche, mode = "r")
+        on.exit(try(h$close_all(), silent = TRUE), add = TRUE)
+        h
+      } else {
+        if (isTRUE(debug)) {
+          message(sprintf(
+            "No connected_area H5 for %s ('%s') -> connected_area = NULL",
+            s_name, paths$path_results_hdf5_flaeche
+          ))
+        }
+        NULL
       }
-      NULL
+
+      kwb.utils::catAndRun(
+        messageText = sprintf("(%d/%d)) Reading results files for model run %s",
+                              which(simulation_names == s_name),
+                              length(simulation_names),
+                              paths$dir_target_output),
+        expr = {
+          element <- list(
+            meta          = if (lean) NULL else kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
+                                                            numeric_only = FALSE),
+            rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
+            water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
+            states        = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
+          )
+
+          connected_area <- if (!is.null(res_hdf5_flaeche)) {
+            list(
+              meta          = if (lean) NULL else kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
+                                                              numeric_only = FALSE),
+              rates         = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
+              water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
+              states        = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
+            )
+          } else {
+            NULL
+          }
+
+          list(element = element, connected_area = connected_area)
+        },
+        dbg = debug
+      )
     }
 
-    kwb.utils::catAndRun(
-      messageText = sprintf("(%d/%d)) Reading results files for model run %s",
-                            which(simulation_names == s_name),
-                            length(simulation_names),
-                            paths$dir_target_output),
-      expr = {
-        element <- list(
-          meta          = if (lean) NULL else kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Metainfo"]],
-                                                          numeric_only = FALSE),
-          rates         = kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Raten"]]),
-          water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_element[["Wasserbilanz"]]),
-          states        = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_element[["Zustandsvariablen"]])
-        )
-
-        connected_area <- if (!is.null(res_hdf5_flaeche)) {
-          list(
-            meta          = if (lean) NULL else kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Metainfo"]],
-                                                            numeric_only = FALSE),
-            rates         = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Raten"]]),
-            water_balance = kwb.raindrop::read_hdf5_scalars(res_hdf5_flaeche[["Wasserbilanz"]]),
-            states        = if (lean) NULL else kwb.raindrop::read_hdf5_timeseries(res_hdf5_flaeche[["Zustandsvariablen"]])
-          )
-        } else {
-          NULL
-        }
-
-        list(element = element, connected_area = connected_area)
-      },
-      dbg = debug
-    )
+    tryCatch(read_result(), error = function(e) {
+      warning(sprintf(
+        "Scenario '%s': result HDF5 unreadable ('%s'): %s -- treating as missing (NULL).",
+        s_name, paths$path_results_hdf5_element, conditionMessage(e)
+      ), call. = FALSE)
+      NULL
+    })
   }), nm = simulation_names)
 }
 

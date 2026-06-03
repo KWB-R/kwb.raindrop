@@ -2,6 +2,17 @@
 
 ## New features
 
+* `inst/scripts/prepare_eisenstadt_swmm_timeseries.R` extracts the rain
+  (`/Kurven/Regen`) and ET0 (`/Kurven/ET0`) curves from an engine HDF5 and
+  writes SWMM-5 external time-series files. It converts **out** of the
+  engine's mm/h convention (rain → mm per interval for `[RAINGAGES]` VOLUME,
+  ET0 → mm/day for `[EVAPORATION]`). Pre-generated files for the bundled
+  Eisenstadt 2005 template ship under
+  `inst/extdata/models/eisenstadt-2005/swmm/` together with a README that
+  documents the mm/h-vs-mm/day pitfall: the kernel reads `/Kurven/ET0` as
+  **mm/h**, so a daily ET0 (mm/d) written there without dividing by 24 is
+  integrated 24× too high.
+
 * `download_engine()` fetches the Tandler "Regenwasserbewirtschaftung"
   Windows executable from the companion repository
   [`KWB-R/kwb.raindrop.binaries`](https://github.com/KWB-R/kwb.raindrop.binaries/releases)

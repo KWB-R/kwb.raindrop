@@ -228,13 +228,33 @@ if (is.data.frame(vals[["//Kurven/Regen"]])) {
                               path_input = paths$path_target_input,
                               debug = debug)
 
-      invisible(NULL)
+      # Thin immediately: read only this run's results (lean = water balance +
+      # overflow rates, no states/meta/connected-area rates) and reduce to the
+      # single optimisation row. This way we never hold all scenarios' full
+      # time series in memory at once; the full result HDF5 stays on disk for
+      # ad-hoc inspection.
+      sim_one <- kwb.raindrop::get_simulation_results_optim(
+        paths            = paths,
+        path_list        = path_list,
+        simulation_names = param_grid_tmp$scenario_name,
+        debug            = debug,
+        lean             = TRUE
+      )
+
+      kwb.raindrop::add_overflow_events_and_waterbalance(
+        simulation_results     = sim_one,
+        event_separation_hours = 4,
+        canonical_variables    = kwb.raindrop::default_canonical_wb_variables()
+      )
 }
 
 n_cores <- parallel::detectCores()
 
+# run_one() now returns the thinned per-run optimisation row, so run_scenarios()
+# yields a list of one-row tibbles we simply bind below.
+scenario_rows <- NULL
 system.time(expr = {
-kwb.raindrop::run_scenarios(indices = seq_len(nrow(param_grid)),
+scenario_rows <- kwb.raindrop::run_scenarios(indices = seq_len(nrow(param_grid)),
                             run_one_scenario = run_one,
                             timestep_hours = 0.1,
                             debug = FALSE,
@@ -264,21 +284,11 @@ x$Fehlerbeschreibung
 ### Analyse Results
 
 ```{r analyse_results, eval = data_available && is_windows && !is_ghactions}
-system.time(
-simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
-  paths = paths, 
-  path_list = path_list,
-  simulation_names = param_grid$scenario_name,
-  debug = FALSE)
-)
-
-system.time(
-simulation_results_optimisation <- kwb.raindrop::add_overflow_events_and_waterbalance(
-  simulation_results = simulation_results,
-  event_separation_hours = 4,
-  canonical_variables = kwb.raindrop::default_canonical_wb_variables()
-  )
-)
+# Each run was already thinned to its optimisation row inside run_one(), so we
+# just bind the per-run rows here instead of re-reading every run's full
+# results into memory. (The previous get_simulation_results_optim_parallel() +
+# add_overflow_events_and_waterbalance() pass loaded all runs at once.)
+simulation_results_optimisation <- dplyr::bind_rows(scenario_rows)
 
 simulation_results_optimisation <- param_grid %>% 
   dplyr::left_join(simulation_results_optimisation,

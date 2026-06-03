@@ -34,6 +34,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, ET-diagnostics scenario grid</a></li>
+    <li><a class="dropdown-item" href="../articles/index.html">RainDrop Optimierung – Brute Force</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)</a></li>
@@ -283,13 +284,33 @@ the engine is downloaded from the
 <span>                              path_input <span class="op">=</span> <span class="va">paths</span><span class="op">$</span><span class="va">path_target_input</span>,</span>
 <span>                              debug <span class="op">=</span> <span class="va">debug</span><span class="op">)</span></span>
 <span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span>      <span class="co"># Thin immediately: read only this run's results (lean = water balance +</span></span>
+<span>      <span class="co"># overflow rates, no states/meta/connected-area rates) and reduce to the</span></span>
+<span>      <span class="co"># single optimisation row. This way we never hold all scenarios' full</span></span>
+<span>      <span class="co"># time series in memory at once; the full result HDF5 stays on disk for</span></span>
+<span>      <span class="co"># ad-hoc inspection.</span></span>
+<span>      <span class="va">sim_one</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/get_simulation_results_optim.html">get_simulation_results_optim</a></span><span class="op">(</span></span>
+<span>        paths            <span class="op">=</span> <span class="va">paths</span>,</span>
+<span>        path_list        <span class="op">=</span> <span class="va">path_list</span>,</span>
+<span>        simulation_names <span class="op">=</span> <span class="va">param_grid_tmp</span><span class="op">$</span><span class="va">scenario_name</span>,</span>
+<span>        debug            <span class="op">=</span> <span class="va">debug</span>,</span>
+<span>        lean             <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>      <span class="op">)</span></span>
+<span></span>
+<span>      <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/add_overflow_events_and_waterbalance.html">add_overflow_events_and_waterbalance</a></span><span class="op">(</span></span>
+<span>        simulation_results     <span class="op">=</span> <span class="va">sim_one</span>,</span>
+<span>        event_separation_hours <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>        canonical_variables    <span class="op">=</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/default_canonical_wb_variables.html">default_canonical_wb_variables</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>      <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">n_cores</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># run_one() now returns the thinned per-run optimisation row, so run_scenarios()</span></span>
+<span><span class="co"># yields a list of one-row tibbles we simply bind below.</span></span>
+<span><span class="va">scenario_rows</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span>expr <span class="op">=</span> <span class="op">{</span></span>
-<span><span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/run_scenarios.html">run_scenarios</a></span><span class="op">(</span>indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">param_grid</span><span class="op">)</span><span class="op">)</span>,</span>
+<span><span class="va">scenario_rows</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/run_scenarios.html">run_scenarios</a></span><span class="op">(</span>indices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">param_grid</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>                            run_one_scenario <span class="op">=</span> <span class="va">run_one</span>,</span>
 <span>                            timestep_hours <span class="op">=</span> <span class="fl">0.1</span>,</span>
 <span>                            debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -320,21 +341,11 @@ the engine is downloaded from the
 <h3 id="analyse-results">Analyse Results<a class="anchor" aria-label="anchor" href="#analyse-results"></a>
 </h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
-<span><span class="va">simulation_results</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/get_simulation_results_optim_parallel.html">get_simulation_results_optim_parallel</a></span><span class="op">(</span></span>
-<span>  paths <span class="op">=</span> <span class="va">paths</span>, </span>
-<span>  path_list <span class="op">=</span> <span class="va">path_list</span>,</span>
-<span>  simulation_names <span class="op">=</span> <span class="va">param_grid</span><span class="op">$</span><span class="va">scenario_name</span>,</span>
-<span>  debug <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
-<span><span class="va">simulation_results_optimisation</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/add_overflow_events_and_waterbalance.html">add_overflow_events_and_waterbalance</a></span><span class="op">(</span></span>
-<span>  simulation_results <span class="op">=</span> <span class="va">simulation_results</span>,</span>
-<span>  event_separation_hours <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>  canonical_variables <span class="op">=</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/default_canonical_wb_variables.html">default_canonical_wb_variables</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Each run was already thinned to its optimisation row inside run_one(), so we</span></span>
+<span><span class="co"># just bind the per-run rows here instead of re-reading every run's full</span></span>
+<span><span class="co"># results into memory. (The previous get_simulation_results_optim_parallel() +</span></span>
+<span><span class="co"># add_overflow_events_and_waterbalance() pass loaded all runs at once.)</span></span>
+<span><span class="va">simulation_results_optimisation</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">scenario_rows</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">simulation_results_optimisation</span> <span class="op">&lt;-</span> <span class="va">param_grid</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">simulation_results_optimisation</span>,</span>

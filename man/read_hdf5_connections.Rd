@@ -7,7 +7,7 @@
 read_hdf5_connections(file)
 }
 \arguments{
-\item{file}{An \code{\link[hdf5r:H5File-class]{hdf5r::H5File}} object pointing to a \verb{*_Verschaltungen.h5} file,
+\item{file}{An \code{\link[hdf5r:H5File]{hdf5r::H5File}} object pointing to a \verb{*_Verschaltungen.h5} file,
 already opened in read mode.}
 }
 \value{

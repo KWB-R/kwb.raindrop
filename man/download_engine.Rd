@@ -12,14 +12,14 @@ download_engine(
 }
 \arguments{
 \item{version}{\code{character(1)}
-Engine release version, matching the part after \code{engine-} in the
-\code{KWB-R/kwb.raindrop.binaries} Release tag. Defaults to the
-package's pinned version.}
+Engine release version, matching the part after \verb{engine-} in the
+\code{KWB-R/kwb.raindrop.binaries} Release tag. Defaults to the package's
+pinned version.}
 
 \item{cache_dir}{\code{character(1)}
 Directory where engine binaries are cached. A sub-directory named after
 \code{version} is used so multiple versions can coexist. Defaults to
-\code{\link[tools:R_user_dir]{tools::R_user_dir}}\code{("kwb.raindrop", "cache")}.}
+\code{\link[tools:R_user_dir]{tools::R_user_dir}}\verb{("kwb.raindrop", "cache")}.}
 
 \item{force}{\code{logical(1)}
 If \code{TRUE}, re-download even if the executable already exists in the
@@ -36,9 +36,9 @@ are no-ops once the file is present.
 }
 \details{
 Releases in \code{KWB-R/kwb.raindrop.binaries} follow the tag scheme
-\code{engine-<version>} and contain a single asset named
-\code{Regenwasserbewirtschaftung.exe} (the version is encoded in the
-tag, not in the filename, so multiple engine versions can coexist
+\verb{engine-<version>} and contain a single asset named
+\code{Regenwasserbewirtschaftung.exe} (the version is encoded in the tag,
+not in the filename, so multiple engine versions can coexist
 side-by-side in the cache).
 
 The executable is a Windows binary; on non-Windows platforms the file is

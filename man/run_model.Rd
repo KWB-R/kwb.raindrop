@@ -39,7 +39,7 @@ command output are wrapped with \code{\link[kwb.utils:catAndRun]{kwb.utils::catA
 }
 \details{
 Both \code{path_exe} and \code{path_input} are converted to absolute, normalised
-paths via \code{\link[fs:path_math]{fs::path_abs()}} and \code{\link[base:normalizePath]{base::normalizePath()}}. The command is
+paths via \code{\link[fs:path_abs]{fs::path_abs()}} and \code{\link[base:normalizePath]{base::normalizePath()}}. The command is
 executed with \code{\link[base:shell]{base::shell()}}, which on Windows invokes the system shell.
 On non-Windows platforms, prefer \code{\link[base:system]{base::system()}} if you need full POSIX semantics.
 }
@@ -64,5 +64,5 @@ status <- run_model(exe, input, print_output = TRUE)
 
 }
 \seealso{
-\code{\link[base:shell]{base::shell()}}, \code{\link[fs:path_math]{fs::path_abs()}}, \code{\link[kwb.utils:catAndRun]{kwb.utils::catAndRun()}}
+\code{\link[base:shell]{base::shell()}}, \code{\link[fs:path_abs]{fs::path_abs()}}, \code{\link[kwb.utils:catAndRun]{kwb.utils::catAndRun()}}
 }

@@ -115,7 +115,8 @@ bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
 # LAI for Mulde_Rigole only (Dach kept at H5 default).
 # 8.5 = status-quo H5 default; 3.9 = grass per Hörnschemeyer et al.,
 # Water 2023, 15, 2840, Tab. 6, plant type 5 (grasses/herbs).
-lai <- c(3.9, 8.5)
+#lai <- c(3.9, 8.5)
+lai <- 3.9
 
 
 # Alle Kombinationen erzeugen

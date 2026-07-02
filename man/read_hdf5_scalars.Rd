@@ -7,7 +7,7 @@
 read_hdf5_scalars(group, numeric_only = TRUE)
 }
 \arguments{
-\item{group}{An \code{\link[hdf5r:H5Group-class]{hdf5r::H5Group}} object. Direct children of this group are expected
+\item{group}{An \code{\link[hdf5r:H5Group]{hdf5r::H5Group}} object. Direct children of this group are expected
 to be scalar datasets (i.e. \code{dataset.dims == 0}).}
 
 \item{numeric_only}{Logical (default: \code{TRUE}). If \code{TRUE}, only numeric / integer scalars are

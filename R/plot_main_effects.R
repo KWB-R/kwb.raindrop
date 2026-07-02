@@ -29,8 +29,7 @@
 #' @export
 #' @importFrom dplyr %>% select all_of group_by summarise left_join mutate n_distinct
 #' @importFrom tidyr pivot_longer
-#' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot geom_jitter facet_wrap
-#'   theme_bw theme labs element_text coord_cartesian
+#' @importFrom ggplot2 ggplot aes geom_violin geom_boxplot geom_jitter facet_wrap theme_bw theme labs element_text coord_cartesian
 #' @importFrom forcats fct_reorder
 #' @importFrom stats median
 #' @importFrom rlang .data

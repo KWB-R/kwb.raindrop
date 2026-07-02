@@ -81,14 +81,16 @@ to contain:</p><ul><li><p><code>element$water_balance</code> with columns <code>
 <dt id="arg-canonical-variables">canonical_variables<a class="anchor" aria-label="anchor" href="#arg-canonical-variables"></a></dt>
 <dd><p>Optional <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> vector of water-balance
 variable names (without the <code>element.</code> / <code>connectedarea.</code> prefix and
-without the trailing <code>_</code>), e.g.
-<code>c("WB_Regen", "WB_Evapotranspiration", "WB_InfiltrationNetto", "WB_Oberflaechenablauf_Ueberlauf", "WB_Oberflaechenablauf_Verschaltungen")</code>.
-When <strong>every</strong> scenario in <code>simulation_results</code> is <code>NULL</code> (or otherwise
-provides no water-balance data), the function would normally return only
-the four headline columns. Pass <code>canonical_variables</code> to attach
-<code>element.&lt;var&gt;_</code> and <code>connectedarea.&lt;var&gt;_</code> <code>NA</code>-filled stub columns to
-such rows so the rendered datatable still exposes the expected column
-structure. Defaults to <code>NULL</code> (no canonical fallback).</p></dd>
+without the trailing <code>_</code>), e.g. <code><a href="default_canonical_wb_variables.html">default_canonical_wb_variables()</a></code>.
+This is a <strong>per-scenario</strong> fallback: for any scenario whose
+<code>wb_element</code> and <code>wb_connectedarea</code> are both empty after the regular
+pivot / mirror logic (including scenarios that are entirely <code>NULL</code>),
+the function attaches <code>element.&lt;var&gt;_</code> and <code>connectedarea.&lt;var&gt;_</code>
+<code>NA</code>-filled stub columns built from this list. This guarantees the
+output tibble keeps the expected water-balance column structure even
+when no scenario contributes real data — <code><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">dplyr::bind_rows()</a></code> would
+otherwise drop columns that no row supplies. Defaults to <code>NULL</code> (no
+canonical fallback).</p></dd>
 
 </dl></div>
     <div class="section level2">

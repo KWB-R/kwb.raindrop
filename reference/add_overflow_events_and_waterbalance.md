@@ -36,13 +36,17 @@ add_overflow_events_and_waterbalance(
   Optional [`character()`](https://rdrr.io/r/base/character.html) vector
   of water-balance variable names (without the `element.` /
   `connectedarea.` prefix and without the trailing `_`), e.g.
-  `c("WB_Regen", "WB_Evapotranspiration", "WB_InfiltrationNetto", "WB_Oberflaechenablauf_Ueberlauf", "WB_Oberflaechenablauf_Verschaltungen")`.
-  When **every** scenario in `simulation_results` is `NULL` (or
-  otherwise provides no water-balance data), the function would normally
-  return only the four headline columns. Pass `canonical_variables` to
-  attach `element.<var>_` and `connectedarea.<var>_` `NA`-filled stub
-  columns to such rows so the rendered datatable still exposes the
-  expected column structure. Defaults to `NULL` (no canonical fallback).
+  [`default_canonical_wb_variables()`](https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.md).
+  This is a **per-scenario** fallback: for any scenario whose
+  `wb_element` and `wb_connectedarea` are both empty after the regular
+  pivot / mirror logic (including scenarios that are entirely `NULL`),
+  the function attaches `element.<var>_` and `connectedarea.<var>_`
+  `NA`-filled stub columns built from this list. This guarantees the
+  output tibble keeps the expected water-balance column structure even
+  when no scenario contributes real data —
+  [`dplyr::bind_rows()`](https://dplyr.tidyverse.org/reference/bind_rows.html)
+  would otherwise drop columns that no row supplies. Defaults to `NULL`
+  (no canonical fallback).
 
 ## Value
 

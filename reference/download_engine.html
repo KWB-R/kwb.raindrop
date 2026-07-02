@@ -71,8 +71,8 @@ are no-ops once the file is present.</p>
 <dl><dt id="arg-version">version<a class="anchor" aria-label="anchor" href="#arg-version"></a></dt>
 <dd><p><code>character(1)</code>
 Engine release version, matching the part after <code>engine-</code> in the
-<code>KWB-R/kwb.raindrop.binaries</code> Release tag. Defaults to the
-package's pinned version.</p></dd>
+<code>KWB-R/kwb.raindrop.binaries</code> Release tag. Defaults to the package's
+pinned version.</p></dd>
 
 
 <dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
@@ -96,8 +96,8 @@ cache. Default: <code>FALSE</code>.</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Releases in <code>KWB-R/kwb.raindrop.binaries</code> follow the tag scheme
 <code>engine-&lt;version&gt;</code> and contain a single asset named
-<code>Regenwasserbewirtschaftung.exe</code> (the version is encoded in the
-tag, not in the filename, so multiple engine versions can coexist
+<code>Regenwasserbewirtschaftung.exe</code> (the version is encoded in the tag,
+not in the filename, so multiple engine versions can coexist
 side-by-side in the cache).</p>
 <p>The executable is a Windows binary; on non-Windows platforms the file is
 still downloaded but cannot be executed directly. The function does not

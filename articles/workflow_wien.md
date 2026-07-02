@@ -97,7 +97,8 @@ bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
 # LAI for Mulde_Rigole only (Dach kept at H5 default).
 # 8.5 = status-quo H5 default; 3.9 = grass per Hörnschemeyer et al.,
 # Water 2023, 15, 2840, Tab. 6, plant type 5 (grasses/herbs).
-lai <- c(3.9, 8.5)
+#lai <- c(3.9, 8.5)
+lai <- 3.9
 
 
 # Alle Kombinationen erzeugen
@@ -135,8 +136,8 @@ scenarios_with_single_parameter_variation <- kwb.raindrop::find_single_param_var
   ref_scenario = ref_scenario
   ) %>% 
   dplyr::pull(scenario_name) %>% unique()
-#> Rows with exactly one differing parameter: 14 of 432
-#> Single-parameter variations per parameter: connected_area=0, mulde_area=7, mulde_height=2, filter_hydraulicconductivity=2, filter_height=0, storage_height=2, bottom_hydraulicconductivity=0, rain_factor=0, lai=1
+#> Rows with exactly one differing parameter: 13 of 216
+#> Single-parameter variations per parameter: connected_area=0, mulde_area=7, mulde_height=2, filter_hydraulicconductivity=2, filter_height=0, storage_height=2, bottom_hydraulicconductivity=0, rain_factor=0, lai=0
 
 param_grid <- param_grid_all_combinations  %>% 
   dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)

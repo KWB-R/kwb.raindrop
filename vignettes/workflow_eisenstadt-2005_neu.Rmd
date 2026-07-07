@@ -215,7 +215,10 @@ run_one <- function(i,
       vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(param_grid_tmp$filter_height,
                                                                                  param_grid_tmp$storage_height)
       vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
-      
+      # Pin LAI to the grass value from Hoernschemeyer et al. (Water 2023,
+      # 15, 2840, Tab. 6, plant type 5 = grasses/herbs); base.h5 ships 8.5.
+      vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- 3.9
+
       vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
       vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <- psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
 
@@ -411,8 +414,31 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   )
 
   # statisch ins PDF (WICHTIG!)
-  suppressWarnings(print(p))  
+  suppressWarnings(print(p))
 dev.off()
 #kwb.utils::finishAndShowPdf(pdff)
+
+pdff <- sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_cost_vs_overflow_volume(
+  simulation_results_optimisation = simulation_results_optimisation,
+  param_grid = param_grid,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE
+)
+
+plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+htmlwidgets::saveWidget(
+  widget = plotly_p,
+  file = sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.html",
+                 paths$modelname),
+  selfcontained = TRUE,
+  title = "Cost vs. overflow volume"
+)
+
+suppressWarnings(print(p))
+dev.off()
 
 ```

@@ -1,5 +1,28 @@
 # kwb.raindrop (development version)
 
+## New features
+
+* New exported plot `plot_cost_vs_overflow_volume()` — companion to
+  `plot_wb_tradeoff_overflows()` for cost-aware optimisation.
+  Scatters `cost_total` (EUR) against overflow volume (m³, computed
+  from `sum_overflows` [mm] and `mulde_area` [m²]), points coloured
+  discretely by `n_overflows` with the same `0..x / ">x"` palette
+  and top legend as the water-balance plot. The plotly tooltip
+  carries the full cost breakdown (excavation, profiling, filter,
+  storage, total) plus the varying `param_grid` entries. Rendered
+  as HTML (`*_cost-vs-overflow-volume.html`) in the four case-study
+  vignettes and linked from `vignettes/index.Rmd` under a new
+  "Kosten vs. Überlaufvolumen" section.
+
+## Consistency
+
+* Eisenstadt 2005 (`workflow_eisenstadt-2005.Rmd` and
+  `workflow_eisenstadt-2005_neu.Rmd`) now pins
+  `//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
+  (Hörnschemeyer grass value) so all four case-study vignettes
+  operate on the same LAI baseline. Wien uses it as one of the
+  sweep levels (`c(3.9, 8.5)`), Bad Aussee identical to Wien.
+
 ## Bug fixes
 
 * `get_simulation_results_optim()` now treats a result HDF5 that exists but

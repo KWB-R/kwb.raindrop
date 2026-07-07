@@ -561,6 +561,31 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   )
 
   # statisch ins PDF (WICHTIG!)
-  suppressWarnings(print(p))  
+  suppressWarnings(print(p))
+dev.off()
+
+pdff <- sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_cost_vs_overflow_volume(
+  simulation_results_optimisation = simulation_results_optimisation,
+  param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE
+)
+
+plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+htmlwidgets::saveWidget(
+  widget = plotly_p,
+  file = sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.html",
+                 paths$modelname),
+  selfcontained = TRUE,
+  title = sprintf("'%s' - Cost vs. overflow volume",
+                  paths$modelname)
+)
+
+suppressWarnings(print(p))
 dev.off()
 ```

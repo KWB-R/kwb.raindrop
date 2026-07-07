@@ -16,6 +16,7 @@ plot_cost_vs_overflow_volume(
   digits = 2L,
   digits_params = 4L,
   lang = c("de", "en"),
+  param_labels = NULL,
   title = NULL,
   lab_x = NULL,
   lab_y = NULL,
@@ -25,10 +26,11 @@ plot_cost_vs_overflow_volume(
 \arguments{
 \item{simulation_results_optimisation}{Data frame with the columns
 \code{scenario_name}, \code{n_overflows}, \code{sum_overflows}, \code{mulde_area},
-\code{cost_excavation}, \code{cost_profiling}, \code{cost_filter}, \code{cost_storage},
-\code{cost_total}. Typically the joined output of
-\code{\link[=add_overflow_events_and_waterbalance]{add_overflow_events_and_waterbalance()}} and
-\code{\link[=compute_costs]{compute_costs()}}.}
+\code{element.WB_Evapotranspiration_}, \code{element.WB_InfiltrationNetto_},
+\code{element.WB_Oberflaechenablauf_Ueberlauf_}, \code{cost_excavation},
+\code{cost_profiling}, \code{cost_filter}, \code{cost_storage}, \code{cost_total},
+\code{storage_type}. Typically the joined output of
+\code{\link[=add_overflow_events_and_waterbalance]{add_overflow_events_and_waterbalance()}} and \code{\link[=compute_costs]{compute_costs()}}.}
 
 \item{param_grid}{Data frame with parameter grid. Must contain
 \code{scenario_name}.}
@@ -48,6 +50,9 @@ are dropped before plotting.}
 tooltip.}
 
 \item{lang}{Character. Plot language: \code{"de"} or \code{"en"}.}
+
+\item{param_labels}{Named character vector translating \code{param_grid} columns
+to tooltip labels, or \code{NULL} to use \code{\link[=default_param_labels]{default_param_labels()}} for \code{lang}.}
 
 \item{title, lab_x, lab_y}{Optional character overrides for the default
 language-specific title / axis labels.}
@@ -71,13 +76,19 @@ surface, as returned by \code{\link[=add_overflow_events_and_waterbalance]{add_o
 multiplied by \code{mulde_area} (m2) and converted to m3:
 \code{overflow_volume_m3 = sum_overflows * mulde_area / 1000}.
 
-The tooltip carries the cost breakdown (\code{cost_excavation},
-\code{cost_profiling}, \code{cost_filter}, \code{cost_storage}, \code{cost_total}) plus the
-varying parameters from \code{param_grid} (excluding \code{scenario_name}), so the
-user can hover over a scatter point and see exactly why it landed where
-it did.
+The tooltip carries the element water balance
+(\code{element.WB_Evapotranspiration_}, \code{element.WB_InfiltrationNetto_},
+\code{element.WB_Oberflaechenablauf_Ueberlauf_}, all as \% of the total water
+input) and the cost breakdown (\code{cost_excavation}, \code{cost_profiling},
+\code{cost_filter}, \code{cost_storage}, \code{cost_total}) plus the varying parameters
+from \code{param_grid} (excluding \code{scenario_name}), so the user can hover over a
+scatter point and see exactly why it landed where it did.
 
 The plot language can be switched via \code{lang = "de"} or \code{lang = "en"}.
 Titles / axis labels / legend / tooltip labels follow the choice unless
 explicit overrides are supplied.
+}
+\seealso{
+\code{\link[=plot_cost_overflow_boxplot]{plot_cost_overflow_boxplot()}} for the same data / tooltip shown as
+a cost-by-overflow-count boxplot.
 }

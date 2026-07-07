@@ -11,11 +11,13 @@
 #' multiplied by `mulde_area` (m2) and converted to m3:
 #' `overflow_volume_m3 = sum_overflows * mulde_area / 1000`.
 #'
-#' The tooltip carries the cost breakdown (`cost_excavation`,
-#' `cost_profiling`, `cost_filter`, `cost_storage`, `cost_total`) plus the
-#' varying parameters from `param_grid` (excluding `scenario_name`), so the
-#' user can hover over a scatter point and see exactly why it landed where
-#' it did.
+#' The tooltip carries the element water balance
+#' (`element.WB_Evapotranspiration_`, `element.WB_InfiltrationNetto_`,
+#' `element.WB_Oberflaechenablauf_Ueberlauf_`, all as % of the total water
+#' input) and the cost breakdown (`cost_excavation`, `cost_profiling`,
+#' `cost_filter`, `cost_storage`, `cost_total`) plus the varying parameters
+#' from `param_grid` (excluding `scenario_name`), so the user can hover over a
+#' scatter point and see exactly why it landed where it did.
 #'
 #' The plot language can be switched via `lang = "de"` or `lang = "en"`.
 #' Titles / axis labels / legend / tooltip labels follow the choice unless
@@ -23,10 +25,11 @@
 #'
 #' @param simulation_results_optimisation Data frame with the columns
 #'   `scenario_name`, `n_overflows`, `sum_overflows`, `mulde_area`,
-#'   `cost_excavation`, `cost_profiling`, `cost_filter`, `cost_storage`,
-#'   `cost_total`. Typically the joined output of
-#'   [`add_overflow_events_and_waterbalance()`] and
-#'   [`compute_costs()`].
+#'   `element.WB_Evapotranspiration_`, `element.WB_InfiltrationNetto_`,
+#'   `element.WB_Oberflaechenablauf_Ueberlauf_`, `cost_excavation`,
+#'   `cost_profiling`, `cost_filter`, `cost_storage`, `cost_total`,
+#'   `storage_type`. Typically the joined output of
+#'   [`add_overflow_events_and_waterbalance()`] and [`compute_costs()`].
 #' @param param_grid Data frame with parameter grid. Must contain
 #'   `scenario_name`.
 #' @param x Numeric threshold for the overflow-count colour bucket. Values
@@ -39,6 +42,8 @@
 #' @param digits_params Integer. Rounding for parameter values in the
 #'   tooltip.
 #' @param lang Character. Plot language: `"de"` or `"en"`.
+#' @param param_labels Named character vector translating `param_grid` columns
+#'   to tooltip labels, or `NULL` to use [default_param_labels()] for `lang`.
 #' @param title,lab_x,lab_y Optional character overrides for the default
 #'   language-specific title / axis labels.
 #' @param legend_position Character. Legend position, default `"top"`.
@@ -46,11 +51,12 @@
 #' @return A `ggplot` object. Convert to interactive via
 #'   `plotly::ggplotly(p, tooltip = "text")`.
 #'
+#' @seealso [plot_cost_overflow_boxplot()] for the same data / tooltip shown as
+#'   a cost-by-overflow-count boxplot.
+#'
 #' @export
 #'
-#' @importFrom dplyr %>% select summarise across everything n_distinct filter pull mutate group_by left_join case_when all_of
-#' @importFrom tidyr pivot_longer
-#' @importFrom purrr map_chr
+#' @importFrom dplyr %>% filter mutate left_join case_when
 #' @importFrom ggplot2 ggplot aes geom_point scale_color_manual labs theme_bw position_jitter theme guides guide_legend
 #' @importFrom grDevices colorRampPalette
 #' @importFrom rlang .data
@@ -65,54 +71,35 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
                                          digits = 2L,
                                          digits_params = 4L,
                                          lang = c("de", "en"),
+                                         param_labels = NULL,
                                          title = NULL,
                                          lab_x = NULL,
                                          lab_y = NULL,
                                          legend_position = "top") {
 
   lang <- match.arg(lang)
+  if (is.null(param_labels)) param_labels <- default_param_labels(lang)
 
   txt <- switch(
     lang,
     de = list(
       title = paste0(
-        "Kosten vs. Überlaufvolumen (Anzahl Überläufe ≤ ", x, ")"
+        "Kosten vs. \u00dcberlaufvolumen (Anzahl \u00dcberl\u00e4ufe \u2264 ", x, ")"
       ),
-      x = "Gesamtkosten [€]",
-      y = "Überlaufvolumen [m³]",
-      legend = "Anzahl Überlaufereignisse",
-      tt_scenario = "Szenario",
-      tt_n_overflows = "Anzahl Überlaufereignisse",
-      tt_sum_overflows_mm = "Summe Überläufe [mm]",
-      tt_overflow_volume = "Überlaufvolumen [m³]",
-      tt_cost_total = "Gesamtkosten",
-      tt_cost_excavation = "Aushub",
-      tt_cost_profiling = "Profilierung + Begrünung",
-      tt_cost_filter = "Bodenfilter",
-      tt_cost_storage = "Speicherschicht",
-      tt_costs_header = "Kostenaufteilung [€]",
-      tt_params = "Variierende Parameter"
+      x = "Gesamtkosten [\u20ac]",
+      y = "\u00dcberlaufvolumen [m\u00b3]",
+      legend = "Anzahl \u00dcberlaufereignisse"
     ),
     en = list(
       title = paste0(
-        "Cost vs. overflow volume (overflow events ≤ ", x, ")"
+        "Cost vs. overflow volume (overflow events \u2264 ", x, ")"
       ),
-      x = "Total cost [€]",
-      y = "Overflow volume [m³]",
-      legend = "Number of overflow events",
-      tt_scenario = "Scenario",
-      tt_n_overflows = "Number of overflow events",
-      tt_sum_overflows_mm = "Sum of overflows [mm]",
-      tt_overflow_volume = "Overflow volume [m³]",
-      tt_cost_total = "Total cost",
-      tt_cost_excavation = "Excavation",
-      tt_cost_profiling = "Profiling + greening",
-      tt_cost_filter = "Soil filter",
-      tt_cost_storage = "Storage layer",
-      tt_costs_header = "Cost breakdown [€]",
-      tt_params = "Varying parameters"
+      x = "Total cost [\u20ac]",
+      y = "Overflow volume [m\u00b3]",
+      legend = "Number of overflow events"
     )
   )
+  txt <- c(txt, cost_tooltip_labels(lang))
 
   if (is.null(title)) title <- txt$title
   if (is.null(lab_x)) lab_x <- txt$x
@@ -121,8 +108,10 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
   req_grid <- c("scenario_name")
   req_res  <- c(
     "scenario_name", "n_overflows", "sum_overflows", "mulde_area",
+    "element.WB_Evapotranspiration_", "element.WB_InfiltrationNetto_",
+    "element.WB_Oberflaechenablauf_Ueberlauf_",
     "cost_excavation", "cost_profiling", "cost_filter",
-    "cost_storage", "cost_total"
+    "cost_storage", "cost_total", "storage_type"
   )
 
   miss_grid <- setdiff(req_grid, names(param_grid))
@@ -147,40 +136,8 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
             " for discrete palette/legend.")
   }
 
-  varying_params <- param_grid %>%
-    dplyr::select(-"scenario_name") %>%
-    dplyr::summarise(dplyr::across(dplyr::everything(),
-                                   ~ dplyr::n_distinct(.) > 1)) %>%
-    tidyr::pivot_longer(dplyr::everything(),
-                        names_to = "param",
-                        values_to = "vary") %>%
-    dplyr::filter(.data$vary) %>%
-    dplyr::pull("param")
-
-  if (length(varying_params) == 0) {
-    param_tooltip <- param_grid %>%
-      dplyr::select("scenario_name") %>%
-      dplyr::mutate(params_html = "")
-  } else {
-    param_tooltip <- param_grid %>%
-      dplyr::select("scenario_name", dplyr::all_of(varying_params)) %>%
-      tidyr::pivot_longer(-"scenario_name",
-                          names_to = "param",
-                          values_to = "val") %>%
-      dplyr::mutate(
-        val_chr = purrr::map_chr(.data$val, ~ paste(.x, collapse = ",")),
-        val_num = suppressWarnings(as.numeric(.data$val_chr)),
-        val_fmt = ifelse(
-          is.na(.data$val_num),
-          .data$val_chr,
-          format(round(.data$val_num, digits_params), trim = TRUE)
-        ),
-        kv = paste0(.data$param, "=", .data$val_fmt)
-      ) %>%
-      dplyr::group_by(.data$scenario_name) %>%
-      dplyr::summarise(params_html = paste(.data$kv, collapse = "<br>"),
-                       .groups = "drop")
-  }
+  param_tooltip <- build_varying_param_html(param_grid, lang, param_labels,
+                                            digits_params)
 
   df <- simulation_results_optimisation %>%
     dplyr::left_join(param_tooltip, by = "scenario_name") %>%
@@ -208,6 +165,8 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
     dplyr::mutate(
       overflow_cat = factor(.data$overflow_cat, levels = levs)
     )
+
+  df$tooltip_html <- cost_tooltip_text(df, txt, digits)
 
   if (x_int == 0L) {
     pal <- c("0" = "orange", ">0" = "red")
@@ -245,25 +204,7 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
     x = .data$cost_total,
     y = .data$overflow_volume_m3,
     color = .data$overflow_cat,
-    text = paste0(
-      txt$tt_scenario, ": ", .data$scenario_name,
-      "<br>", txt$tt_n_overflows, ": ", .data$n_overflows,
-      "<br>", txt$tt_sum_overflows_mm, ": ", round(.data$sum_overflows, digits),
-      "<br>", txt$tt_overflow_volume, ": ",
-      round(.data$overflow_volume_m3, digits),
-      "<br><br><b>", txt$tt_costs_header, "</b>",
-      "<br>", txt$tt_cost_excavation, ": ",
-      format(round(.data$cost_excavation, 0), big.mark = " ", trim = TRUE),
-      "<br>", txt$tt_cost_profiling, ": ",
-      format(round(.data$cost_profiling, 0), big.mark = " ", trim = TRUE),
-      "<br>", txt$tt_cost_filter, ": ",
-      format(round(.data$cost_filter, 0), big.mark = " ", trim = TRUE),
-      "<br>", txt$tt_cost_storage, ": ",
-      format(round(.data$cost_storage, 0), big.mark = " ", trim = TRUE),
-      "<br><b>", txt$tt_cost_total, ": ",
-      format(round(.data$cost_total, 0), big.mark = " ", trim = TRUE), "</b>",
-      "<br><br><b>", txt$tt_params, "</b><br>", .data$params_html
-    )
+    text = .data$tooltip_html
   )) +
     ggplot2::geom_point(alpha = 0.7, position = pos) +
     ggplot2::scale_color_manual(

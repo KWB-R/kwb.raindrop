@@ -7,7 +7,10 @@
   Scatters `cost_total` (EUR) against overflow volume (m³, computed
   from `sum_overflows` [mm] and `mulde_area` [m²]), points coloured
   discretely by `n_overflows` with the same `0..x / ">x"` palette
-  and top legend as the water-balance plot. The plotly tooltip
+  and top legend as the water-balance plot. Both cost plots report the
+  **share of scenarios meeting the validity criterion** (`n_overflows`
+  ≤ `x`) in the plot title (e.g. `(39 % mit ≤ 5 Überläufen)`), since
+  ggplotly drops ggplot subtitles. The plotly tooltip
   carries the element water balance (evapotranspiration, infiltration,
   overflow — all in %), the chosen storage type on its own bold line
   (bilingual, `Sickerbox / Infiltration box` or

@@ -83,17 +83,13 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
   txt <- switch(
     lang,
     de = list(
-      title = paste0(
-        "Kosten vs. \u00dcberlaufvolumen (Anzahl \u00dcberl\u00e4ufe \u2264 ", x, ")"
-      ),
+      title = "Kosten vs. \u00dcberlaufvolumen",
       x = "Gesamtkosten [\u20ac]",
       y = "\u00dcberlaufvolumen [m\u00b3]",
       legend = "Anzahl \u00dcberlaufereignisse"
     ),
     en = list(
-      title = paste0(
-        "Cost vs. overflow volume (overflow events \u2264 ", x, ")"
-      ),
+      title = "Cost vs. overflow volume",
       x = "Total cost [\u20ac]",
       y = "Overflow volume [m\u00b3]",
       legend = "Number of overflow events"
@@ -101,7 +97,6 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
   )
   txt <- c(txt, cost_tooltip_labels(lang))
 
-  if (is.null(title)) title <- txt$title
   if (is.null(lab_x)) lab_x <- txt$x
   if (is.null(lab_y)) lab_y <- txt$y
 
@@ -135,6 +130,15 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
     warning("x is not an integer; using x_int = ", x_int,
             " for discrete palette/legend.")
   }
+
+  # Append the share of scenarios meeting the validity criterion
+  # (n_overflows <= x) to the auto title (ggplotly drops ggplot subtitles).
+  valid_pct <- round(100 * mean(
+    simulation_results_optimisation$n_overflows <= x_int, na.rm = TRUE))
+  share_txt <- switch(lang,
+    de = paste0(valid_pct, " % mit \u2264 ", x_int, " \u00dcberl\u00e4ufen"),
+    en = paste0(valid_pct, " % with \u2264 ", x_int, " overflows"))
+  if (is.null(title)) title <- paste0(txt$title, " (", share_txt, ")")
 
   param_tooltip <- build_varying_param_html(param_grid, lang, param_labels,
                                             digits_params)

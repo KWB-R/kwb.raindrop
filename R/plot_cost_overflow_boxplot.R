@@ -155,7 +155,6 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
     min_overflow         = txt$best_min_overflow,
     max_evapotranspiration = txt$best_max_evap)
 
-  if (is.null(title)) title <- def_title
   if (is.null(lab_x)) lab_x <- txt$x
   if (is.null(lab_y)) lab_y <- txt$y
   if (is.null(lab_size)) lab_size <- def_size
@@ -188,6 +187,16 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
     warning("x is not an integer; using x_int = ", x_int,
             " for discrete axis/palette.")
   }
+
+  # Share of scenarios meeting the validity criterion (n_overflows <= x),
+  # appended to the auto-generated title (a plotly-safe place -- ggplotly
+  # drops ggplot subtitles).
+  valid_pct <- round(100 * mean(
+    simulation_results_optimisation$n_overflows <= x_int, na.rm = TRUE))
+  share_txt <- switch(lang,
+    de = paste0(valid_pct, " % mit \u2264 ", x_int, " \u00dcberl\u00e4ufen"),
+    en = paste0(valid_pct, " % with \u2264 ", x_int, " overflows"))
+  if (is.null(title)) title <- paste0(def_title, " (", share_txt, ")")
 
   param_tooltip <- build_varying_param_html(param_grid, lang, param_labels,
                                             digits_params)

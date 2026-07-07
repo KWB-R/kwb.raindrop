@@ -52,11 +52,17 @@ for (site in sites) {
 
 # Ergebnisse
 
-Die Ergebnisse für die einjährige Berechnung (Eisenstadt für Jahr 2005) und die 
-beiden 15 jährigen Zeitreihen (2011-2025) für Wien und Bad Aussee finden sich in 
+Die Ergebnisse für die einjährige Berechnung (Eisenstadt für Jahr 2005) und die
+beiden 15 jährigen Zeitreihen (2011-2025) für Wien und Bad Aussee finden sich in
 unten stehenden Links:
 
-## Tabellen  
+Als **Gültigkeitskriterium** — die maximal zulässige Anzahl Überlaufereignisse —
+wurde passend zur Simulationsdauer gewählt: **Eisenstadt ≤ 1** (Simulationszeit
+1 Jahr) und **Wien / Bad Aussee ≤ 5** (15-jährige Regen-/ET-Reihe). Dieser
+Schwellenwert steuert die Farbgebung (grün = gültig, rot = zu viele Überläufe)
+und den in den Kostenplot-Titeln angegebenen Anteil gültiger Szenarien.
+
+## Tabellen
 
 ```{r brute_force_tabelle, echo = FALSE, results='asis'}
 for (site in sites) {

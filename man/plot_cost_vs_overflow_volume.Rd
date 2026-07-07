@@ -25,8 +25,8 @@ plot_cost_vs_overflow_volume(
 \arguments{
 \item{simulation_results_optimisation}{Data frame with the columns
 \code{scenario_name}, \code{n_overflows}, \code{sum_overflows}, \code{mulde_area},
-\code{cost_excavation}, \code{cost_profiling}, \code{cost_filter},
-\code{cost_storage}, \code{cost_total}. Typically the joined output of
+\code{cost_excavation}, \code{cost_profiling}, \code{cost_filter}, \code{cost_storage},
+\code{cost_total}. Typically the joined output of
 \code{\link[=add_overflow_events_and_waterbalance]{add_overflow_events_and_waterbalance()}} and
 \code{\link[=compute_costs]{compute_costs()}}.}
 

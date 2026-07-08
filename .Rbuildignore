@@ -9,3 +9,5 @@
 ^index\.md$
 ^README\.md$
 ^vignettes/index\.Rmd$
+^\.positai$
+^\.claude$

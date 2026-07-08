@@ -113,7 +113,7 @@ storage_height <- c(100, 500, 1000)
 rain_factor <- 1
 bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
 # LAI for Mulde_Rigole only (Dach kept at H5 default).
-# 8.5 = status-quo H5 default; 3.9 = grass per Hörnschemeyer et al.,
+# 8.5 = status-quo H5 default; 3.9 = grass per Hoernschemeyer et al.,
 # Water 2023, 15, 2840, Tab. 6, plant type 5 (grasses/herbs).
 #lai <- c(3.9, 8.5)
 lai <- 3.9
@@ -240,7 +240,7 @@ timeseries_rain <- if(max(timeseries_et$time) > max(timeseries_rain$time)) {
   timeseries_rain
 }
 
-txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Regenmenge: %f mm/a)\n",
+txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Regenmenge: %f mm/a)\n",
         paths$path_rain,
         100*sum(is.na(timeseries_rain$value))/nrow(timeseries_rain),
         100*sum(timeseries_rain$value == 0, na.rm = TRUE)/nrow(timeseries_rain),
@@ -248,7 +248,7 @@ txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Wer
 
 message(txt)
 
-txt <- sprintf("Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
+txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
         paths$path_et,
         100*sum(is.na(timeseries_et$value))/nrow(timeseries_et),
         100*sum(timeseries_et$value == 0, na.rm = TRUE)/nrow(timeseries_et),
@@ -557,8 +557,82 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   )
 
   # statisch ins PDF (WICHTIG!)
-  suppressWarnings(print(p))  
+  suppressWarnings(print(p))
 dev.off()
 #kwb.utils::finishAndShowPdf(pdff)
+
+pdff <- sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_cost_vs_overflow_volume(
+  simulation_results_optimisation = simulation_results_optimisation,
+  param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE
+)
+
+# interaktiv als HTML
+plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+htmlwidgets::saveWidget(
+  widget = plotly_p,
+  file = sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.html",
+                 paths$modelname),
+  selfcontained = TRUE,
+  title = sprintf("'%s' - Cost vs. overflow volume",
+                  paths$modelname)
+)
+
+# statisch ins PDF (WICHTIG!)
+suppressWarnings(print(p))
+dev.off()
+#kwb.utils::finishAndShowPdf(pdff)
+
+# Drei Kosten-Boxplots mit unterschiedlichem Optimierungsziel je Kategorie
+# (Kosten als Tie-Break): (i) guenstigste; (ii) geringstes Ueberlaufvolumen
+# (Label m3 + %); (iii) hoechste Verdunstung (Label %, Punktgroesse =
+# Verdunstung). x = max_n_overflows, Linie ueber alle Klassen.
+cost_boxplots <- list(
+  list(suffix = "cheapest",     best_by = "min_cost",
+       size_by = "overflow_volume",    label_best = FALSE),
+  list(suffix = "min-overflow", best_by = "min_overflow",
+       size_by = "overflow_volume",    label_best = TRUE),
+  list(suffix = "max-evap",     best_by = "max_evapotranspiration",
+       size_by = "evapotranspiration", label_best = TRUE)
+)
+for (cb in cost_boxplots) {
+  pdff <- sprintf(
+    "simulation_results_optimisation_%s_cost-by-overflows-boxplot-%s.pdf",
+    paths$modelname, cb$suffix)
+  kwb.utils::preparePdf(pdfFile = pdff)
+
+  p <- kwb.raindrop::plot_cost_overflow_boxplot(
+    simulation_results_optimisation = simulation_results_optimisation,
+    param_grid = param_grid,
+    x = max_n_overflows,
+    filter_n_gtx = FALSE,
+    use_jitter = TRUE,
+    lang = lang,
+    size_by = cb$size_by,
+    best_by = cb$best_by,
+    label_best = cb$label_best
+  )
+
+  # interaktiv als HTML
+  plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  htmlwidgets::saveWidget(
+    widget = plotly_p,
+    file = sprintf(
+      "simulation_results_optimisation_%s_cost-by-overflows-boxplot-%s.html",
+      paths$modelname, cb$suffix),
+    selfcontained = TRUE,
+    title = sprintf("'%s' - Cost boxplot (%s)", paths$modelname, cb$suffix)
+  )
+
+  # statisch ins PDF (WICHTIG!)
+  suppressWarnings(print(p))
+  dev.off()
+}
 
 ```

@@ -210,11 +210,16 @@ run_one <- function(i,
       vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(param_grid_tmp$filter_height,
                                                                                  param_grid_tmp$storage_height)
       vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
-      
+      # Pin LAI to the grass value from Hoernschemeyer et al. (Water 2023,
+      # 15, 2840, Tab. 6, plant type 5 = grasses/herbs); base.h5 ships 8.5.
+      # Wien and Bad Aussee already use 3.9 (Wien as one of the sweep
+      # levels); this line keeps Eisenstadt 2005 consistent.
+      vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- 3.9
+
       vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
       vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <- psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
 
-# Timeseries (2×N) als tibble?
+# Timeseries (2xN) als tibble?
 if (is.data.frame(vals[["//Kurven/Regen"]])) {
   vals[["//Kurven/Regen"]]$value <- vals[["//Kurven/Regen"]]$value * param_grid_tmp$rain_factor
 }
@@ -290,10 +295,11 @@ x$Fehlerbeschreibung
 # add_overflow_events_and_waterbalance() pass loaded all runs at once.)
 simulation_results_optimisation <- dplyr::bind_rows(scenario_rows)
 
-simulation_results_optimisation <- param_grid %>% 
+simulation_results_optimisation <- param_grid %>%
   dplyr::left_join(simulation_results_optimisation,
-                   by = c("scenario_name" = "s_name")) %>% 
-  dplyr::relocate(scenario_name, .before = connected_area)
+                   by = c("scenario_name" = "s_name")) %>%
+  dplyr::relocate(scenario_name, .before = connected_area) %>%
+  kwb.raindrop::compute_costs()
 
 readr::write_csv(simulation_results_optimisation, 
                  file = sprintf("simulation_results_optimisation_%s.csv",
@@ -447,8 +453,82 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   )
 
   # statisch ins PDF (WICHTIG!)
-  suppressWarnings(print(p))  
+  suppressWarnings(print(p))
 dev.off()
 #kwb.utils::finishAndShowPdf(pdff)
+
+pdff <- sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_cost_vs_overflow_volume(
+  simulation_results_optimisation = simulation_results_optimisation,
+  param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE
+)
+
+# interaktiv als HTML
+plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+htmlwidgets::saveWidget(
+  widget = plotly_p,
+  file = sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.html",
+                 paths$modelname),
+  selfcontained = TRUE,
+  title = sprintf("'%s' - Cost vs. overflow volume",
+                  paths$modelname)
+)
+
+# statisch ins PDF (WICHTIG!)
+suppressWarnings(print(p))
+dev.off()
+
+
+# Drei Kosten-Boxplots mit unterschiedlichem Optimierungsziel je Kategorie
+# (Kosten als Tie-Break): (i) guenstigste; (ii) geringstes Ueberlaufvolumen
+# (Label m3 + %); (iii) hoechste Verdunstung (Label %, Punktgroesse =
+# Verdunstung). x = max_n_overflows, Linie ueber alle Klassen.
+cost_boxplots <- list(
+  list(suffix = "cheapest",     best_by = "min_cost",
+       size_by = "overflow_volume",    label_best = FALSE),
+  list(suffix = "min-overflow", best_by = "min_overflow",
+       size_by = "overflow_volume",    label_best = TRUE),
+  list(suffix = "max-evap",     best_by = "max_evapotranspiration",
+       size_by = "evapotranspiration", label_best = TRUE)
+)
+for (cb in cost_boxplots) {
+  pdff <- sprintf(
+    "simulation_results_optimisation_%s_cost-by-overflows-boxplot-%s.pdf",
+    paths$modelname, cb$suffix)
+  kwb.utils::preparePdf(pdfFile = pdff)
+
+  p <- kwb.raindrop::plot_cost_overflow_boxplot(
+    simulation_results_optimisation = simulation_results_optimisation,
+    param_grid = param_grid,
+    x = max_n_overflows,
+    filter_n_gtx = FALSE,
+    use_jitter = TRUE,
+    lang = lang,
+    size_by = cb$size_by,
+    best_by = cb$best_by,
+    label_best = cb$label_best
+  )
+
+  # interaktiv als HTML
+  plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  htmlwidgets::saveWidget(
+    widget = plotly_p,
+    file = sprintf(
+      "simulation_results_optimisation_%s_cost-by-overflows-boxplot-%s.html",
+      paths$modelname, cb$suffix),
+    selfcontained = TRUE,
+    title = sprintf("'%s' - Cost boxplot (%s)", paths$modelname, cb$suffix)
+  )
+
+  # statisch ins PDF (WICHTIG!)
+  suppressWarnings(print(p))
+  dev.off()
+}
 
 ```

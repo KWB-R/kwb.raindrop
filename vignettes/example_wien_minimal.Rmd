@@ -169,7 +169,7 @@ DT::datatable(
   param_grid,
   filter = "top",
   options = list(pageLength = 12, autoWidth = TRUE),
-  caption = "Twelve scenarios — fixed Daniel-reference geometry, sweep of three ET-related engine switches."
+  caption = "Twelve scenarios \u2014 fixed Daniel-reference geometry, sweep of three ET-related engine switches."
 )
 
 psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh / 25.4)^(-0.328)) * 25.4
@@ -476,7 +476,7 @@ DT::datatable(
   results,
   filter = "top",
   options = list(pageLength = 12, autoWidth = TRUE),
-  caption = "Twelve-scenario simulation results — water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%. Scenarios whose water-balance step errored (see chunk log) are present in the table but have NA in the result columns."
+  caption = "Twelve-scenario simulation results \u2014 water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%. Scenarios whose water-balance step errored (see chunk log) are present in the table but have NA in the result columns."
 )
 ```
 

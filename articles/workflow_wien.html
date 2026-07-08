@@ -37,7 +37,6 @@
     <li><a class="dropdown-item" href="../articles/index.html">RainDrop Optimierung – Brute Force</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
-    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_wien.html">Workflow Wien (2011 - 2025)</a></li>
   </ul>
 </li>
@@ -169,7 +168,7 @@ Release on demand via <code><a href="../reference/download_engine.html">kwb.rain
 <span><span class="va">rain_factor</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span><span class="va">bottom_hydraulicconductivity</span> <span class="op">&lt;-</span> <span class="fl">12</span> <span class="co">#c(1,5,10,20,45,90,180,270,360,1860,3600)</span></span>
 <span><span class="co"># LAI for Mulde_Rigole only (Dach kept at H5 default).</span></span>
-<span><span class="co"># 8.5 = status-quo H5 default; 3.9 = grass per Hörnschemeyer et al.,</span></span>
+<span><span class="co"># 8.5 = status-quo H5 default; 3.9 = grass per Hoernschemeyer et al.,</span></span>
 <span><span class="co"># Water 2023, 15, 2840, Tab. 6, plant type 5 (grasses/herbs).</span></span>
 <span><span class="co">#lai &lt;- c(3.9, 8.5)</span></span>
 <span><span class="va">lai</span> <span class="op">&lt;-</span> <span class="fl">3.9</span></span>
@@ -308,7 +307,7 @@ Release on demand via <code><a href="../reference/download_engine.html">kwb.rain
 <span>  <span class="va">timeseries_rain</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">txt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Regenmenge: %f mm/a)\n"</span>,</span>
+<span><span class="va">txt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Regenmenge: %f mm/a)\n"</span>,</span>
 <span>        <span class="va">paths</span><span class="op">$</span><span class="va">path_rain</span>,</span>
 <span>        <span class="fl">100</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">timeseries_rain</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">timeseries_rain</span><span class="op">)</span>,</span>
 <span>        <span class="fl">100</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">timeseries_rain</span><span class="op">$</span><span class="va">value</span> <span class="op">==</span> <span class="fl">0</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">timeseries_rain</span><span class="op">)</span>,</span>
@@ -317,7 +316,7 @@ Release on demand via <code><a href="../reference/download_engine.html">kwb.rain
 <span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="va">txt</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Für den Datensatz 'D:/a/_temp/Library/kwb.raindrop/extdata/models/wien/rain.csv.gz' gibt es 0.00 % NA Werte und 96.04 % Werte die gleich Null sind. (Regenmenge: 647.465225 mm/a)</span></span>
 <span></span>
-<span><span class="va">txt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Für den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n"</span>,</span>
+<span><span class="va">txt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n"</span>,</span>
 <span>        <span class="va">paths</span><span class="op">$</span><span class="va">path_et</span>,</span>
 <span>        <span class="fl">100</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">timeseries_et</span><span class="op">$</span><span class="va">value</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">timeseries_et</span><span class="op">)</span>,</span>
 <span>        <span class="fl">100</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">timeseries_et</span><span class="op">$</span><span class="va">value</span> <span class="op">==</span> <span class="fl">0</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">timeseries_et</span><span class="op">)</span>,</span>
@@ -625,9 +624,83 @@ Release on demand via <code><a href="../reference/download_engine.html">kwb.rain
 <span>  <span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># statisch ins PDF (WICHTIG!)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span><span class="op">)</span>  </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#kwb.utils::finishAndShowPdf(pdff)</span></span></code></pre></div>
+<span><span class="co">#kwb.utils::finishAndShowPdf(pdff)</span></span>
+<span></span>
+<span><span class="va">pdff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_cost-vs-overflow-volume.pdf"</span>,</span>
+<span>                <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
+<span><span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/preparePdf.html" class="external-link">preparePdf</a></span><span class="op">(</span>pdfFile <span class="op">=</span> <span class="va">pdff</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/plot_cost_vs_overflow_volume.html">plot_cost_vs_overflow_volume</a></span><span class="op">(</span></span>
+<span>  simulation_results_optimisation <span class="op">=</span> <span class="va">simulation_results_optimisation</span>,</span>
+<span>  param_grid <span class="op">=</span> <span class="va">param_grid</span>,</span>
+<span>  x <span class="op">=</span> <span class="va">max_n_overflows</span>,</span>
+<span>  filter_n_gtx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  use_jitter <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># interaktiv als HTML</span></span>
+<span><span class="va">plotly_p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu">plotly</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">ggplotly</a></span><span class="op">(</span><span class="va">p</span>, tooltip <span class="op">=</span> <span class="st">"text"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">htmlwidgets</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmlwidgets/man/saveWidget.html" class="external-link">saveWidget</a></span><span class="op">(</span></span>
+<span>  widget <span class="op">=</span> <span class="va">plotly_p</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"simulation_results_optimisation_%s_cost-vs-overflow-volume.html"</span>,</span>
+<span>                 <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span>,</span>
+<span>  selfcontained <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"'%s' - Cost vs. overflow volume"</span>,</span>
+<span>                  <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># statisch ins PDF (WICHTIG!)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#kwb.utils::finishAndShowPdf(pdff)</span></span>
+<span></span>
+<span><span class="co"># Drei Kosten-Boxplots mit unterschiedlichem Optimierungsziel je Kategorie</span></span>
+<span><span class="co"># (Kosten als Tie-Break): (i) guenstigste; (ii) geringstes Ueberlaufvolumen</span></span>
+<span><span class="co"># (Label m3 + %); (iii) hoechste Verdunstung (Label %, Punktgroesse =</span></span>
+<span><span class="co"># Verdunstung). x = max_n_overflows, Linie ueber alle Klassen.</span></span>
+<span><span class="va">cost_boxplots</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>suffix <span class="op">=</span> <span class="st">"cheapest"</span>,     best_by <span class="op">=</span> <span class="st">"min_cost"</span>,</span>
+<span>       size_by <span class="op">=</span> <span class="st">"overflow_volume"</span>,    label_best <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>suffix <span class="op">=</span> <span class="st">"min-overflow"</span>, best_by <span class="op">=</span> <span class="st">"min_overflow"</span>,</span>
+<span>       size_by <span class="op">=</span> <span class="st">"overflow_volume"</span>,    label_best <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>suffix <span class="op">=</span> <span class="st">"max-evap"</span>,     best_by <span class="op">=</span> <span class="st">"max_evapotranspiration"</span>,</span>
+<span>       size_by <span class="op">=</span> <span class="st">"evapotranspiration"</span>, label_best <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">cb</span> <span class="kw">in</span> <span class="va">cost_boxplots</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">pdff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span></span>
+<span>    <span class="st">"simulation_results_optimisation_%s_cost-by-overflows-boxplot-%s.pdf"</span>,</span>
+<span>    <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span>, <span class="va">cb</span><span class="op">$</span><span class="va">suffix</span><span class="op">)</span></span>
+<span>  <span class="fu">kwb.utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/kwb.utils/man/preparePdf.html" class="external-link">preparePdf</a></span><span class="op">(</span>pdfFile <span class="op">=</span> <span class="va">pdff</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">kwb.raindrop</span><span class="fu">::</span><span class="fu"><a href="../reference/plot_cost_overflow_boxplot.html">plot_cost_overflow_boxplot</a></span><span class="op">(</span></span>
+<span>    simulation_results_optimisation <span class="op">=</span> <span class="va">simulation_results_optimisation</span>,</span>
+<span>    param_grid <span class="op">=</span> <span class="va">param_grid</span>,</span>
+<span>    x <span class="op">=</span> <span class="va">max_n_overflows</span>,</span>
+<span>    filter_n_gtx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>    use_jitter <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    lang <span class="op">=</span> <span class="va">lang</span>,</span>
+<span>    size_by <span class="op">=</span> <span class="va">cb</span><span class="op">$</span><span class="va">size_by</span>,</span>
+<span>    best_by <span class="op">=</span> <span class="va">cb</span><span class="op">$</span><span class="va">best_by</span>,</span>
+<span>    label_best <span class="op">=</span> <span class="va">cb</span><span class="op">$</span><span class="va">label_best</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># interaktiv als HTML</span></span>
+<span>  <span class="va">plotly_p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu">plotly</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">ggplotly</a></span><span class="op">(</span><span class="va">p</span>, tooltip <span class="op">=</span> <span class="st">"text"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">htmlwidgets</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/htmlwidgets/man/saveWidget.html" class="external-link">saveWidget</a></span><span class="op">(</span></span>
+<span>    widget <span class="op">=</span> <span class="va">plotly_p</span>,</span>
+<span>    file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span></span>
+<span>      <span class="st">"simulation_results_optimisation_%s_cost-by-overflows-boxplot-%s.html"</span>,</span>
+<span>      <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span>, <span class="va">cb</span><span class="op">$</span><span class="va">suffix</span><span class="op">)</span>,</span>
+<span>    selfcontained <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"'%s' - Cost boxplot (%s)"</span>, <span class="va">paths</span><span class="op">$</span><span class="va">modelname</span>, <span class="va">cb</span><span class="op">$</span><span class="va">suffix</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># statisch ins PDF (WICHTIG!)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -640,7 +713,7 @@ Release on demand via <code><a href="../reference/download_engine.html">kwb.rain
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

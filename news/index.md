@@ -2,7 +2,97 @@
 
 ## kwb.raindrop (development version)
 
+### New features
+
+- New exported plot
+  [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
+  — companion to
+  [`plot_wb_tradeoff_overflows()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_wb_tradeoff_overflows.md)
+  for cost-aware optimisation. Scatters `cost_total` (EUR) against
+  overflow volume (m³, computed from `sum_overflows` \[mm\] and
+  `mulde_area` \[m²\]), points coloured discretely by `n_overflows` with
+  the same `0..x / ">x"` palette and top legend as the water-balance
+  plot. Both cost plots report the **share of scenarios meeting the
+  validity criterion** (`n_overflows` ≤ `x`) in the plot title
+  (e.g. `(39 % mit ≤ 5 Überläufen)`), since ggplotly drops ggplot
+  subtitles. The plotly tooltip carries the element water balance
+  (evapotranspiration, infiltration, overflow — all in %), the chosen
+  storage type on its own bold line (bilingual,
+  `Sickerbox / Infiltration box` or `Schotterrigol / Gravel trench`),
+  the full cost breakdown (excavation, profiling, filter, storage,
+  total) plus the varying `param_grid` entries (translated via
+  [`default_param_labels()`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md)).
+  Rendered as HTML (`*_cost-vs-overflow-volume.html`) in the three
+  case-study vignettes and linked from `vignettes/index.Rmd` under a new
+  “Kosten vs. Überlaufvolumen” section.
+
+- New exported plot
+  [`plot_cost_overflow_boxplot()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.md)
+  — boxplot of the total construction cost (EUR, y) per number of
+  overflow events (x), with the individual scenarios overlaid as
+  jittered points whose **size scales with the overflow volume** (m³;
+  the size scale is calibrated to the valid region so the many-overflow
+  outliers do not shrink the valid-region points away, and a minimum
+  size keeps every point visible). Counts up to the threshold `x` (=
+  `max_n_overflows`, as in the sibling plots) each get their own box;
+  higher counts collapse into a single `">x"` catch-all box (furthest
+  right, red), keeping the axis readable for the long-tailed 15-year
+  runs (Wien / Bad Aussee reach several hundred overflow events); the
+  `">x"` box highlights the scenario with the fewest overflow events
+  above `x`. One best scenario per box is highlighted with a
+  black-outlined diamond in that box’s group colour (so its tooltip
+  inherits the group colour), and the best scenarios of **all** boxes
+  are joined by a frontier line (`mark_best` / `connect_best`). The
+  point tooltip is identical to
+  [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md).
+  `best_by` picks the objective (cost as tie-breaker) — `"min_cost"`
+  (cheapest), `"min_overflow"` (smallest overflow volume) or
+  `"max_evapotranspiration"` (highest evapotranspiration) — so the three
+  variants trace three different frontier lines; `label_best` annotates
+  the marker (overflow volume + share `"NN m³ / NN %"`, or
+  evapotranspiration `"NN %"`); `size_by` scales the points by overflow
+  volume (default) or evapotranspiration. The three case-study vignettes
+  render all three variants
+  (`*_cost-by-overflows-boxplot-cheapest.html`, `*-min-overflow.html`,
+  `*-max-evap.html`), each linked from `vignettes/index.Rmd` under the
+  grouped “Kosten” section.
+
+- New exported helper
+  [`default_param_labels()`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md)
+  — German / English, unit-carrying labels for the parameter-grid
+  columns. The “varying parameters” block of both cost-plot tooltips now
+  shows e.g. `Muldenfläche [m²]=125` instead of the raw
+  `mulde_area=125`; pass `param_labels =` to the plot functions to
+  override.
+
+### Consistency
+
+- Non-ASCII characters in R code are now unicode-escaped: all string
+  literals in
+  [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
+  and in the vignette code chunks use `\uxxxx` escapes (rendered labels
+  unchanged), and the few non-ASCII code comments were rewritten in
+  plain ASCII. Markdown prose keeps UTF-8 (escapes are not interpreted
+  there).
+
+- Eisenstadt 2005 (`workflow_eisenstadt-2005.Rmd` and
+  `workflow_eisenstadt-2005_neu.Rmd`) now pins
+  `//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex = 3.9`
+  (Hörnschemeyer grass value) so all four case-study vignettes operate
+  on the same LAI baseline. Wien uses it as one of the sweep levels
+  (`c(3.9, 8.5)`), Bad Aussee identical to Wien.
+
 ### Bug fixes
+
+- `vignettes/workflow_eisenstadt-2005.Rmd` now pipes the joined
+  optimisation results through
+  [`kwb.raindrop::compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md)
+  like the Wien and Bad Aussee workflows already did. Without it the
+  vignette’s
+  [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
+  call aborted with “missing column(s): cost_excavation, …” — the
+  cost-vs-overflow-volume PDF/HTML was never produced and the exported
+  CSV lacked the cost columns.
 
 - [`get_simulation_results_optim()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.md)
   now treats a result HDF5 that exists but cannot be opened/read

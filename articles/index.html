@@ -37,7 +37,6 @@
     <li><a class="dropdown-item" href="../articles/index.html">RainDrop Optimierung – Brute Force</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
-    <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005_neu.html">Workflow Eisenstadt (2005, neuer Rechenkern 2026-01-22)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_wien.html">Workflow Wien (2011 - 2025)</a></li>
   </ul>
 </li>
@@ -96,6 +95,13 @@ reproduzierbar dokumentiert.</p>
 <p>Die Ergebnisse für die einjährige Berechnung (Eisenstadt für Jahr
 2005) und die beiden 15 jährigen Zeitreihen (2011-2025) für Wien und Bad
 Aussee finden sich in unten stehenden Links:</p>
+<p>Als <strong>Gültigkeitskriterium</strong> — die maximal zulässige
+Anzahl Überlaufereignisse — wurde passend zur Simulationsdauer gewählt:
+<strong>Eisenstadt ≤ 1</strong> (Simulationszeit 1 Jahr) und
+<strong>Wien / Bad Aussee ≤ 5</strong> (15-jährige Regen-/ET-Reihe).
+Dieser Schwellenwert steuert die Farbgebung (grün = gültig, rot = zu
+viele Überläufe) und den in den Kostenplot-Titeln angegebenen Anteil
+gültiger Szenarien.</p>
 <div class="section level3">
 <h3 id="tabellen">Tabellen<a class="anchor" aria-label="anchor" href="#tabellen"></a>
 </h3>
@@ -185,6 +191,83 @@ Bodenfilters</p></li>
 <li><a href="./simulation_results_optimisation_BadAussee_water-balance.html">BadAussee</a></li>
 </ul>
 </div>
+<div class="section level4">
+<h4 id="kosten">Kosten<a class="anchor" aria-label="anchor" href="#kosten"></a>
+</h4>
+<p>Drei komplementäre, interaktive Sichten auf die
+<strong>Baukosten</strong> der Szenarien und ihren Zusammenhang mit
+Überläufen, Wasserhaushalt und Design-Parametern. Alle drei teilen
+denselben Punkt-Tooltip (Wasserhaushalt, Kostenaufteilung, variierende
+Parameter).</p>
+<div class="section level5">
+<h5 id="kosten-vs--überlaufvolumen">Kosten vs. Überlaufvolumen<a class="anchor" aria-label="anchor" href="#kosten-vs--%C3%BCberlaufvolumen"></a>
+</h5>
+<p>Streudiagramm über den kompletten Design-Raum: <strong>x-Achse
+Gesamtkosten [€]</strong>, <strong>y-Achse Überlaufvolumen [m³]</strong>
+(aus <code>sum_overflows</code> [mm] und <code>mulde_area</code> [m²]),
+Punktfarbe nach <strong>Anzahl Überlaufereignisse</strong> (0–5,
+<code>&gt;5</code> = rot, Legende oben). Mouseover zeigt den
+Wasserhaushalt (Verdunstung, Versickerung, Überlauf in %), die
+vollständige Kostenaufteilung (Aushub, Profilierung, Bodenfilter,
+Speicherschicht, Gesamt) plus die variierenden Design-Parameter des
+Szenarios.</p>
+<ul>
+<li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-vs-overflow-volume.html">Eisenstadt_2005</a></li>
+<li><a href="./simulation_results_optimisation_Wien_cost-vs-overflow-volume.html">Wien</a></li>
+<li><a href="./simulation_results_optimisation_BadAussee_cost-vs-overflow-volume.html">BadAussee</a></li>
+</ul>
+<p>Alle Boxplots zeigen die <strong>Gesamtkosten</strong> [€] (y-Achse)
+je <strong>Anzahl Überlaufereignisse</strong> (x-Achse;
+<code>0</code>–<code>5</code> einzeln, <code>&gt;5</code> = Rest
+gebündelt; im <code>&gt;5</code>-Kasten wird das Szenario mit den
+wenigsten Überläufen markiert), überlagert mit den Szenarien als Punkte.
+Je Box ist ein <strong>bestes</strong> Szenario als Raute in der
+jeweiligen Gruppenfarbe (schwarz umrandet) markiert; die Markierungen
+<strong>aller</strong> Klassen sind zur Frontier-Linie verbunden.
+Punkt-Mouseover: Wasserhaushalt, Kostenaufteilung, variierende
+Parameter. Die drei Varianten optimieren je Box ein <strong>anderes
+Ziel</strong> (Kosten als Tie-Break) und ergeben so drei verschiedene
+Frontier-Linien:</p>
+</div>
+<div class="section level5">
+<h5 id="boxplot-günstigste-je-kategorie">Boxplot – günstigste je Kategorie<a class="anchor" aria-label="anchor" href="#boxplot-g%C3%BCnstigste-je-kategorie"></a>
+</h5>
+<p>Das <strong>günstigste</strong> Szenario je Box. Punktgröße =
+Überlaufvolumen [m³].</p>
+<ul>
+<li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-by-overflows-boxplot-cheapest.html">Eisenstadt_2005</a></li>
+<li><a href="./simulation_results_optimisation_Wien_cost-by-overflows-boxplot-cheapest.html">Wien</a></li>
+<li><a href="./simulation_results_optimisation_BadAussee_cost-by-overflows-boxplot-cheapest.html">BadAussee</a></li>
+</ul>
+</div>
+<div class="section level5">
+<h5 id="boxplot-geringstes-überlaufvolumen">Boxplot – geringstes Überlaufvolumen<a class="anchor" aria-label="anchor" href="#boxplot-geringstes-%C3%BCberlaufvolumen"></a>
+</h5>
+<p>Das Szenario je Box mit dem <strong>geringsten
+Überlaufvolumen</strong> (bei Gleichstand das günstigste). Die
+Markierung ist mit ihrem <strong>Überlaufvolumen [m³] und dessen Anteil
+[%]</strong> beschriftet. Punktgröße = Überlaufvolumen.</p>
+<ul>
+<li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-by-overflows-boxplot-min-overflow.html">Eisenstadt_2005</a></li>
+<li><a href="./simulation_results_optimisation_Wien_cost-by-overflows-boxplot-min-overflow.html">Wien</a></li>
+<li><a href="./simulation_results_optimisation_BadAussee_cost-by-overflows-boxplot-min-overflow.html">BadAussee</a></li>
+</ul>
+</div>
+<div class="section level5">
+<h5 id="boxplot-höchste-verdunstung">Boxplot – höchste Verdunstung<a class="anchor" aria-label="anchor" href="#boxplot-h%C3%B6chste-verdunstung"></a>
+</h5>
+<p>Das Szenario je Box mit der <strong>höchsten Verdunstung</strong>
+(bei Gleichstand das günstigste). Die Markierung ist mit ihrer
+<strong>Verdunstung [%]</strong> beschriftet; hier kodiert die
+<strong>Punktgröße die Verdunstung</strong> statt des
+Überlaufvolumens.</p>
+<ul>
+<li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-by-overflows-boxplot-max-evap.html">Eisenstadt_2005</a></li>
+<li><a href="./simulation_results_optimisation_Wien_cost-by-overflows-boxplot-max-evap.html">Wien</a></li>
+<li><a href="./simulation_results_optimisation_BadAussee_cost-by-overflows-boxplot-max-evap.html">BadAussee</a></li>
+</ul>
+</div>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -198,7 +281,7 @@ Bodenfilters</p></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

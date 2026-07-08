@@ -154,7 +154,7 @@ DT::datatable(
   param_grid,
   filter = "top",
   options = list(pageLength = 12, autoWidth = TRUE),
-  caption = "Twelve scenarios — fixed Daniel-reference geometry, sweep of three ET-related engine switches."
+  caption = "Twelve scenarios \u2014 fixed Daniel-reference geometry, sweep of three ET-related engine switches."
 )
 ```
 
@@ -463,7 +463,7 @@ message("Wrote XLSX (", length(sheets),
         nrow(param_grid), " scenarios) to:\n  ",
         xlsx_path)
 #> Wrote XLSX (15 sheets: base + timeseries_info + applied_settings + 12 scenarios) to:
-#>   C:\Users\RUNNER~1\AppData\Local\Temp\RtmpS8Ux97/raindrop_wien_minimal_params.xlsx
+#>   C:\Users\RUNNER~1\AppData\Local\Temp\RtmpKe0ZpT/raindrop_wien_minimal_params.xlsx
 ```
 
 ### Results
@@ -507,7 +507,7 @@ DT::datatable(
   results,
   filter = "top",
   options = list(pageLength = 12, autoWidth = TRUE),
-  caption = "Twelve-scenario simulation results — water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%. Scenarios whose water-balance step errored (see chunk log) are present in the table but have NA in the result columns."
+  caption = "Twelve-scenario simulation results \u2014 water balance + overflow events + construction costs (EUR). Sort by the ET share column to see which combination of `keineVerdunstungBeiRegen` / `Hoernschemeyer_aktiv` / `ET0ref_factor` brings the modelled ET share closest to the SWIMM-Urban-Eva reference of ~7%. Scenarios whose water-balance step errored (see chunk log) are present in the table but have NA in the result columns."
 )
 ```
 

@@ -11,6 +11,8 @@
   : Canonical water-balance variable names emitted by the Tandler engine
 - [`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md)
   : Default unit-cost rates for infiltration-swale installations
+- [`default_param_labels()`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md)
+  : German / English labels for optimisation parameter-grid columns
 - [`download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md)
   : Download the Tandler "Regenwasserbewirtschaftung" calculation engine
 - [`find_single_param_variations()`](https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.md)
@@ -35,6 +37,11 @@
   your hdf5r build)
 - [`list_h5_datasets()`](https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.md)
   : List all datasets (recursive)
+- [`plot_cost_overflow_boxplot()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.md)
+  : Cost boxplot per overflow-event count, points sized by overflow
+  volume
+- [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
+  : Cost vs. overflow-volume scatter with n_overflows-coloured points
 - [`plot_hpond_vs_ref()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.md)
   : Plot the influence of single-parameter variations on a response
 - [`plot_main_effects()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_main_effects.md)

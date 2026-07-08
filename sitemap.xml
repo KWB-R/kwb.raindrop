@@ -4,7 +4,6 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005.html</loc></url>
-<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005_neu.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_wien.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/authors.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/index.html</loc></url>
@@ -15,6 +14,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/download_engine.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.html</loc></url>
@@ -28,6 +28,8 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/pipe.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_main_effects.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_valid_design_space.html</loc></url>

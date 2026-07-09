@@ -309,7 +309,7 @@ txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %%
 
 message(txt)
 
-txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
+txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Evapotranspirations: %f mm/a)\n",
         paths$path_et,
         100*sum(is.na(timeseries_et$value))/nrow(timeseries_et),
         100*sum(timeseries_et$value == 0, na.rm = TRUE)/nrow(timeseries_et),
@@ -512,6 +512,11 @@ params <- c(
 lang <- "de"
 max_n_overflows <- 5
 
+# Kostensaetze-Caption fuer die interaktiven Kostenplots: ggplotly verwirft
+# ggplot-Captions, daher wird sie dort per plotly_add_caption() nachgeruestet;
+# die PDFs bekommen sie automatisch ueber den caption-Default der Funktionen.
+cost_caption <- kwb.raindrop::cost_rates_caption(lang)
+
 pdff <- sprintf("simulation_results_optimisation_%s_main-effects.pdf",
                 paths$modelname)
 
@@ -661,6 +666,7 @@ p <- kwb.raindrop::plot_cost_vs_overflow_volume(
 # statt der (Farbe, Form)-Tupel von ggplotly
 plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
 plotly_p <- kwb.raindrop::plotly_split_legend(plotly_p, lang = lang)
+plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
 htmlwidgets::saveWidget(
   widget = plotly_p,
   file = sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.html",
@@ -677,8 +683,8 @@ dev.off()
 
 # Drei Kosten-Boxplots mit unterschiedlichem Optimierungsziel je Kategorie
 # (Kosten als Tie-Break): (i) guenstigste; (ii) geringstes Ueberlaufvolumen
-# (Label m3 + %); (iii) hoechste Verdunstung (Label %, Punktgroesse =
-# Verdunstung). x = max_n_overflows, Linie ueber alle Klassen. Die beiden
+# (Label m3 + %); (iii) hoechste Evapotranspiration (Label %, Punktgroesse =
+# Evapotranspiration). x = max_n_overflows, Linie ueber alle Klassen. Die beiden
 # Speichertypen liegen als zwei Panels untereinander (Sickerbox oben,
 # Schotterrigol unten); die Punkte bleiben Kreise, da die Panel-Streifen
 # den Typ bereits benennen.
@@ -711,6 +717,7 @@ for (cb in cost_boxplots) {
 
   # interaktiv als HTML
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
   htmlwidgets::saveWidget(
     widget = plotly_p,
     file = sprintf(
@@ -726,7 +733,7 @@ for (cb in cost_boxplots) {
 }
 
 
-# Kosten vs. Verdunstung: Streudiagramm ueber den Design-Raum, Punktform
+# Kosten vs. Evapotranspiration: Streudiagramm ueber den Design-Raum, Punktform
 # kodiert den Speichertyp (Viereck = Sickerbox, Dreieck = Schotterrigol),
 # Farbe die Anzahl Ueberlaufereignisse.
 pdff <- sprintf("simulation_results_optimisation_%s_cost-vs-evaporation.pdf",
@@ -746,6 +753,7 @@ p <- kwb.raindrop::plot_cost_vs_evaporation(
 # statt der (Farbe, Form)-Tupel von ggplotly
 plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
 plotly_p <- kwb.raindrop::plotly_split_legend(plotly_p, lang = lang)
+plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
 htmlwidgets::saveWidget(
   widget = plotly_p,
   file = sprintf("simulation_results_optimisation_%s_cost-vs-evaporation.html",
@@ -760,10 +768,10 @@ suppressWarnings(print(p))
 dev.off()
 
 
-# Kosten je Prozent Verdunstung [EUR/%]: Boxplot je Ueberlaufklasse mit den
+# Kosten je Prozent Evapotranspiration [EUR/%]: Boxplot je Ueberlaufklasse mit den
 # beiden Speichertypen als zwei Panels untereinander (Sickerbox oben,
 # Schotterrigol unten); guenstigstes Szenario je Box markiert (Label EUR/%),
-# Punktgroesse = Verdunstung.
+# Punktgroesse = Evapotranspiration.
 pdff <- sprintf(
   "simulation_results_optimisation_%s_cost-per-evap-boxplot.pdf",
   paths$modelname)
@@ -785,6 +793,7 @@ p <- kwb.raindrop::plot_cost_overflow_boxplot(
 
 # interaktiv als HTML
 plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
 htmlwidgets::saveWidget(
   widget = plotly_p,
   file = sprintf(

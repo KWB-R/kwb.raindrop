@@ -52,6 +52,12 @@
 #'   to tooltip labels, or `NULL` to use [default_param_labels()] for `lang`.
 #' @param title,lab_x,lab_y Optional character overrides for the default
 #'   language-specific title / axis labels.
+#' @param caption Character or `NULL`. Caption below the plot naming the
+#'   unit-cost rates the EUR values were computed with. `NULL` (default)
+#'   uses [cost_rates_caption()] with the [default_cost_rates()]; pass your
+#'   own string if the costs were computed with different rates, or `""` to
+#'   drop the caption. Note that `plotly::ggplotly()` drops ggplot captions
+#'   -- re-add it to the interactive version via [plotly_add_caption()].
 #' @param legend_position Character. Legend position, default `"top"`.
 #'
 #' @return A `ggplot` object. Convert to interactive via
@@ -82,6 +88,7 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
                                          title = NULL,
                                          lab_x = NULL,
                                          lab_y = NULL,
+                                         caption = NULL,
                                          legend_position = "top") {
 
   lang <- match.arg(lang)
@@ -146,6 +153,7 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
     de = paste0(valid_pct, " % mit <= ", x_int, " \u00dcberl\u00e4ufen"),
     en = paste0(valid_pct, " % with <= ", x_int, " overflows"))
   if (is.null(title)) title <- paste0(txt$title, " (", share_txt, ")")
+  if (is.null(caption)) caption <- cost_rates_caption(lang)
 
   param_tooltip <- build_varying_param_html(param_grid, lang, param_labels,
                                             digits_params)
@@ -179,10 +187,19 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
 
   # Storage type drives the marker shape (filled square = infiltration box,
   # filled triangle = gravel trench); shared with the sibling cost plots.
-  st <- storage_type_shapes(df$storage_type, txt)
+  st <- storage_type_shapes(df$storage_type, lang)
   df$storage_type_disp <- st$display
 
-  df$tooltip_html <- cost_tooltip_text(df, txt, digits)
+  # Reference for the tooltip's cost-per-percent-evapotranspiration line:
+  # minimum evapotranspiration among the scenarios that satisfy the validity
+  # criterion (n_overflows <= x); computed before any filtering, falls back
+  # to the complete run when no scenario is valid.
+  evap_all <- simulation_results_optimisation[["element.WB_Evapotranspiration_"]]
+  valid_mask <- !is.na(simulation_results_optimisation$n_overflows) &
+    simulation_results_optimisation$n_overflows <= x_int & !is.na(evap_all)
+  evap_min <- suppressWarnings(min(
+    if (any(valid_mask)) evap_all[valid_mask] else evap_all, na.rm = TRUE))
+  df$tooltip_html <- cost_tooltip_text(df, txt, digits, evap_min = evap_min)
 
   if (x_int == 0L) {
     pal <- c("0" = "orange", ">0" = "red")
@@ -255,7 +272,8 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
     ggplot2::labs(
       title = title,
       x = lab_x,
-      y = lab_y
+      y = lab_y,
+      caption = if (nzchar(caption)) caption else NULL
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(

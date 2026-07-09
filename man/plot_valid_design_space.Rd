@@ -102,7 +102,7 @@ split by \code{storage_type} into two stacked panels (infiltration box on
 top, gravel trench below) with free y-scales, so disjoint per-type levels
 (e.g. \code{storage_height}: 300-1200 mm boxes vs. 900-3600 mm trenches)
 fill their own panel; duplicate counting for \code{alpha_mode =
-  "duplicates"} then happens per panel and the points stay plain circles
+"duplicates"} then happens per panel and the points stay plain circles
 (the strips already name the type). Requires a \code{storage_type}
 column in \code{param_grid}. Without faceting, points are shaped by the
 storage type (filled square = infiltration box, filled triangle = gravel

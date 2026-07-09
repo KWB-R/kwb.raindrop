@@ -17,7 +17,11 @@
 #'   **storage-type group title**, so the shape encoding is explained
 #'   separately from the colours -- set `add_shape_legend = FALSE` to skip
 #'   them (e.g. for storage-type-faceted plots whose strips already label the
-#'   panels);
+#'   panels). The keys are **clickable**: since a plotly trace can only carry
+#'   one legend group (taken by the overflow class), a small JavaScript
+#'   handler (via `htmlwidgets::onRender()`) toggles all traces drawn with
+#'   that marker symbol, so each storage type can be shown or hidden
+#'   individually; the key greys out to reflect the state;
 #' * the combined `"colour,shape"` legend-title annotation that ggplotly
 #'   draws over the plot title is removed; group titles take its place and
 #'   the legend moves to a vertical layout on the right, where the groups
@@ -179,7 +183,8 @@ plotly_split_legend <- function(pl,
   }
 
   # Legend-only storage-type keys: neutral grey square / triangle.
-  if (isTRUE(add_shape_legend) && length(shape_symbols) > 0) {
+  has_shape_keys <- isTRUE(add_shape_legend) && length(shape_symbols) > 0
+  if (has_shape_keys) {
     first_shape <- TRUE
     for (lab in names(shape_symbols)) {
       tr <- list(
@@ -208,5 +213,98 @@ plotly_split_legend <- function(pl,
   # Group titles replace the legend title in the rebuilt legend.
   pl$x$layout$legend$title <- list(text = "")
 
-  fix_layout(pl)
+  pl <- fix_layout(pl)
+
+  # Make the storage-type keys interactive: a trace can only belong to one
+  # legend group (taken by the overflow class), so clicking a square/triangle
+  # key toggles all real traces with that marker symbol via a small
+  # plotly_legendclick handler; the key itself greys out to show the state.
+  if (has_shape_keys && requireNamespace("htmlwidgets", quietly = TRUE)) {
+    js_toggle <- paste0(
+      "function(el, x) {",
+      "  el.on('plotly_legendclick', function(d) {",
+      "    var tr = el.data[d.curveNumber];",
+      "    if (!tr || tr.legendgroup !== 'storage_type_legend') return true;",
+      "    var sym = tr.marker.symbol;",
+      "    var idx = [];",
+      "    var target = null;",
+      "    el.data.forEach(function(t, i) {",
+      "      var isKey = t.legendgroup === 'storage_type_legend';",
+      "      var symMatch = t.marker && t.marker.symbol === sym;",
+      "      if (symMatch && (!isKey || i === d.curveNumber)) {",
+      "        idx.push(i);",
+      "        if (!isKey && target === null) {",
+      "          target = (t.visible === undefined || t.visible === true) ?",
+      "            'legendonly' : true;",
+      "        }",
+      "      }",
+      "    });",
+      "    if (target === null) return true;",
+      "    Plotly.restyle(el, {visible: target}, idx);",
+      "    return false;",
+      "  });",
+      "}"
+    )
+    pl <- htmlwidgets::onRender(pl, js_toggle)
+  }
+
+  pl
+}
+
+#' Add a caption annotation to a ggplotly object
+#'
+#' `plotly::ggplotly()` drops ggplot captions (and subtitles). This helper
+#' re-adds the caption as a small grey annotation below the plot area (bottom
+#' left, under the x-axis title) and widens the bottom margin accordingly.
+#' `\n` line breaks are converted to `<br />`.
+#'
+#' Used by the vignettes together with [cost_rates_caption()] so the
+#' interactive cost plots name the unit-cost rates they were computed with.
+#'
+#' @param pl A plotly object as returned by `plotly::ggplotly()`.
+#' @param caption Character. The caption text; `NULL` or `""` returns `pl`
+#'   unchanged.
+#' @param font_size Numeric. Caption font size in px. Default 10.
+#'
+#' @return The modified plotly object.
+#'
+#' @examples
+#' \dontrun{
+#' pl <- plotly::ggplotly(p, tooltip = "text")
+#' pl <- plotly_add_caption(pl, cost_rates_caption("de"))
+#' }
+#'
+#' @export
+plotly_add_caption <- function(pl, caption, font_size = 10) {
+  if (is.null(caption) || !nzchar(caption)) return(pl)
+  # Two-line ggplot titles ("\n") need "<br />" in plotly and a little more
+  # headroom (relevant for plots that do not pass plotly_split_legend(),
+  # e.g. the cost boxplots with their reference line in the title).
+  if (!is.null(pl$x$layout$title$text)) {
+    pl$x$layout$title$text <- gsub("\n", "<br />",
+                                   pl$x$layout$title$text, fixed = TRUE)
+    if (grepl("<br />", pl$x$layout$title$text, fixed = TRUE) &&
+        (is.null(pl$x$layout$margin$t) || pl$x$layout$margin$t < 75)) {
+      pl$x$layout$margin$t <- 75
+    }
+  }
+  # Anchored to the bottom of the plot area with a fixed PIXEL offset
+  # (yshift): a paper-coordinate offset would scale with the plot height and
+  # push the caption out of the margin on tall (e.g. faceted) plots.
+  ann <- list(
+    text = gsub("\n", "<br />", caption, fixed = TRUE),
+    x = 0, y = 0,
+    xref = "paper", yref = "paper",
+    xanchor = "left", yanchor = "top",
+    yshift = -58,
+    showarrow = FALSE,
+    align = "left",
+    font = list(size = font_size, color = "#666666")
+  )
+  pl$x$layout$annotations <- c(pl$x$layout$annotations, list(ann))
+  # room below the x-axis tick labels and title for the caption line
+  if (is.null(pl$x$layout$margin$b) || pl$x$layout$margin$b < 85) {
+    pl$x$layout$margin$b <- 85
+  }
+  pl
 }

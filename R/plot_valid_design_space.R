@@ -219,9 +219,19 @@ plot_valid_design_space <- function(param_grid,
 
   keep_pg <- unique(c(id_col, x, y, varied_params,
                       if (isTRUE(facet_storage_type)) "storage_type"))
+
+  # Usable storage volume [m3] for the tooltip, taken from the results side
+  # (precomputed storage_volume_m3 column or derived from the storage_theta*
+  # columns there) unless param_grid already carries the column itself.
+  sim_sel <- dplyr::select(sim_results, dplyr::all_of(c(id_col, overflow_col)))
+  if (!"storage_volume_m3" %in% keep_pg) {
+    sim_volume <- storage_volume_from_df(sim_results)
+    if (!is.null(sim_volume)) sim_sel$storage_volume_m3 <- sim_volume
+  }
+
   d <- dplyr::left_join(
     dplyr::select(param_grid, dplyr::all_of(keep_pg)),
-    dplyr::select(sim_results, dplyr::all_of(c(id_col, overflow_col))),
+    sim_sel,
     by = id_col
   )
   
@@ -238,10 +248,10 @@ plot_valid_design_space <- function(param_grid,
   # gravel trench, as in the cost plots): active whenever storage_type is one
   # of the varied parameters -- except in the faceted layout, where the strips
   # already name the type and the points stay plain circles for readability.
+  st_labels <- cost_tooltip_labels(lang)
   has_storage_type <- "storage_type" %in% names(d)
   if (has_storage_type) {
-    st_labels <- cost_tooltip_labels(lang)
-    st <- storage_type_shapes(d$storage_type, st_labels)
+    st <- storage_type_shapes(d$storage_type, lang)
     d$storage_type_disp <- st$display
   }
   use_shapes <- has_storage_type && !isTRUE(facet_storage_type)
@@ -253,7 +263,9 @@ plot_valid_design_space <- function(param_grid,
     }
   }
 
-  other_params <- setdiff(varied_params, c(x, y))
+  # storage_volume_m3 gets its own dedicated tooltip line below, so keep it
+  # out of the generic "other parameters" block.
+  other_params <- setdiff(varied_params, c(x, y, "storage_volume_m3"))
   
   fmt <- function(v) {
     if (is.numeric(v)) {
@@ -272,11 +284,19 @@ plot_valid_design_space <- function(param_grid,
     ""
   }
   
+  vol_line <- if ("storage_volume_m3" %in% names(d)) {
+    paste0("<br><b>", st_labels$tt_storage_volume, ":</b> ",
+           fmt(d$storage_volume_m3))
+  } else {
+    ""
+  }
+
   d$hover <- paste0(
     "<b>", txt$tt_id, ":</b> ", d[[id_col]],
     "<br><b>", txt$tt_overflow, ":</b> ", fmt(d[[overflow_col]]),
     "<br><b>", lab_x, ":</b> ", fmt(d[[x]]),
     "<br><b>", lab_y, ":</b> ", fmt(d[[y]]),
+    vol_line,
     other_block
   )
   

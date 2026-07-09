@@ -54,6 +54,7 @@ plot_cost_vs_evaporation <- function(simulation_results_optimisation,
                                      title = NULL,
                                      lab_x = NULL,
                                      lab_y = NULL,
+                                     caption = NULL,
                                      legend_position = "top") {
 
   lang <- match.arg(lang)
@@ -62,9 +63,9 @@ plot_cost_vs_evaporation <- function(simulation_results_optimisation,
   txt <- switch(
     lang,
     de = list(
-      title = "Kosten vs. Verdunstung",
+      title = "Kosten vs. Evapotranspiration",
       x = "Gesamtkosten [\u20ac]",
-      y = "Verdunstung [%]",
+      y = "Evapotranspiration [%]",
       legend = "Anzahl \u00dcberlaufereignisse"
     ),
     en = list(
@@ -118,6 +119,7 @@ plot_cost_vs_evaporation <- function(simulation_results_optimisation,
     de = paste0(valid_pct, " % mit <= ", x_int, " \u00dcberl\u00e4ufen"),
     en = paste0(valid_pct, " % with <= ", x_int, " overflows"))
   if (is.null(title)) title <- paste0(txt$title, " (", share_txt, ")")
+  if (is.null(caption)) caption <- cost_rates_caption(lang)
 
   param_tooltip <- build_varying_param_html(param_grid, lang, param_labels,
                                             digits_params)
@@ -151,10 +153,19 @@ plot_cost_vs_evaporation <- function(simulation_results_optimisation,
 
   # Storage type drives the marker shape (square = infiltration box,
   # triangle = gravel trench); shared with the sibling cost plots.
-  st <- storage_type_shapes(df$storage_type, txt)
+  st <- storage_type_shapes(df$storage_type, lang)
   df$storage_type_disp <- st$display
 
-  df$tooltip_html <- cost_tooltip_text(df, txt, digits)
+  # Reference for the tooltip's cost-per-percent-evapotranspiration line:
+  # minimum evapotranspiration among the scenarios that satisfy the validity
+  # criterion (n_overflows <= x); computed before any filtering, falls back
+  # to the complete run when no scenario is valid.
+  evap_all <- simulation_results_optimisation[["element.WB_Evapotranspiration_"]]
+  valid_mask <- !is.na(simulation_results_optimisation$n_overflows) &
+    simulation_results_optimisation$n_overflows <= x_int & !is.na(evap_all)
+  evap_min <- suppressWarnings(min(
+    if (any(valid_mask)) evap_all[valid_mask] else evap_all, na.rm = TRUE))
+  df$tooltip_html <- cost_tooltip_text(df, txt, digits, evap_min = evap_min)
 
   if (x_int == 0L) {
     pal <- c("0" = "orange", ">0" = "red")
@@ -227,7 +238,8 @@ plot_cost_vs_evaporation <- function(simulation_results_optimisation,
     ggplot2::labs(
       title = title,
       x = lab_x,
-      y = lab_y
+      y = lab_y,
+      caption = if (nzchar(caption)) caption else NULL
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(

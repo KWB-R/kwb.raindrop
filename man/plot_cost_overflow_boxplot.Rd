@@ -27,6 +27,7 @@ plot_cost_overflow_boxplot(
   title = NULL,
   lab_x = NULL,
   lab_y = NULL,
+  caption = NULL,
   lab_size = NULL,
   mark_best = TRUE,
   connect_best = TRUE,
@@ -89,11 +90,17 @@ scenario with the lowest cost per percentage point of evapotranspiration.}
 \item{y_var}{Character. Which cost measure the y-axis (boxes, points, best
 markers, frontier) shows: \code{"cost_total"} (default; total construction
 cost, EUR) or \code{"cost_per_evap_pct"} (total cost divided by the element
-evapotranspiration share, EUR per percentage point -- the cost
-efficiency of evapotranspiration). Scenarios with zero
-evapotranspiration have no defined ratio and are dropped from the
-\code{"cost_per_evap_pct"} variant. Titles and the y-axis label switch
-accordingly.}
+evapotranspiration share \strong{above the reference minimum}, EUR per
+percentage point -- the marginal cost efficiency of evapotranspiration;
+the baseline comes "for free"). The reference is the \strong{lowest
+evapotranspiration among the scenarios that satisfy the validity
+criterion} (\code{n_overflows <= x}; fallback: the complete run when none
+does) and is named -- share, criterion and scenario id -- on a second
+title line. Scenarios at or below the reference (including the reference
+scenario itself) have no defined marginal cost and are dropped from the
+\code{"cost_per_evap_pct"} variant; \code{label_best = TRUE} additionally
+annotates the evapotranspiration gain (\code{"(+NN \% Evapotranspiration)"})
+after the price. Titles and the y-axis label switch accordingly.}
 
 \item{facet_storage_type}{Logical. If \code{TRUE}, the plot is split by
 \code{storage_type} into two stacked panels (infiltration box on top, gravel
@@ -113,6 +120,13 @@ Default \code{FALSE}.}
 
 \item{title, lab_x, lab_y}{Optional character overrides for the default
 language-specific title / axis labels.}
+
+\item{caption}{Character or \code{NULL}. Caption below the plot naming the
+unit-cost rates the EUR values were computed with. \code{NULL} (default)
+uses \code{\link[=cost_rates_caption]{cost_rates_caption()}} with the \code{\link[=default_cost_rates]{default_cost_rates()}}; pass your
+own string if the costs were computed with different rates, or \code{""} to
+drop the caption. Note that \code{plotly::ggplotly()} drops ggplot captions
+-- re-add it to the interactive version via \code{\link[=plotly_add_caption]{plotly_add_caption()}}.}
 
 \item{lab_size}{Optional character override for the size-legend title.}
 

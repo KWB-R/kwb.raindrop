@@ -9,11 +9,17 @@
   storage type** (filled square = infiltration box / Sickerbox, filled
   triangle = gravel trench / Schotterrigol); identical tooltip. Rendered
   as `*_cost-vs-evaporation.html` in the three case-study vignettes and
-  linked from `vignettes/index.Rmd` under "Kosten vs. Verdunstung".
+  linked from `vignettes/index.Rmd` under "Kosten vs. Evapotranspiration".
 
 * `plot_cost_overflow_boxplot()` gains `y_var = "cost_per_evap_pct"`
-  (y-axis = total cost per percentage point of evapotranspiration,
-  EUR/%; titles, y-label and the `min_cost` objective/label follow) and
+  (y-axis = total cost per percentage point of evapotranspiration
+  **above the reference minimum** — the lowest evapotranspiration among
+  the scenarios satisfying the validity criterion (`n_overflows <= x`;
+  fallback: complete run) —, EUR/%; the reference (minimum share,
+  criterion and scenario id) is named on a second title line, and
+  `label_best = TRUE` annotates the evapotranspiration gain
+  `"(+NN % Evapotranspiration)"` after the price; titles, y-label
+  and the `min_cost` objective/label follow) and
   `facet_storage_type = TRUE` (two stacked storage-type panels —
   infiltration box on top, gravel trench below — each with its own
   best-per-box markers and frontier line; `plotly::ggplotly()` keeps
@@ -24,25 +30,33 @@
   the three existing boxplot variants with storage-type panels plus the
   new `*_cost-per-evap-boxplot.html` (cheapest EUR/% per class,
   point size = evapotranspiration), linked from `vignettes/index.Rmd`
-  under "Boxplot – Kosten je Prozent Verdunstung".
+  under "Boxplot – Kosten je Prozent Evapotranspiration".
 
 * `plot_cost_vs_overflow_volume()` points are now also **shaped by the
   storage type** (square/triangle, own legend under the colour legend).
 
-* The shared cost tooltip gains a derived **"Kosten je % Verdunstung
-  [€/%]"** line (total cost per percentage point of element
-  evapotranspiration, "-" when evapotranspiration is 0) right below the
-  total cost — shown consistently in both cost scatters and all cost
-  boxplot variants.
+* The shared cost tooltip gains a derived **"Kosten je % Evapotranspiration
+  (über Min. von X %) [€/%]"** line right below the total cost: the
+  total cost per percentage point of element evapotranspiration
+  **above the reference minimum** (the lowest evapotranspiration among
+  the scenarios satisfying the validity criterion `n_overflows <= x`;
+  fallback: complete run) — the baseline comes "for free", only the
+  gain is paid for. The reference value is named in the line; "-" at or
+  below the minimum. Shown consistently in both cost scatters and all
+  cost boxplot variants. German labels consistently say
+  **"Evapotranspiration"** instead of "Verdunstung" throughout.
 
 * New **usable storage volume** of the storage layer:
   `storage_volume_m3 = mulde_area * storage_height/1000 *
   (thetaS - thetaFC)` (usable porosity 0.95 infiltration box / 0.3
   gravel trench). The vignettes add the column to the parameter grid
-  (grid datatable + results CSV) and the shared cost tooltip shows it
-  as "Nutzbares Speichervolumen [m³]" right below the storage type
-  (computed on the fly from the `storage_theta*` columns for existing
-  result sets without the column). In the "Variierende Parameter" block the raw
+  (grid datatable + results CSV) and the tooltips of **all** scenario
+  plots show it as "Nutzbares Speichervolumen [m³]" — the cost scatters
+  and boxplots (right below the storage type), the water-balance
+  trade-off plot and the design-space plots (there sourced from
+  `sim_results`, since the plotting grid drops the helper columns) —
+  computed on the fly from the `storage_theta*` columns for existing
+  result sets without the column. In the "Variierende Parameter" block the raw
   storage_type values are now translated too
   (`Speichertyp=Schotterrigol` instead of `=gravel_trench`; shared
   value labels with the `plot_main_effects()` storage-type panel).
@@ -51,6 +65,21 @@
   storage-type shapes in use (no faceting) they are drawn with the grey
   square/triangle instead of the default circle; the faceted variants
   use circular points and matching circular keys.
+
+* Storage-type names in legends and facet strips are now the **short,
+  language-specific** ones ("Sickerbox" / "Schotterrigol" for `lang =
+  "de"`, "Infiltration box" / "Gravel trench" for `"en"`); only the
+  bold tooltip line keeps the long bilingual form.
+
+* All cost plots now carry a **caption naming the unit-cost rates**
+  they were computed with (new exported `cost_rates_caption()`, built
+  from [`default_cost_rates()`]: Aushub 70 €/m³ · Profilierung +
+  Begrünung 10 €/m² · Bodenfilter 200 €/m³ · Sickerbox 350 €/m³ ·
+  Schotterrigol 50 €/m³, incl. installation). ggplot renders it at the
+  bottom of the PDFs (`caption` argument, `""` to drop); since
+  `plotly::ggplotly()` drops captions, the new exported
+  `plotly_add_caption()` re-adds it as a bottom annotation in the
+  interactive HTMLs (wired up in all three vignettes).
 
 * New exported helper `plotly_split_legend()` — cleans up the
   interactive legends: `plotly::ggplotly()` flattens colour + shape
@@ -62,7 +91,10 @@
   "Speichertyp" / "Storage type" group title (skippable via
   `add_shape_legend = FALSE` for faceted plots) — a coloured
   square/triangle key would wrongly suggest one specific
-  (colour, type) combination. The overlapping combined legend title is
+  (colour, type) combination. The storage-type keys are **individually
+  clickable** (a JavaScript handler toggles all traces with that marker
+  symbol, since the traces' only legend group is taken by the overflow
+  class); the overlapping combined legend title is
   removed and the legend moves to a vertical layout on the right.
   Applied in all three vignettes to the cost-vs-overflow,
   cost-vs-evaporation, water-balance and design-space HTMLs.
@@ -250,7 +282,7 @@
 * New vignette `example_wien_minimal`: a self-contained smoke test of
   the full input → engine → results loop on Wien. Now extended into
   an ET-diagnostics grid that sweeps three engine switches —
-  `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
+  `keineEvapotranspirationBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
   Daniel's reference geometry (12 scenarios total). Daniel's three
   XLSX-review corrections (`Dach/Evapotranspiration_aktiv = 0`,

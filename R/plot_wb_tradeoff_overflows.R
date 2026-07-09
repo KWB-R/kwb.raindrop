@@ -195,12 +195,22 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
   # Optional storage-type tagging (filled square = infiltration box, filled
   # triangle = gravel trench, as in the cost plots): active when the results
   # carry a storage_type column; older single-type result sets plot as before.
+  st_labels <- cost_tooltip_labels(lang)
   has_storage_type <- "storage_type" %in% names(df)
   if (has_storage_type) {
-    st_labels <- cost_tooltip_labels(lang)
-    st <- storage_type_shapes(df$storage_type, st_labels)
+    # short language-specific names for the legend keys ...
+    st <- storage_type_shapes(df$storage_type, lang)
     df$storage_type_disp <- st$display
+    # ... but the bilingual names for the tooltip line, matching the cost
+    # plots' tooltips
+    st_raw <- as.character(df$storage_type)
+    df$storage_type_tooltip <- ifelse(
+      !is.na(st_raw) & st_raw == "gravel_trench",
+      st_labels$st_gravel_trench, st_labels$st_infiltration_box)
   }
+  # Usable storage volume of the storage layer [m3] (precomputed column or
+  # derived from the storage_theta* columns); line omitted if not derivable.
+  storage_volume <- storage_volume_from_df(df)
 
   df$tooltip_html <- paste0(
     txt$tt_scenario, ": ", df$scenario_name,
@@ -214,7 +224,13 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
     "<br>", txt$tt_sum_overflows, ": ", df$sum_overflows,
     if (has_storage_type) {
       paste0("<br><br><b>", st_labels$tt_storage_type, ": ",
-             as.character(df$storage_type_disp), "</b>")
+             df$storage_type_tooltip, "</b>")
+    } else {
+      ""
+    },
+    if (!is.null(storage_volume)) {
+      paste0("<br>", st_labels$tt_storage_volume, ": ",
+             round(storage_volume, digits))
     } else {
       ""
     },

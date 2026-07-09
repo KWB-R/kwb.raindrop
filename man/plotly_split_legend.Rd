@@ -51,7 +51,11 @@ filled triangle = gravel trench) are appended under their own
 \strong{storage-type group title}, so the shape encoding is explained
 separately from the colours -- set \code{add_shape_legend = FALSE} to skip
 them (e.g. for storage-type-faceted plots whose strips already label the
-panels);
+panels). The keys are \strong{clickable}: since a plotly trace can only carry
+one legend group (taken by the overflow class), a small JavaScript
+handler (via \code{htmlwidgets::onRender()}) toggles all traces drawn with
+that marker symbol, so each storage type can be shown or hidden
+individually; the key greys out to reflect the state;
 \item the combined \code{"colour,shape"} legend-title annotation that ggplotly
 draws over the plot title is removed; group titles take its place and
 the legend moves to a vertical layout on the right, where the groups

@@ -72,11 +72,17 @@
 #' @param y_var Character. Which cost measure the y-axis (boxes, points, best
 #'   markers, frontier) shows: `"cost_total"` (default; total construction
 #'   cost, EUR) or `"cost_per_evap_pct"` (total cost divided by the element
-#'   evapotranspiration share, EUR per percentage point -- the cost
-#'   efficiency of evapotranspiration). Scenarios with zero
-#'   evapotranspiration have no defined ratio and are dropped from the
-#'   `"cost_per_evap_pct"` variant. Titles and the y-axis label switch
-#'   accordingly.
+#'   evapotranspiration share **above the reference minimum**, EUR per
+#'   percentage point -- the marginal cost efficiency of evapotranspiration;
+#'   the baseline comes "for free"). The reference is the **lowest
+#'   evapotranspiration among the scenarios that satisfy the validity
+#'   criterion** (`n_overflows <= x`; fallback: the complete run when none
+#'   does) and is named -- share, criterion and scenario id -- on a second
+#'   title line. Scenarios at or below the reference (including the reference
+#'   scenario itself) have no defined marginal cost and are dropped from the
+#'   `"cost_per_evap_pct"` variant; `label_best = TRUE` additionally
+#'   annotates the evapotranspiration gain (`"(+NN % Evapotranspiration)"`)
+#'   after the price. Titles and the y-axis label switch accordingly.
 #' @param facet_storage_type Logical. If `TRUE`, the plot is split by
 #'   `storage_type` into two stacked panels (infiltration box on top, gravel
 #'   trench below, via `ggplot2::facet_grid()`), each with its own boxes,
@@ -137,6 +143,7 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
                                        title = NULL,
                                        lab_x = NULL,
                                        lab_y = NULL,
+                                       caption = NULL,
                                        lab_size = NULL,
                                        mark_best = TRUE,
                                        connect_best = TRUE,
@@ -161,12 +168,12 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
       y = "Gesamtkosten [\u20ac]",
       title_cheapest     = "Kosten je \u00dcberlaufanzahl \u2014 g\u00fcnstigste je Kategorie",
       title_min_overflow = "Kosten je \u00dcberlaufanzahl \u2014 geringstes \u00dcberlaufvolumen je Kategorie",
-      title_max_evap     = "Kosten je \u00dcberlaufanzahl \u2014 h\u00f6chste Verdunstung je Kategorie",
+      title_max_evap     = "Kosten je \u00dcberlaufanzahl \u2014 h\u00f6chste Evapotranspiration je Kategorie",
       size_volume = "\u00dcberlaufvolumen [m\u00b3]",
-      size_evap = "Verdunstung [%]",
+      size_evap = "Evapotranspiration [%]",
       best_cheapest     = "G\u00fcnstigste L\u00f6sung",
       best_min_overflow = "Geringstes \u00dcberlaufvolumen",
-      best_max_evap     = "H\u00f6chste Verdunstung"
+      best_max_evap     = "H\u00f6chste Evapotranspiration"
     ),
     en = list(
       x = "Number of overflow events",
@@ -189,10 +196,10 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
   y_col <- if (y_var == "cost_per_evap_pct") "cost_per_evap_pct" else "cost_total"
   if (y_var == "cost_per_evap_pct") {
     txt$y <- switch(lang,
-      de = "Kosten je Prozent Verdunstung [\u20ac/%]",
-      en = "Cost per percent evapotranspiration [\u20ac/%]")
+      de = "Kosten je Prozent Evapotranspiration \u00fcber Minimum [\u20ac/%]",
+      en = "Cost per percent evapotranspiration above minimum [\u20ac/%]")
     evap_prefix <- switch(lang,
-      de = "Kosten je % Verdunstung",
+      de = "Kosten je % Evapotranspiration",
       en = "Cost per % evapotranspiration")
     txt$title_cheapest <- paste0(evap_prefix, switch(lang,
       de = " \u2014 g\u00fcnstigste je Kategorie",
@@ -201,7 +208,7 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
       de = " \u2014 geringstes \u00dcberlaufvolumen je Kategorie",
       en = " \u2014 lowest overflow volume per class"))
     txt$title_max_evap <- paste0(evap_prefix, switch(lang,
-      de = " \u2014 h\u00f6chste Verdunstung je Kategorie",
+      de = " \u2014 h\u00f6chste Evapotranspiration je Kategorie",
       en = " \u2014 highest evapotranspiration per class"))
   }
 
@@ -248,6 +255,19 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
             " for discrete axis/palette.")
   }
 
+  # Reference for the cost-per-percent-evapotranspiration measure: the
+  # minimum evapotranspiration among the scenarios that SATISFY the validity
+  # criterion (n_overflows <= x); computed before any filtering, falls back
+  # to the complete run when no scenario is valid. The matching scenario id
+  # is named in the title.
+  evap_all <- simulation_results_optimisation[["element.WB_Evapotranspiration_"]]
+  valid_mask <- !is.na(simulation_results_optimisation$n_overflows) &
+    simulation_results_optimisation$n_overflows <= x_int & !is.na(evap_all)
+  ref_idx <- if (any(valid_mask)) which(valid_mask) else seq_along(evap_all)
+  evap_min <- suppressWarnings(min(evap_all[ref_idx], na.rm = TRUE))
+  evap_min_scenario <- simulation_results_optimisation$scenario_name[
+    ref_idx[which.min(evap_all[ref_idx])]]
+
   # Share of scenarios meeting the validity criterion (n_overflows <= x),
   # appended to the auto-generated title (a plotly-safe place -- ggplotly
   # drops ggplot subtitles).
@@ -256,7 +276,22 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
   share_txt <- switch(lang,
     de = paste0(valid_pct, " % mit <= ", x_int, " \u00dcberl\u00e4ufen"),
     en = paste0(valid_pct, " % with <= ", x_int, " overflows"))
-  if (is.null(title)) title <- paste0(def_title, " (", share_txt, ")")
+  if (is.null(title)) {
+    title <- paste0(def_title, " (", share_txt, ")")
+    if (y_var == "cost_per_evap_pct") {
+      # name the reference of the marginal measure in the title
+      title <- paste0(title, "\n", switch(lang,
+        de = paste0("Referenz: minimale Evapotranspiration der g\u00fcltigen ",
+                    "Szenarien (<= ", x_int, " \u00dcberl\u00e4ufe): ",
+                    round(evap_min, 1), " % (Szenario ",
+                    evap_min_scenario, ")"),
+        en = paste0("Reference: minimum evapotranspiration of the valid ",
+                    "scenarios (<= ", x_int, " overflows): ",
+                    round(evap_min, 1), " % (scenario ",
+                    evap_min_scenario, ")")))
+    }
+  }
+  if (is.null(caption)) caption <- cost_rates_caption(lang)
 
   param_tooltip <- build_varying_param_html(param_grid, lang, param_labels,
                                             digits_params)
@@ -284,14 +319,18 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
       overflow_cat = factor(.data$overflow_cat, levels = levs)
     )
 
-  # Cost per percentage point of evapotranspiration [EUR/%]. Scenarios with
-  # zero evapotranspiration have no defined ratio and are dropped from the
-  # cost_per_evap_pct variant (the active y column must not be NA).
+  # Cost per percentage point of evapotranspiration ABOVE the run minimum
+  # [EUR/%]: the baseline evapotranspiration comes "for free", only the gain
+  # beyond the worst scenario is paid for. Scenarios at the minimum (incl.
+  # the reference scenario itself) have no defined marginal cost and are
+  # dropped from the cost_per_evap_pct variant (the active y column must not
+  # be NA).
   df <- df %>%
     dplyr::mutate(
       cost_per_evap_pct = dplyr::if_else(
-        .data[["element.WB_Evapotranspiration_"]] > 0,
-        .data$cost_total / .data[["element.WB_Evapotranspiration_"]],
+        .data[["element.WB_Evapotranspiration_"]] - evap_min > 0,
+        .data$cost_total /
+          (.data[["element.WB_Evapotranspiration_"]] - evap_min),
         NA_real_
       )
     ) %>%
@@ -299,10 +338,10 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
 
   # Storage type: display factor for the facet strips and the point shapes
   # (filled square = infiltration box, filled triangle = gravel trench).
-  st <- storage_type_shapes(df$storage_type, txt)
+  st <- storage_type_shapes(df$storage_type, lang)
   df$storage_type_disp <- st$display
 
-  df$tooltip_html <- cost_tooltip_text(df, txt, digits)
+  df$tooltip_html <- cost_tooltip_text(df, txt, digits, evap_min = evap_min)
 
   # Point size: calibrate the scale to the valid region (0..x) and cap the
   # extreme ">x" values, otherwise the many-overflow outliers (overflow
@@ -361,7 +400,17 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
                trim = TRUE), " %"),
       min_cost = paste0(
         format(round(best[[y_col]], 0), big.mark = " ", trim = TRUE),
-        if (y_var == "cost_per_evap_pct") " \u20ac/%" else " \u20ac")
+        if (y_var == "cost_per_evap_pct") {
+          # ... and the evapotranspiration gain over the reference minimum
+          # that this price buys
+          paste0(" \u20ac/% (+",
+                 format(round(best[["element.WB_Evapotranspiration_"]] -
+                                evap_min, 1), trim = TRUE),
+                 " % ", switch(lang, de = "Evapotranspiration",
+                               en = "evapotranspiration"), ")")
+        } else {
+          " \u20ac"
+        })
     )
   }
 
@@ -423,7 +472,8 @@ plot_cost_overflow_boxplot <- function(simulation_results_optimisation,
     ggplot2::scale_color_manual(values = pal, limits = levs, drop = FALSE,
                                 guide = "none") +
     ggplot2::scale_x_discrete(drop = FALSE) +
-    ggplot2::labs(title = title, x = lab_x, y = lab_y) +
+    ggplot2::labs(title = title, x = lab_x, y = lab_y,
+                  caption = if (nzchar(caption)) caption else NULL) +
     ggplot2::theme_bw() +
     ggplot2::theme(
       legend.position = legend_position,

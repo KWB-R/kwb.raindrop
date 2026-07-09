@@ -20,6 +20,7 @@ plot_cost_vs_evaporation(
   title = NULL,
   lab_x = NULL,
   lab_y = NULL,
+  caption = NULL,
   legend_position = "top"
 )
 }
@@ -56,6 +57,13 @@ to tooltip labels, or \code{NULL} to use \code{\link[=default_param_labels]{defa
 
 \item{title, lab_x, lab_y}{Optional character overrides for the default
 language-specific title / axis labels.}
+
+\item{caption}{Character or \code{NULL}. Caption below the plot naming the
+unit-cost rates the EUR values were computed with. \code{NULL} (default)
+uses \code{\link[=cost_rates_caption]{cost_rates_caption()}} with the \code{\link[=default_cost_rates]{default_cost_rates()}}; pass your
+own string if the costs were computed with different rates, or \code{""} to
+drop the caption. Note that \code{plotly::ggplotly()} drops ggplot captions
+-- re-add it to the interactive version via \code{\link[=plotly_add_caption]{plotly_add_caption()}}.}
 
 \item{legend_position}{Character. Legend position, default \code{"top"}.}
 }

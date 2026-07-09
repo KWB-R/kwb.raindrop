@@ -45,6 +45,11 @@ median outcome values across parameter levels.
 The function is intended for optimisation or sensitivity grids with many
 parameters, where a single 2D scatter plot is not informative.
 
+Both numeric and character parameters are supported; a character parameter
+such as \code{storage_type} gets its own facet panel (its levels are shown
+as \code{Sickerbox} / \code{Schotterrigol} for \code{lang = "de"},
+\code{Infiltration box} / \code{Gravel trench} for \code{lang = "en"}).
+
 The plot language can be switched via \code{lang = "de"} or
 \code{lang = "en"}. This affects the title, y-axis label, and selected
 parameter labels.

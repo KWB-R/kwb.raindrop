@@ -73,6 +73,16 @@
 #'   \code{drop_overflow_gt_valid_max = TRUE}, the x/y axis limits are fixed to
 #'   the full range or full set of levels found in \code{param_grid}, so the
 #'   design-space axes do not shrink after filtering. Default \code{TRUE}.
+#' @param facet_storage_type Logical. If \code{TRUE}, the design space is
+#'   split by \code{storage_type} into two stacked panels (infiltration box on
+#'   top, gravel trench below) with free y-scales, so disjoint per-type levels
+#'   (e.g. \code{storage_height}: 300-1200 mm boxes vs. 900-3600 mm trenches)
+#'   fill their own panel; duplicate counting for \code{alpha_mode =
+#'   "duplicates"} then happens per panel and the points stay plain circles
+#'   (the strips already name the type). Requires a \code{storage_type}
+#'   column in \code{param_grid}. Without faceting, points are shaped by the
+#'   storage type (filled square = infiltration box, filled triangle = gravel
+#'   trench) whenever \code{storage_type} varies. Default \code{FALSE}.
 #' @param lang Character. Plot language: \code{"de"} or \code{"en"}.
 #' @param title Character or \code{NULL}. Plot title. If \code{NULL}, a
 #'   language-specific default title is used.
@@ -88,7 +98,9 @@
 #' @importFrom ggplot2 position_identity scale_alpha_identity coord_cartesian
 #' @importFrom ggplot2 scale_x_discrete scale_y_discrete scale_colour_manual
 #' @importFrom ggplot2 guides guide_legend theme scale_x_continuous scale_y_continuous
+#' @importFrom ggplot2 scale_shape_manual facet_grid vars
 #' @importFrom rlang .data
+#' @importFrom utils modifyList
 #' @importFrom grDevices colorRampPalette
 #' @export
 plot_valid_design_space <- function(param_grid,
@@ -111,6 +123,7 @@ plot_valid_design_space <- function(param_grid,
                                     alpha_min = 0.20,
                                     alpha_max = 1.00,
                                     keep_param_grid_limits = TRUE,
+                                    facet_storage_type = FALSE,
                                     lang = c("de", "en"),
                                     title = NULL,
                                     subtitle = NULL,
@@ -132,10 +145,12 @@ plot_valid_design_space <- function(param_grid,
   txt <- switch(
     lang,
     de = list(
+      # two lines: the composed title (threshold + both axis labels) is too
+      # long for one line in the 9-inch PDFs and the interactive HTMLs
       title = paste0(
-        "G\u00fcltige L\u00f6sungen (Anzahl \u00dcberlaufereignisse \u2264 ",
+        "G\u00fcltige L\u00f6sungen (Anzahl \u00dcberlaufereignisse <= ",
         valid_max,
-        ") im Designraum: ",
+        ")\nim Designraum: ",
         lab_x,
         " \u00d7 ",
         lab_y
@@ -148,9 +163,9 @@ plot_valid_design_space <- function(param_grid,
     ),
     en = list(
       title = paste0(
-        "Valid solutions (Number of overflow events \u2264 ",
+        "Valid solutions (Number of overflow events <= ",
         valid_max,
-        ") in design space: ",
+        ")\nin design space: ",
         x,
         " \u00d7 ",
         y
@@ -194,11 +209,16 @@ plot_valid_design_space <- function(param_grid,
     stop("Missing columns in sim_results: ", paste(miss_res, collapse = ", "))
   }
   
+  if (isTRUE(facet_storage_type) && !"storage_type" %in% names(param_grid)) {
+    stop("facet_storage_type = TRUE requires a 'storage_type' column in param_grid.")
+  }
+
   cand <- setdiff(names(param_grid), id_col)
   lvl  <- vapply(param_grid[cand], function(v) dplyr::n_distinct(v, na.rm = TRUE), numeric(1))
   varied_params <- cand[lvl > 1 & lvl <= max_levels]
-  
-  keep_pg <- unique(c(id_col, x, y, varied_params))
+
+  keep_pg <- unique(c(id_col, x, y, varied_params,
+                      if (isTRUE(facet_storage_type)) "storage_type"))
   d <- dplyr::left_join(
     dplyr::select(param_grid, dplyr::all_of(keep_pg)),
     dplyr::select(sim_results, dplyr::all_of(c(id_col, overflow_col))),
@@ -213,7 +233,26 @@ plot_valid_design_space <- function(param_grid,
   if (isTRUE(drop_overflow_gt_valid_max)) {
     d <- dplyr::filter(d, .data[[overflow_col]] <= valid_max_int)
   }
-  
+
+  # Storage-type tagging (filled square = infiltration box, filled triangle =
+  # gravel trench, as in the cost plots): active whenever storage_type is one
+  # of the varied parameters -- except in the faceted layout, where the strips
+  # already name the type and the points stay plain circles for readability.
+  has_storage_type <- "storage_type" %in% names(d)
+  if (has_storage_type) {
+    st_labels <- cost_tooltip_labels(lang)
+    st <- storage_type_shapes(d$storage_type, st_labels)
+    d$storage_type_disp <- st$display
+  }
+  use_shapes <- has_storage_type && !isTRUE(facet_storage_type)
+  add_shape <- function(mapping) {
+    if (use_shapes) {
+      utils::modifyList(mapping, ggplot2::aes(shape = .data$storage_type_disp))
+    } else {
+      mapping
+    }
+  }
+
   other_params <- setdiff(varied_params, c(x, y))
   
   fmt <- function(v) {
@@ -274,8 +313,14 @@ plot_valid_design_space <- function(param_grid,
   legend_breaks <- levs
   
   if (alpha_mode == "duplicates") {
+    # With storage-type facets, identical x/y coordinates only overplot within
+    # the same panel, so duplicates are counted per storage type.
+    d <- if (isTRUE(facet_storage_type) && has_storage_type) {
+      d %>% dplyr::group_by(.data$storage_type_disp, .data[[x]], .data[[y]])
+    } else {
+      d %>% dplyr::group_by(.data[[x]], .data[[y]])
+    }
     d <- d %>%
-      dplyr::group_by(.data[[x]], .data[[y]]) %>%
       dplyr::mutate(dup_n = dplyr::n()) %>%
       dplyr::ungroup()
     
@@ -320,11 +365,11 @@ plot_valid_design_space <- function(param_grid,
   if (isTRUE(drop_overflow_gt_valid_max)) {
     p <- ggplot2::ggplot(d, ggplot2::aes(x = .data[[x]], y = .data[[y]])) +
       ggplot2::geom_point(
-        ggplot2::aes(
+        add_shape(ggplot2::aes(
           colour = .data$overflow_cat,
           text = .data$hover,
           alpha = .data$alpha_valid
-        ),
+        )),
         size = size + 0.6,
         position = pos
       ) +
@@ -359,21 +404,21 @@ plot_valid_design_space <- function(param_grid,
     p <- ggplot2::ggplot(d, ggplot2::aes(x = .data[[x]], y = .data[[y]])) +
       ggplot2::geom_point(
         data = dplyr::filter(d, !.data$valid),
-        ggplot2::aes(
+        add_shape(ggplot2::aes(
           colour = .data$overflow_cat,
           text = .data$hover,
           alpha = .data$alpha_invalid
-        ),
+        )),
         size = size,
         position = pos
       ) +
       ggplot2::geom_point(
         data = dplyr::filter(d, .data$valid),
-        ggplot2::aes(
+        add_shape(ggplot2::aes(
           colour = .data$overflow_cat,
           text = .data$hover,
           alpha = .data$alpha_valid
-        ),
+        )),
         size = size + 0.8,
         position = pos
       ) +
@@ -406,6 +451,30 @@ plot_valid_design_space <- function(param_grid,
       )
   }
   
+  if (use_shapes) {
+    p <- p +
+      # Square = infiltration box, triangle = gravel trench.
+      ggplot2::scale_shape_manual(
+        values = st$shape_values,
+        drop = FALSE,
+        name = st_labels$tt_storage_type
+      ) +
+      # stack the colour and shape legends so both fit at the top
+      ggplot2::theme(
+        legend.box = if (legend_direction == "horizontal") "vertical" else "horizontal"
+      )
+  }
+  if (isTRUE(facet_storage_type)) {
+    # Two stacked panels (infiltration box on top, gravel trench below);
+    # free y-scales let disjoint per-type levels (e.g. storage_height:
+    # 300-1200 mm boxes vs. 900-3600 mm trenches) fill their own panel.
+    # plotly::ggplotly() keeps the split as stacked subplots.
+    p <- p + ggplot2::facet_grid(
+      rows = ggplot2::vars(.data$storage_type_disp),
+      scales = "free_y"
+    )
+  }
+
   if (isTRUE(keep_param_grid_limits)) {
     if (is.numeric(param_grid[[x]]) && is.numeric(param_grid[[y]])) {
       x_vals <- sort(unique(param_grid[[x]]))
@@ -418,7 +487,8 @@ plot_valid_design_space <- function(param_grid,
       if (isTRUE(drop_overflow_gt_valid_max)) {
         p <- p + ggplot2::coord_cartesian(
           xlim = range(x_vals),
-          ylim = range(y_vals)
+          # a fixed ylim would override the per-panel free y-scales
+          ylim = if (isTRUE(facet_storage_type)) NULL else range(y_vals)
         )
       }
     } else {

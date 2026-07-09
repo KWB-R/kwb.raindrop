@@ -1,65 +1,37 @@
-#' Cost vs. overflow-volume scatter with n_overflows-coloured points
+#' Cost vs. evapotranspiration scatter with storage-type shapes
 #'
-#' Companion to \code{\link{plot_wb_tradeoff_overflows}} for cost-aware
-#' optimisation. Plots the per-scenario **total construction cost** (EUR) on
-#' the x-axis against the **overflow volume** (m3) on the y-axis, with the
-#' points coloured discretely by the **number** of overflow events (same
-#' 0..x / >x palette used by `plot_wb_tradeoff_overflows`, legend at the top)
-#' and **shaped by the storage type**: filled square = infiltration box
+#' Second companion to \code{\link{plot_cost_vs_overflow_volume}} for
+#' cost-aware optimisation. Plots the per-scenario **total construction cost**
+#' (EUR) on the x-axis against the element **evapotranspiration share** (% of
+#' the total water input, from `element.WB_Evapotranspiration_`) on the
+#' y-axis. Points are coloured discretely by the **number** of overflow events
+#' (same 0..x / >x palette used by the sibling plots, legend at the top) and
+#' **shaped by the storage type**: filled square = infiltration box
 #' (Sickerbox), filled triangle = gravel trench (Schotterrigol).
 #'
-#' Overflow volume is computed from `sum_overflows` (in mm on the swale
-#' surface, as returned by [`add_overflow_events_and_waterbalance()`])
-#' multiplied by `mulde_area` (m2) and converted to m3:
-#' `overflow_volume_m3 = sum_overflows * mulde_area / 1000`.
-#'
-#' The tooltip carries the element water balance
+#' The tooltip is identical to [plot_cost_vs_overflow_volume()]: scenario,
+#' overflow count / sum (mm) / volume (m3), the element water balance
 #' (`element.WB_Evapotranspiration_`, `element.WB_InfiltrationNetto_`,
 #' `element.WB_Oberflaechenablauf_Ueberlauf_`, all as % of the total water
-#' input) and the cost breakdown (`cost_excavation`, `cost_profiling`,
-#' `cost_filter`, `cost_storage`, `cost_total`), the derived **cost per
-#' percentage point of evapotranspiration** (EUR/%), the **usable storage
-#' volume** of the storage layer (m3; area x height x usable porosity
-#' `thetaS - thetaFC`, from a `storage_volume_m3` column or derived from the
-#' `storage_theta*` columns) plus the varying parameters from `param_grid`
-#' (excluding `scenario_name`), so the user can hover over a scatter point
-#' and see exactly why it landed where it did.
+#' input), the storage type, the usable storage volume of the storage layer
+#' (m3), the cost breakdown (`cost_excavation`,
+#' `cost_profiling`, `cost_filter`, `cost_storage`, `cost_total`), the derived
+#' **cost per percentage point of evapotranspiration** (EUR/%) plus the
+#' varying parameters from `param_grid` (excluding `scenario_name`).
 #'
 #' The plot language can be switched via `lang = "de"` or `lang = "en"`.
 #' Titles / axis labels / legend / tooltip labels follow the choice unless
 #' explicit overrides are supplied.
 #'
-#' @param simulation_results_optimisation Data frame with the columns
-#'   `scenario_name`, `n_overflows`, `sum_overflows`, `mulde_area`,
-#'   `element.WB_Evapotranspiration_`, `element.WB_InfiltrationNetto_`,
-#'   `element.WB_Oberflaechenablauf_Ueberlauf_`, `cost_excavation`,
-#'   `cost_profiling`, `cost_filter`, `cost_storage`, `cost_total`,
-#'   `storage_type`. Typically the joined output of
-#'   [`add_overflow_events_and_waterbalance()`] and [`compute_costs()`].
-#' @param param_grid Data frame with parameter grid. Must contain
-#'   `scenario_name`.
-#' @param x Numeric threshold for the overflow-count colour bucket. Values
-#'   greater than `x` are pushed into the red `">x"` category.
-#' @param filter_n_gtx Logical. If `TRUE`, scenarios with `n_overflows > x`
-#'   are dropped before plotting.
-#' @param use_jitter,jitter_width,jitter_height,jitter_seed As in
-#'   [`plot_wb_tradeoff_overflows()`].
-#' @param digits Integer. Rounding for numeric values in the tooltip.
-#' @param digits_params Integer. Rounding for parameter values in the
-#'   tooltip.
-#' @param lang Character. Plot language: `"de"` or `"en"`.
-#' @param param_labels Named character vector translating `param_grid` columns
-#'   to tooltip labels, or `NULL` to use [default_param_labels()] for `lang`.
-#' @param title,lab_x,lab_y Optional character overrides for the default
-#'   language-specific title / axis labels.
-#' @param legend_position Character. Legend position, default `"top"`.
+#' @inheritParams plot_cost_vs_overflow_volume
 #'
 #' @return A `ggplot` object. Convert to interactive via
 #'   `plotly::ggplotly(p, tooltip = "text")`.
 #'
-#' @seealso [plot_cost_overflow_boxplot()] for the same data / tooltip shown as
-#'   a cost-by-overflow-count boxplot and [plot_cost_vs_evaporation()] for
-#'   cost vs. the element evapotranspiration share.
+#' @seealso [plot_cost_vs_overflow_volume()] for cost vs. overflow volume and
+#'   [plot_cost_overflow_boxplot()] for the boxplot views (including
+#'   `y_var = "cost_per_evap_pct"`, the cost per percentage point of
+#'   evapotranspiration).
 #'
 #' @export
 #'
@@ -67,22 +39,22 @@
 #' @importFrom ggplot2 ggplot aes geom_point scale_color_manual scale_shape_manual labs theme_bw position_jitter theme guides guide_legend
 #' @importFrom grDevices colorRampPalette
 #' @importFrom rlang .data
-plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
-                                         param_grid,
-                                         x = 1,
-                                         filter_n_gtx = FALSE,
-                                         use_jitter = TRUE,
-                                         jitter_width = 0.15,
-                                         jitter_height = 0.15,
-                                         jitter_seed = 1L,
-                                         digits = 2L,
-                                         digits_params = 4L,
-                                         lang = c("de", "en"),
-                                         param_labels = NULL,
-                                         title = NULL,
-                                         lab_x = NULL,
-                                         lab_y = NULL,
-                                         legend_position = "top") {
+plot_cost_vs_evaporation <- function(simulation_results_optimisation,
+                                     param_grid,
+                                     x = 1,
+                                     filter_n_gtx = FALSE,
+                                     use_jitter = TRUE,
+                                     jitter_width = 0.15,
+                                     jitter_height = 0.15,
+                                     jitter_seed = 1L,
+                                     digits = 2L,
+                                     digits_params = 4L,
+                                     lang = c("de", "en"),
+                                     param_labels = NULL,
+                                     title = NULL,
+                                     lab_x = NULL,
+                                     lab_y = NULL,
+                                     legend_position = "top") {
 
   lang <- match.arg(lang)
   if (is.null(param_labels)) param_labels <- default_param_labels(lang)
@@ -90,15 +62,15 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
   txt <- switch(
     lang,
     de = list(
-      title = "Kosten vs. \u00dcberlaufvolumen",
+      title = "Kosten vs. Verdunstung",
       x = "Gesamtkosten [\u20ac]",
-      y = "\u00dcberlaufvolumen [m\u00b3]",
+      y = "Verdunstung [%]",
       legend = "Anzahl \u00dcberlaufereignisse"
     ),
     en = list(
-      title = "Cost vs. overflow volume",
+      title = "Cost vs. evapotranspiration",
       x = "Total cost [\u20ac]",
-      y = "Overflow volume [m\u00b3]",
+      y = "Evapotranspiration [%]",
       legend = "Number of overflow events"
     )
   )
@@ -177,8 +149,8 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
       overflow_cat = factor(.data$overflow_cat, levels = levs)
     )
 
-  # Storage type drives the marker shape (filled square = infiltration box,
-  # filled triangle = gravel trench); shared with the sibling cost plots.
+  # Storage type drives the marker shape (square = infiltration box,
+  # triangle = gravel trench); shared with the sibling cost plots.
   st <- storage_type_shapes(df$storage_type, txt)
   df$storage_type_disp <- st$display
 
@@ -218,7 +190,7 @@ plot_cost_vs_overflow_volume <- function(simulation_results_optimisation,
 
   p <- ggplot2::ggplot(df, ggplot2::aes(
     x = .data$cost_total,
-    y = .data$overflow_volume_m3,
+    y = .data[["element.WB_Evapotranspiration_"]],
     color = .data$overflow_cat,
     shape = .data$storage_type_disp,
     text = .data$tooltip_html

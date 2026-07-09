@@ -1,7 +1,7 @@
 ---
 title: "RainDrop Optimierung – Brute Force"
 author: "Michael Rustler"
-date: "2026-02-25"
+date: "`r Sys.Date()`"
 output:
   html_document:
     toc: true

@@ -35,7 +35,8 @@ default_param_labels <- function(lang = c("de", "en")) {
       bottom_hydraulicconductivity = "Sohl-Leitf\u00e4higkeit kf [mm/h]",
       rain_factor                  = "Regenfaktor [-]",
       lai                          = "Blattfl\u00e4chenindex LAI [-]",
-      storage_type                 = "Speichertyp"
+      storage_type                 = "Speichertyp",
+      storage_volume_m3            = "Nutzbares Speichervolumen [m\u00b3]"
     ),
     en = c(
       connected_area               = "Connected area [m\u00b2]",
@@ -47,8 +48,31 @@ default_param_labels <- function(lang = c("de", "en")) {
       bottom_hydraulicconductivity = "Subsoil conductivity kf [mm/h]",
       rain_factor                  = "Rain factor [-]",
       lai                          = "Leaf area index LAI [-]",
-      storage_type                 = "Storage type"
+      storage_type                 = "Storage type",
+      storage_volume_m3            = "Usable storage volume [m\u00b3]"
     )
+  )
+}
+
+#' Short, language-specific display names for the storage_type values
+#'
+#' Used wherever the raw `storage_type` values appear as compact text: the
+#' "varying parameters" tooltip block (`Speichertyp=Schotterrigol` instead of
+#' `Speichertyp=gravel_trench`) and the x-axis of the `plot_main_effects()`
+#' storage-type panel. The bold storage-type tooltip line keeps the longer
+#' bilingual names from `cost_tooltip_labels()`.
+#'
+#' @param lang Character. `"de"` or `"en"`.
+#' @return Named character vector (names = raw values).
+#' @noRd
+storage_type_value_labels <- function(lang = c("de", "en")) {
+  lang <- match.arg(lang)
+  switch(
+    lang,
+    de = c(infiltration_box = "Sickerbox",
+           gravel_trench = "Schotterrigol"),
+    en = c(infiltration_box = "Infiltration box",
+           gravel_trench = "Gravel trench")
   )
 }
 
@@ -98,16 +122,33 @@ build_varying_param_html <- function(param_grid, lang = c("de", "en"),
 
   param_grid %>%
     dplyr::select("scenario_name", dplyr::all_of(varying_params)) %>%
+    # values_transform: numeric and character parameters (e.g. storage_type)
+    # cannot share one `val` column otherwise.
     tidyr::pivot_longer(-"scenario_name",
                         names_to = "param",
-                        values_to = "val") %>%
+                        values_to = "val",
+                        values_transform = list(val = as.character)) %>%
     dplyr::mutate(
       val_chr = purrr::map_chr(.data$val, ~ paste(.x, collapse = ",")),
       val_num = suppressWarnings(as.numeric(.data$val_chr)),
+      # format element-wise: a vectorised format() would pad every parameter
+      # to the maximum number of decimals in the column (e.g. "100.00"
+      # because another parameter has value 0.95).
       val_fmt = ifelse(
         is.na(.data$val_num),
         .data$val_chr,
-        format(round(.data$val_num, digits_params), trim = TRUE)
+        vapply(.data$val_num,
+               function(v) format(round(v, digits_params), trim = TRUE,
+                                  scientific = FALSE),
+               character(1))
+      ),
+      # storage_type values get their short display names
+      # (Speichertyp=Schotterrigol instead of =gravel_trench)
+      val_fmt = ifelse(
+        .data$param == "storage_type" &
+          .data$val_chr %in% names(storage_type_value_labels(lang)),
+        unname(storage_type_value_labels(lang)[.data$val_chr]),
+        .data$val_fmt
       ),
       param_label = dplyr::coalesce(unname(param_labels[.data$param]),
                                     .data$param),
@@ -136,15 +177,18 @@ cost_tooltip_labels <- function(lang = c("de", "en")) {
       tt_sum_overflows_mm = "Summe \u00dcberl\u00e4ufe [mm]",
       tt_overflow_volume  = "\u00dcberlaufvolumen [m\u00b3]",
       tt_wb_header        = "Wasserhaushalt [%]",
-      tt_wb_evap          = "Verdunstung",
+      tt_wb_evap          = "Evapotranspiration",
       tt_wb_infil         = "Versickerung",
       tt_wb_overflow      = "\u00dcberlauf",
       tt_cost_total       = "Gesamtkosten",
+      tt_cost_per_evap    = "Kosten je % Evapotranspiration",
+      tt_above_min        = "\u00fcber Min. von",
       tt_cost_excavation  = "Aushub",
       tt_cost_profiling   = "Profilierung + Begr\u00fcnung",
       tt_cost_filter      = "Bodenfilter",
       tt_cost_storage     = "Speicherschicht",
       tt_storage_type     = "Speichertyp",
+      tt_storage_volume   = "Nutzbares Speichervolumen [m\u00b3]",
       st_infiltration_box = "Sickerbox / Infiltration box",
       st_gravel_trench    = "Schotterrigol / Gravel trench",
       tt_costs_header     = "Kostenaufteilung [\u20ac]",
@@ -160,17 +204,72 @@ cost_tooltip_labels <- function(lang = c("de", "en")) {
       tt_wb_infil         = "Infiltration",
       tt_wb_overflow      = "Overflow",
       tt_cost_total       = "Total cost",
+      tt_cost_per_evap    = "Cost per % evapotranspiration",
+      tt_above_min        = "above min. of",
       tt_cost_excavation  = "Excavation",
       tt_cost_profiling   = "Profiling + greening",
       tt_cost_filter      = "Soil filter",
       tt_cost_storage     = "Storage layer",
       tt_storage_type     = "Storage type",
+      tt_storage_volume   = "Usable storage volume [m\u00b3]",
       st_infiltration_box = "Infiltration box / Sickerbox",
       st_gravel_trench    = "Gravel trench / Schotterrigol",
       tt_costs_header     = "Cost breakdown [\u20ac]",
       tt_params           = "Varying parameters"
     )
   )
+}
+
+#' Storage-type display factor and marker shapes for the cost plots
+#'
+#' Maps the raw `storage_type` values to their **short, language-specific**
+#' display names (from `storage_type_value_labels()`; e.g. "Sickerbox" /
+#' "Schotterrigol" for `lang = "de"`) and to the fixed marker shapes shared
+#' by all cost plots: **filled square (15) = infiltration box**, **filled
+#' triangle (17) = gravel trench**. Used for legends and facet strips; the
+#' tooltip's bold storage-type line keeps the longer bilingual names from
+#' `cost_tooltip_labels()`. Values that are `NA` or unknown fall back to the
+#' infiltration box, mirroring `cost_tooltip_text()`.
+#'
+#' @param storage_type Character vector of raw values
+#'   (`"infiltration_box"` / `"gravel_trench"`).
+#' @param lang Character. `"de"` or `"en"`.
+#' @return List with `display` (factor, infiltration box level first) and
+#'   `shape_values` (named vector for `ggplot2::scale_shape_manual()`).
+#' @noRd
+storage_type_shapes <- function(storage_type, lang = c("de", "en")) {
+  lang <- match.arg(lang)
+  labels <- storage_type_value_labels(lang)
+  raw <- as.character(storage_type)
+  disp <- ifelse(!is.na(raw) & raw == "gravel_trench",
+                 labels[["gravel_trench"]], labels[["infiltration_box"]])
+  lvls <- unname(labels[c("infiltration_box", "gravel_trench")])
+  list(
+    display = factor(disp, levels = lvls),
+    shape_values = stats::setNames(c(15, 17), lvls)
+  )
+}
+
+#' Usable storage volume of the storage layer [m3] per row
+#'
+#' Area x height x usable porosity (thetaS - thetaFC) of the storage type.
+#' Taken from a precomputed `storage_volume_m3` column when available,
+#' otherwise derived from the `storage_theta*` columns; `NULL` when neither
+#' is present (old result sets), so callers can omit their tooltip line.
+#'
+#' @param df Data frame (results or parameter grid).
+#' @return Numeric vector or `NULL`.
+#' @noRd
+storage_volume_from_df <- function(df) {
+  if ("storage_volume_m3" %in% names(df)) {
+    df$storage_volume_m3
+  } else if (all(c("mulde_area", "storage_height", "storage_thetaS",
+                   "storage_thetaFC") %in% names(df))) {
+    df$mulde_area * df$storage_height / 1000 *
+      (df$storage_thetaS - df$storage_thetaFC)
+  } else {
+    NULL
+  }
 }
 
 #' Assemble the shared cost-plot tooltip HTML for each row of `df`
@@ -183,9 +282,13 @@ cost_tooltip_labels <- function(lang = c("de", "en")) {
 #' @param df Data frame with the columns listed above.
 #' @param tt Label list from `cost_tooltip_labels()`.
 #' @param digits Integer. Rounding for the numeric tooltip values.
+#' @param evap_min Numeric. Minimum element evapotranspiration share [%] of
+#'   the complete model run — the reference for the cost-per-percent line.
+#'   `NULL` falls back to the minimum within `df` (identical as long as `df`
+#'   is unfiltered).
 #' @return Character vector, length `nrow(df)`.
 #' @noRd
-cost_tooltip_text <- function(df, tt, digits = 2L) {
+cost_tooltip_text <- function(df, tt, digits = 2L, evap_min = NULL) {
   st_raw <- if ("storage_type" %in% names(df)) {
     as.character(df$storage_type)
   } else {
@@ -193,6 +296,31 @@ cost_tooltip_text <- function(df, tt, digits = 2L) {
   }
   st_disp <- ifelse(!is.na(st_raw) & st_raw == "gravel_trench",
                     tt$st_gravel_trench, tt$st_infiltration_box)
+  # Derived cost efficiency: total cost per percentage point of element
+  # evapotranspiration ABOVE the run minimum [EUR/%] -- the baseline
+  # evapotranspiration comes "for free", only the gain beyond the worst
+  # scenario is paid for. Undefined ("-") at or below the minimum (the
+  # minimum scenario itself has no defined marginal cost).
+  evap <- df[["element.WB_Evapotranspiration_"]]
+  if (is.null(evap_min)) {
+    evap_min <- suppressWarnings(min(evap, na.rm = TRUE))
+  }
+  evap_delta <- evap - evap_min
+  cpe <- ifelse(!is.na(df$cost_total) & !is.na(evap_delta) & evap_delta > 0,
+                df$cost_total / evap_delta, NA_real_)
+  cpe_fmt <- vapply(cpe, function(v) {
+    if (is.na(v)) "-" else format(round(v, 0), big.mark = " ", trim = TRUE)
+  }, character(1))
+  cpe_label <- paste0(tt$tt_cost_per_evap, " (", tt$tt_above_min, " ",
+                      round(evap_min, digits), " %) [\u20ac/%]")
+  # Usable storage volume line; omitted for result sets where it is not
+  # derivable (see storage_volume_from_df()).
+  storage_volume <- storage_volume_from_df(df)
+  storage_volume_line <- if (is.null(storage_volume)) {
+    ""
+  } else {
+    paste0("<br>", tt$tt_storage_volume, ": ", round(storage_volume, digits))
+  }
   paste0(
     tt$tt_scenario, ": ", df$scenario_name,
     "<br>", tt$tt_n_overflows, ": ", df$n_overflows,
@@ -206,6 +334,7 @@ cost_tooltip_text <- function(df, tt, digits = 2L) {
     "<br>", tt$tt_wb_overflow, ": ",
     round(df[["element.WB_Oberflaechenablauf_Ueberlauf_"]], digits),
     "<br><br><b>", tt$tt_storage_type, ": ", st_disp, "</b>",
+    storage_volume_line,
     "<br><br><b>", tt$tt_costs_header, "</b>",
     "<br>", tt$tt_cost_excavation, ": ",
     format(round(df$cost_excavation, 0), big.mark = " ", trim = TRUE),
@@ -217,6 +346,7 @@ cost_tooltip_text <- function(df, tt, digits = 2L) {
     format(round(df$cost_storage, 0), big.mark = " ", trim = TRUE),
     "<br><b>", tt$tt_cost_total, ": ",
     format(round(df$cost_total, 0), big.mark = " ", trim = TRUE), "</b>",
+    "<br>", cpe_label, ": ", cpe_fmt,
     "<br><br><b>", tt$tt_params, "</b><br>", df$params_html
   )
 }

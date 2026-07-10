@@ -21,10 +21,13 @@ plot_cost_overflow_boxplot(
   param_labels = NULL,
   size_by = c("overflow_volume", "evapotranspiration"),
   best_by = c("min_cost", "min_overflow", "max_evapotranspiration"),
+  y_var = c("cost_total", "cost_per_evap_pct"),
+  facet_storage_type = FALSE,
   label_best = FALSE,
   title = NULL,
   lab_x = NULL,
   lab_y = NULL,
+  caption = NULL,
   lab_size = NULL,
   mark_best = TRUE,
   connect_best = TRUE,
@@ -79,16 +82,51 @@ element evapotranspiration share in \%, from \code{element.WB_Evapotranspiration
 box, with cost as the tie-breaker: \code{"min_cost"} (default; cheapest, ties
 broken by \code{scenario_name}), \code{"min_overflow"} (smallest overflow volume) or
 \code{"max_evapotranspiration"} (highest evapotranspiration). In the \code{">x"} box
-the fewest-overflow scenario is picked first, \code{best_by} then breaking ties.}
+the fewest-overflow scenario is picked first, \code{best_by} then breaking ties.
+"Cost" always refers to the active \code{y_var}, so with
+\code{y_var = "cost_per_evap_pct"} the \code{"min_cost"} objective picks the
+scenario with the lowest cost per percentage point of evapotranspiration.}
+
+\item{y_var}{Character. Which cost measure the y-axis (boxes, points, best
+markers, frontier) shows: \code{"cost_total"} (default; total construction
+cost, EUR) or \code{"cost_per_evap_pct"} (total cost divided by the element
+evapotranspiration share \strong{above the reference minimum}, EUR per
+percentage point -- the marginal cost efficiency of evapotranspiration;
+the baseline comes "for free"). The reference is the \strong{lowest
+evapotranspiration among the scenarios that satisfy the validity
+criterion} (\code{n_overflows <= x}; fallback: the complete run when none
+does) and is named -- share, criterion and scenario id -- on a second
+title line. Scenarios at or below the reference (including the reference
+scenario itself) have no defined marginal cost and are dropped from the
+\code{"cost_per_evap_pct"} variant; \code{label_best = TRUE} additionally
+annotates the evapotranspiration gain (\code{"(+NN \% Evapotranspiration)"})
+after the price. Titles and the y-axis label switch accordingly.}
+
+\item{facet_storage_type}{Logical. If \code{TRUE}, the plot is split by
+\code{storage_type} into two stacked panels (infiltration box on top, gravel
+trench below, via \code{ggplot2::facet_grid()}), each with its own boxes,
+best-per-box markers and frontier line; the overlaid points then stay
+plain circles (the strips already name the type).
+\code{plotly::ggplotly()} keeps the panel split as stacked subplots.
+Default \code{FALSE}.}
 
 \item{label_best}{Logical. If \code{TRUE}, the best scenario per box is annotated
 next to it: overflow volume plus overflow share (\code{"NN m3 / NN \%"}) for
 \code{min_overflow}, the evapotranspiration share (\code{"NN \%"}) for
-\code{max_evapotranspiration}, or the total cost for \code{min_cost}. Default
-\code{FALSE}.}
+\code{max_evapotranspiration}, or the active \code{y_var} value for \code{min_cost} --
+the total cost (\code{"NN EUR"}) by default, the cost per percentage point of
+evapotranspiration (\code{"NN EUR/\%"}) with \code{y_var = "cost_per_evap_pct"}.
+Default \code{FALSE}.}
 
 \item{title, lab_x, lab_y}{Optional character overrides for the default
 language-specific title / axis labels.}
+
+\item{caption}{Character or \code{NULL}. Caption below the plot naming the
+unit-cost rates the EUR values were computed with. \code{NULL} (default)
+uses \code{\link[=cost_rates_caption]{cost_rates_caption()}} with the \code{\link[=default_cost_rates]{default_cost_rates()}}; pass your
+own string if the costs were computed with different rates, or \code{""} to
+drop the caption. Note that \code{plotly::ggplotly()} drops ggplot captions
+-- re-add it to the interactive version via \code{\link[=plotly_add_caption]{plotly_add_caption()}}.}
 
 \item{lab_size}{Optional character override for the size-legend title.}
 
@@ -100,7 +138,7 @@ that box's group colour, so its plotly tooltip inherits the group colour.}
 scenarios of \strong{all} boxes (overflow counts \verb{0..x} plus the \code{">x"}
 catch-all) are connected by a line -- the best-per-overflow-level frontier.}
 
-\item{legend_position}{Character. Legend position, default \code{"top"}.}
+\item{legend_position}{Character. Legend position, default \code{"right"}.}
 }
 \value{
 A \code{ggplot} object. Convert to interactive via
@@ -134,12 +172,23 @@ balance (evapotranspiration / infiltration / overflow, \%), the cost breakdown
 and the varying \code{param_grid} parameters translated via \code{param_labels}.
 Points and boxes are coloured with the same green (low counts) to red
 (\code{">x"}) palette as the sibling plots; because the colour merely echoes the
-x-axis it carries no separate legend -- only the point-size legend is shown.
+x-axis it carries no separate legend. When both storage types share one
+panel, the overlaid points are additionally \strong{shaped by the storage type}
+(filled square = infiltration box / Sickerbox, filled triangle = gravel
+trench / Schotterrigol), matching the scatter siblings, and a storage-type
+legend is shown next to the point-size legend. With \code{facet_storage_type = TRUE} the plot splits into two stacked storage-type panels instead; the
+facet strips then carry that information and the points stay \strong{plain
+circles} for readability. \code{y_var = "cost_per_evap_pct"} switches the
+y-axis to the cost per percentage point of evapotranspiration (EUR/\%).
 
 The point-size scale is calibrated to the valid region (\verb{0..x}): the extreme
 overflow volumes of the \code{">x"} catch-all are capped and a minimum size keeps
 even zero-volume points (the \code{0}-overflow box) visible, so the many-overflow
 outliers no longer shrink every valid-region point to an invisible dot.
+When the storage-type shapes are in use (no faceting), its legend keys are
+drawn with the storage-type marker (grey; the single present shape, or the
+square when both types are shown) instead of the default circle; the
+faceted variant uses circular points and matching circular keys.
 }
 \seealso{
 \code{\link[=plot_cost_vs_overflow_volume]{plot_cost_vs_overflow_volume()}}

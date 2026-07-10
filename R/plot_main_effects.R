@@ -8,6 +8,11 @@
 #' The function is intended for optimisation or sensitivity grids with many
 #' parameters, where a single 2D scatter plot is not informative.
 #'
+#' Both numeric and character parameters are supported; a character parameter
+#' such as \code{storage_type} gets its own facet panel (its levels are shown
+#' as \code{Sickerbox} / \code{Schotterrigol} for \code{lang = "de"},
+#' \code{Infiltration box} / \code{Gravel trench} for \code{lang = "en"}).
+#'
 #' The plot language can be switched via \code{lang = "de"} or
 #' \code{lang = "en"}. This affects the title, y-axis label, and selected
 #' parameter labels.
@@ -71,8 +76,13 @@ plot_main_effects <- function(df,
     "filter_height" = "Filterh\u00f6he [mm]",
     "bottom_hydraulicconductivity" = "hydr. Leitf\u00e4higkeit des Untergrunds [mm/h]",
     "rain_factor" = "Regenfaktor",
-    "lai" = "Blattfl\u00e4chenindex (Mulde-Rigole) [m\u00b2/m\u00b2]"
+    "lai" = "Blattfl\u00e4chenindex (Mulde-Rigole) [m\u00b2/m\u00b2]",
+    "storage_type" = "Speichertyp"
   )
+
+  # Display names for the storage_type levels on the x-axis of its panel
+  # (shared with the tooltips, see cost_tooltip.R).
+  storage_value_labels <- storage_type_value_labels(lang)
   
   translate_param <- function(x) {
     if (lang == "de" && x %in% names(param_labels_de)) {
@@ -91,13 +101,33 @@ plot_main_effects <- function(df,
   
   dl <- df %>%
     dplyr::select(dplyr::all_of(c(y, params_use))) %>%
+    # values_transform: numeric and character parameters (e.g. storage_type)
+    # cannot share one `value` column otherwise.
     tidyr::pivot_longer(
       cols = dplyr::all_of(params_use),
       names_to = "parameter",
-      values_to = "value"
+      values_to = "value",
+      values_transform = list(value = as.character)
     ) %>%
     dplyr::mutate(
-      value = as.factor(.data$value)
+      value = ifelse(
+        .data$parameter == "storage_type" &
+          .data$value %in% names(storage_value_labels),
+        storage_value_labels[.data$value],
+        .data$value
+      )
+    )
+
+  # Order the shared factor levels numerically where possible (a plain
+  # as.factor on characters would sort "1000" before "500"); non-numeric
+  # levels (e.g. the storage types) come last, alphabetically.
+  val_u <- unique(dl$value)
+  val_n <- suppressWarnings(as.numeric(val_u))
+  value_levels <- c(val_u[!is.na(val_n)][order(val_n[!is.na(val_n)])],
+                    sort(val_u[is.na(val_n)]))
+  dl <- dl %>%
+    dplyr::mutate(
+      value = factor(.data$value, levels = value_levels)
     )
   
   eff <- dl %>%

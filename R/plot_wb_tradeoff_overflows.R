@@ -18,7 +18,15 @@
 #' tooltip labels unless custom labels are supplied explicitly.
 #'
 #' Tooltip text additionally includes all parameters from \code{param_grid} that
-#' vary across scenarios, excluding \code{scenario_name}.
+#' vary across scenarios, excluding \code{scenario_name} (translated via
+#' \code{\link{default_param_labels}}; mixed numeric / character parameters
+#' such as \code{storage_type} are supported).
+#'
+#' If \code{simulation_results_optimisation} carries a \code{storage_type}
+#' column, the points are additionally **shaped by the storage type** (filled
+#' square = infiltration box / Sickerbox, filled triangle = gravel trench /
+#' Schotterrigol, as in the cost plots) and the tooltip names the storage
+#' type; older single-type result sets plot exactly as before.
 #'
 #' @param simulation_results_optimisation Data frame with simulation results.
 #'   Required columns are \code{scenario_name}, \code{n_overflows},
@@ -55,12 +63,10 @@
 #'
 #' @export
 #'
-#' @importFrom dplyr %>% select summarise across everything n_distinct
-#' @importFrom dplyr filter pull mutate group_by left_join
-#' @importFrom tidyr pivot_longer
-#' @importFrom purrr map_chr
-#' @importFrom ggplot2 ggplot aes geom_point scale_color_manual labs theme_minimal position_jitter theme
+#' @importFrom dplyr %>% filter mutate left_join case_when
+#' @importFrom ggplot2 ggplot aes geom_point scale_color_manual scale_shape_manual labs theme_bw position_jitter theme guides guide_legend
 #' @importFrom grDevices colorRampPalette
+#' @importFrom utils modifyList
 #' @importFrom rlang .data
 plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
                                        param_grid,
@@ -84,7 +90,7 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
     lang,
     de = list(
       title = paste0(
-        "Wasserbilanz vs. \u00DCberlaufereignisse (Anzahl \u2264 ",
+        "Wasserbilanz vs. \u00DCberlaufereignisse (Anzahl <= ",
         x,
         ")"
       ),
@@ -101,7 +107,7 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
     ),
     en = list(
       title = paste0(
-        "Water balance vs. overflow events (number \u2264 ",
+        "Water balance vs. overflow events (number <= ",
         x,
         ")"
       ),
@@ -157,35 +163,13 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
     warning("x is not an integer; using x_int = ", x_int, " for discrete palette/legend.")
   }
   
-  varying_params <- param_grid %>%
-    dplyr::select(-scenario_name) %>%
-    dplyr::summarise(dplyr::across(dplyr::everything(), ~ dplyr::n_distinct(.) > 1)) %>%
-    tidyr::pivot_longer(dplyr::everything(), names_to = "param", values_to = "vary") %>%
-    dplyr::filter(vary) %>%
-    dplyr::pull(param)
-  
-  if (length(varying_params) == 0) {
-    param_tooltip <- param_grid %>%
-      dplyr::select(scenario_name) %>%
-      dplyr::mutate(params_html = "")
-  } else {
-    param_tooltip <- param_grid %>%
-      dplyr::select(scenario_name, dplyr::all_of(varying_params)) %>%
-      tidyr::pivot_longer(-scenario_name, names_to = "param", values_to = "val") %>%
-      dplyr::mutate(
-        val_chr = purrr::map_chr(val, ~ paste(.x, collapse = ",")),
-        val_num = suppressWarnings(as.numeric(val_chr)),
-        val_fmt = ifelse(
-          is.na(val_num),
-          val_chr,
-          format(round(val_num, digits_params), trim = TRUE)
-        ),
-        kv = paste0(param, "=", val_fmt)
-      ) %>%
-      dplyr::group_by(scenario_name) %>%
-      dplyr::summarise(params_html = paste(kv, collapse = "<br>"), .groups = "drop")
-  }
-  
+  # Shared helper (same as the cost plots): handles mixed numeric / character
+  # parameter columns (e.g. storage_type) and translates the parameter names
+  # via default_param_labels().
+  param_tooltip <- build_varying_param_html(param_grid, lang,
+                                            param_labels = NULL,
+                                            digits_params = digits_params)
+
   df <- simulation_results_optimisation %>%
     dplyr::left_join(param_tooltip, by = "scenario_name") %>%
     dplyr::filter(!isTRUE(filter_n_gtx) | is.na(.data$n_overflows) | .data$n_overflows <= x_int)
@@ -207,7 +191,52 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
     dplyr::mutate(
       overflow_cat = factor(.data$overflow_cat, levels = levs)
     )
-  
+
+  # Optional storage-type tagging (filled square = infiltration box, filled
+  # triangle = gravel trench, as in the cost plots): active when the results
+  # carry a storage_type column; older single-type result sets plot as before.
+  st_labels <- cost_tooltip_labels(lang)
+  has_storage_type <- "storage_type" %in% names(df)
+  if (has_storage_type) {
+    # short language-specific names for the legend keys ...
+    st <- storage_type_shapes(df$storage_type, lang)
+    df$storage_type_disp <- st$display
+    # ... but the bilingual names for the tooltip line, matching the cost
+    # plots' tooltips
+    st_raw <- as.character(df$storage_type)
+    df$storage_type_tooltip <- ifelse(
+      !is.na(st_raw) & st_raw == "gravel_trench",
+      st_labels$st_gravel_trench, st_labels$st_infiltration_box)
+  }
+  # Usable storage volume of the storage layer [m3] (precomputed column or
+  # derived from the storage_theta* columns); line omitted if not derivable.
+  storage_volume <- storage_volume_from_df(df)
+
+  df$tooltip_html <- paste0(
+    txt$tt_scenario, ": ", df$scenario_name,
+    "<br>", txt$tt_n_overflows, ": ", df$n_overflows,
+    "<br>", txt$tt_infil, ": ",
+    round(df[["element.WB_InfiltrationNetto_"]], digits),
+    "<br>", txt$tt_evap, ": ",
+    round(df[["element.WB_Evapotranspiration_"]], digits),
+    "<br>", txt$tt_overflow, ": ",
+    round(df[["element.WB_Oberflaechenablauf_Ueberlauf_"]], digits),
+    "<br>", txt$tt_sum_overflows, ": ", df$sum_overflows,
+    if (has_storage_type) {
+      paste0("<br><br><b>", st_labels$tt_storage_type, ": ",
+             df$storage_type_tooltip, "</b>")
+    } else {
+      ""
+    },
+    if (!is.null(storage_volume)) {
+      paste0("<br>", st_labels$tt_storage_volume, ": ",
+             round(storage_volume, digits))
+    } else {
+      ""
+    },
+    "<br><br><b>", txt$tt_params, "</b><br>", df$params_html
+  )
+
   if (x_int == 0L) {
     pal <- c("0" = "orange", ">0" = "red")
   } else if (x_int == 1L) {
@@ -240,20 +269,20 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
   legend_nrow <- if (legend_direction == "horizontal") 1 else NULL
   legend_ncol <- if (legend_direction == "vertical") 1 else NULL
   
-  p <- ggplot2::ggplot(df, ggplot2::aes(
-    x = element.WB_InfiltrationNetto_,
-    y = element.WB_Evapotranspiration_,
-    color = overflow_cat,
-    text = paste0(
-      txt$tt_scenario, ": ", scenario_name,
-      "<br>", txt$tt_n_overflows, ": ", n_overflows,
-      "<br>", txt$tt_infil, ": ", round(element.WB_InfiltrationNetto_, digits),
-      "<br>", txt$tt_evap, ": ", round(element.WB_Evapotranspiration_, digits),
-      "<br>", txt$tt_overflow, ": ", round(element.WB_Oberflaechenablauf_Ueberlauf_, digits),
-      "<br>", txt$tt_sum_overflows, ": ", sum_overflows,
-      "<br><br><b>", txt$tt_params, "</b><br>", params_html
+  mapping <- ggplot2::aes(
+    x = .data[["element.WB_InfiltrationNetto_"]],
+    y = .data[["element.WB_Evapotranspiration_"]],
+    color = .data$overflow_cat,
+    text = .data$tooltip_html
+  )
+  if (has_storage_type) {
+    mapping <- utils::modifyList(
+      mapping,
+      ggplot2::aes(shape = .data$storage_type_disp)
     )
-  )) +
+  }
+
+  p <- ggplot2::ggplot(df, mapping) +
     ggplot2::geom_point(alpha = 0.7, position = pos) +
     ggplot2::scale_color_manual(
       values = pal,
@@ -267,7 +296,8 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
         direction = legend_direction,
         nrow = legend_nrow,
         ncol = legend_ncol,
-        byrow = TRUE
+        byrow = TRUE,
+        order = 1
       )
     ) +
     ggplot2::labs(
@@ -278,8 +308,28 @@ plot_wb_tradeoff_overflows <- function(simulation_results_optimisation,
     ggplot2::theme_bw() +
     ggplot2::theme(
       legend.position = legend_position,
-      legend.direction = legend_direction
+      legend.direction = legend_direction,
+      # stack the colour and shape legends so both fit at the top
+      legend.box = if (legend_direction == "horizontal") "vertical" else "horizontal"
     )
-  
+
+  if (has_storage_type) {
+    p <- p +
+      ggplot2::scale_shape_manual(
+        values = st$shape_values,
+        drop = FALSE,
+        name = st_labels$tt_storage_type
+      ) +
+      ggplot2::guides(
+        shape = ggplot2::guide_legend(
+          direction = legend_direction,
+          nrow = legend_nrow,
+          ncol = legend_ncol,
+          byrow = TRUE,
+          order = 2
+        )
+      )
+  }
+
   p
 }

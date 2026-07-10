@@ -60,5 +60,10 @@ A ggplot object with facetted violin, boxplot, and jitter layers.
 The function is intended for optimisation or sensitivity grids with many
 parameters, where a single 2D scatter plot is not informative.
 
+Both numeric and character parameters are supported; a character
+parameter such as `storage_type` gets its own facet panel (its levels
+are shown as `Sickerbox` / `Schotterrigol` for `lang = "de"`,
+`Infiltration box` / `Gravel trench` for `lang = "en"`).
+
 The plot language can be switched via `lang = "de"` or `lang = "en"`.
 This affects the title, y-axis label, and selected parameter labels.

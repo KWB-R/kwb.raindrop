@@ -12,6 +12,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/news/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/cost_rates_caption.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.html</loc></url>
@@ -28,7 +29,10 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/pipe.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plotly_add_caption.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plotly_split_legend.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_evaporation.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plot_main_effects.html</loc></url>

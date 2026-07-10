@@ -64,7 +64,7 @@
                         <h4 data-toc-skip class="author">Michael
 Rustler</h4>
             
-            <h4 data-toc-skip class="date">2026-02-25</h4>
+            <h4 data-toc-skip class="date">2026-07-10</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/KWB-R/kwb.raindrop/blob/dev/vignettes/index.Rmd" class="external-link"><code>vignettes/index.Rmd</code></a></small>
       <div class="d-none name"><code>index.Rmd</code></div>
@@ -129,6 +129,9 @@ heruntergeladen werden.</p>
 <div class="section level4">
 <h4 id="sensitive-modellparameter">Sensitive Modellparameter<a class="anchor" aria-label="anchor" href="#sensitive-modellparameter"></a>
 </h4>
+<p>Haupteffekte je Parameter (Violin-/Box-/Punkt-Plots, nach
+Effektstärke sortiert). Der <strong>Speichertyp</strong> ist als eigenes
+Panel enthalten (Sickerbox vs. Schotterrigol).</p>
 <ul>
 <li><a href="./simulation_results_optimisation_Eisenstadt_2005_main-effects.html">Eisenstadt_2005</a></li>
 <li><a href="./simulation_results_optimisation_Wien_main-effects.html">Wien</a></li>
@@ -147,6 +150,12 @@ Parameter</strong> (y-Achse) dargestellt. Diese sind im folgenden:</p>
 <li><p><strong><em>hydraulische Leitfähigkeit</em></strong> des
 Bodenfilters</p></li>
 </ul>
+<p>Die beiden <strong>Speichertypen</strong> liegen als <strong>zwei
+Panels untereinander</strong> (Sickerbox oben, Schotterrigole unten; die
+Punkte bleiben Kreise, da die Panel-Streifen den Typ benennen). Die
+y-Achsen sind je Panel frei skaliert, so dass z. B. bei der
+<strong>Speicherhöhe</strong> jedes Panel nur die für den Typ getesteten
+Höhen zeigt (Sickerbox 300–1200 mm, Schotterrigole 900–3600 mm).</p>
 <table class="table">
 <colgroup>
 <col width="25%">
@@ -185,6 +194,11 @@ Bodenfilters</p></li>
 <div class="section level4">
 <h4 id="wasserbilanz">Wasserbilanz<a class="anchor" aria-label="anchor" href="#wasserbilanz"></a>
 </h4>
+<p>Streudiagramm <strong>Infiltration [%]</strong> (x)
+vs. <strong>Evapotranspiration [%]</strong> (y) je Szenario, Punktfarbe
+= Anzahl Überlaufereignisse, Punktform = <strong>Speichertyp</strong>
+(Viereck = Sickerbox, Dreieck = Schotterrigole). Der Tooltip zeigt die
+Wasserbilanz, den Speichertyp und die variierenden Design-Parameter.</p>
 <ul>
 <li><a href="./simulation_results_optimisation_Eisenstadt_2005_water-balance.html">Eisenstadt_2005</a></li>
 <li><a href="./simulation_results_optimisation_Wien_water-balance.html">Wien</a></li>
@@ -194,11 +208,15 @@ Bodenfilters</p></li>
 <div class="section level4">
 <h4 id="kosten">Kosten<a class="anchor" aria-label="anchor" href="#kosten"></a>
 </h4>
-<p>Drei komplementäre, interaktive Sichten auf die
+<p>Sechs komplementäre, interaktive Sichten auf die
 <strong>Baukosten</strong> der Szenarien und ihren Zusammenhang mit
-Überläufen, Wasserhaushalt und Design-Parametern. Alle drei teilen
-denselben Punkt-Tooltip (Wasserhaushalt, Kostenaufteilung, variierende
-Parameter).</p>
+Überläufen, Wasserhaushalt und Design-Parametern. Alle teilen denselben
+Punkt-Tooltip (Wasserhaushalt, Kostenaufteilung, variierende Parameter).
+Der <strong>Speichertyp</strong> ist überall einheitlich kodiert: in den
+Streudiagrammen über die <strong>Punktform</strong> (Viereck =
+Sickerbox/Infiltration box, Dreieck = Schotterrigol/Gravel trench), in
+den Boxplots über <strong>zwei Panels untereinander</strong> (Sickerbox
+oben, Schotterrigol unten).</p>
 <div class="section level5">
 <h5 id="kosten-vs--überlaufvolumen">Kosten vs. Überlaufvolumen<a class="anchor" aria-label="anchor" href="#kosten-vs--%C3%BCberlaufvolumen"></a>
 </h5>
@@ -206,28 +224,52 @@ Parameter).</p>
 Gesamtkosten [€]</strong>, <strong>y-Achse Überlaufvolumen [m³]</strong>
 (aus <code>sum_overflows</code> [mm] und <code>mulde_area</code> [m²]),
 Punktfarbe nach <strong>Anzahl Überlaufereignisse</strong> (0–5,
-<code>&gt;5</code> = rot, Legende oben). Mouseover zeigt den
-Wasserhaushalt (Verdunstung, Versickerung, Überlauf in %), die
+<code>&gt;5</code> = rot, Legende oben), Punktform nach
+<strong>Speichertyp</strong> (Viereck = Sickerbox, Dreieck =
+Schotterrigol). Mouseover zeigt den Wasserhaushalt (Evapotranspiration,
+Versickerung, Überlauf in %), das nutzbare Speichervolumen, die
 vollständige Kostenaufteilung (Aushub, Profilierung, Bodenfilter,
-Speicherschicht, Gesamt) plus die variierenden Design-Parameter des
-Szenarios.</p>
+Speicherschicht, Gesamt), die <strong>Kosten je Prozent
+Evapotranspiration über dem Referenz-Minimum der gültigen Szenarien
+[€/%]</strong> (Referenzwert in der Tooltip-Zeile genannt) plus die
+variierenden Design-Parameter des Szenarios.</p>
 <ul>
 <li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-vs-overflow-volume.html">Eisenstadt_2005</a></li>
 <li><a href="./simulation_results_optimisation_Wien_cost-vs-overflow-volume.html">Wien</a></li>
 <li><a href="./simulation_results_optimisation_BadAussee_cost-vs-overflow-volume.html">BadAussee</a></li>
 </ul>
+</div>
+<div class="section level5">
+<h5 id="kosten-vs--evapotranspiration">Kosten vs. Evapotranspiration<a class="anchor" aria-label="anchor" href="#kosten-vs--evapotranspiration"></a>
+</h5>
+<p>Streudiagramm analog zum vorigen, aber mit der
+<strong>Evapotranspiration [%]</strong> (Anteil der Evapotranspiration
+am Gesamtwasserinput des Elements) auf der y-Achse: <strong>x-Achse
+Gesamtkosten [€]</strong>, Punktfarbe nach <strong>Anzahl
+Überlaufereignisse</strong>, Punktform nach <strong>Speichertyp</strong>
+(Viereck = Sickerbox, Dreieck = Schotterrigol). Zeigt, wie viel
+Evapotranspiration man je Budget bekommt und welche Szenarien dabei
+gültig bleiben — identischer Tooltip.</p>
+<ul>
+<li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-vs-evaporation.html">Eisenstadt_2005</a></li>
+<li><a href="./simulation_results_optimisation_Wien_cost-vs-evaporation.html">Wien</a></li>
+<li><a href="./simulation_results_optimisation_BadAussee_cost-vs-evaporation.html">BadAussee</a></li>
+</ul>
 <p>Alle Boxplots zeigen die <strong>Gesamtkosten</strong> [€] (y-Achse)
 je <strong>Anzahl Überlaufereignisse</strong> (x-Achse;
 <code>0</code>–<code>5</code> einzeln, <code>&gt;5</code> = Rest
 gebündelt; im <code>&gt;5</code>-Kasten wird das Szenario mit den
-wenigsten Überläufen markiert), überlagert mit den Szenarien als Punkte.
-Je Box ist ein <strong>bestes</strong> Szenario als Raute in der
-jeweiligen Gruppenfarbe (schwarz umrandet) markiert; die Markierungen
-<strong>aller</strong> Klassen sind zur Frontier-Linie verbunden.
-Punkt-Mouseover: Wasserhaushalt, Kostenaufteilung, variierende
-Parameter. Die drei Varianten optimieren je Box ein <strong>anderes
-Ziel</strong> (Kosten als Tie-Break) und ergeben so drei verschiedene
-Frontier-Linien:</p>
+wenigsten Überläufen markiert), überlagert mit den Szenarien als Punkte
+(Kreise; die Panel-Streifen benennen den Typ), und trennen die beiden
+<strong>Speichertypen in zwei Panels untereinander</strong> (Sickerbox
+oben, Schotterrigol unten). Je Box und Panel ist ein
+<strong>bestes</strong> Szenario als Raute in der jeweiligen
+Gruppenfarbe (schwarz umrandet) markiert; die Markierungen
+<strong>aller</strong> Klassen sind je Panel zur Frontier-Linie
+verbunden. Punkt-Mouseover: Wasserhaushalt, Kostenaufteilung,
+variierende Parameter. Die drei Varianten optimieren je Box ein
+<strong>anderes Ziel</strong> (Kosten als Tie-Break) und ergeben so drei
+verschiedene Frontier-Linien:</p>
 </div>
 <div class="section level5">
 <h5 id="boxplot-günstigste-je-kategorie">Boxplot – günstigste je Kategorie<a class="anchor" aria-label="anchor" href="#boxplot-g%C3%BCnstigste-je-kategorie"></a>
@@ -254,17 +296,47 @@ Markierung ist mit ihrem <strong>Überlaufvolumen [m³] und dessen Anteil
 </ul>
 </div>
 <div class="section level5">
-<h5 id="boxplot-höchste-verdunstung">Boxplot – höchste Verdunstung<a class="anchor" aria-label="anchor" href="#boxplot-h%C3%B6chste-verdunstung"></a>
+<h5 id="boxplot-höchste-evapotranspiration">Boxplot – höchste Evapotranspiration<a class="anchor" aria-label="anchor" href="#boxplot-h%C3%B6chste-evapotranspiration"></a>
 </h5>
-<p>Das Szenario je Box mit der <strong>höchsten Verdunstung</strong>
-(bei Gleichstand das günstigste). Die Markierung ist mit ihrer
-<strong>Verdunstung [%]</strong> beschriftet; hier kodiert die
-<strong>Punktgröße die Verdunstung</strong> statt des
-Überlaufvolumens.</p>
+<p>Das Szenario je Box mit der <strong>höchsten
+Evapotranspiration</strong> (bei Gleichstand das günstigste). Die
+Markierung ist mit ihrer <strong>Evapotranspiration [%]</strong>
+beschriftet; hier kodiert die <strong>Punktgröße die
+Evapotranspiration</strong> statt des Überlaufvolumens.</p>
 <ul>
 <li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-by-overflows-boxplot-max-evap.html">Eisenstadt_2005</a></li>
 <li><a href="./simulation_results_optimisation_Wien_cost-by-overflows-boxplot-max-evap.html">Wien</a></li>
 <li><a href="./simulation_results_optimisation_BadAussee_cost-by-overflows-boxplot-max-evap.html">BadAussee</a></li>
+</ul>
+</div>
+<div class="section level5">
+<h5 id="boxplot-kosten-je-prozent-evapotranspiration">Boxplot – Kosten je Prozent Evapotranspiration<a class="anchor" aria-label="anchor" href="#boxplot-kosten-je-prozent-evapotranspiration"></a>
+</h5>
+<p><strong>Marginale</strong> Kosteneffizienz der Evapotranspiration:
+y-Achse sind die <strong>Kosten je Prozentpunkt Evapotranspiration über
+dem Referenz-Minimum [€/%]</strong> — Gesamtkosten geteilt durch die
+Mehr-Evapotranspiration gegenüber der Referenz. Die Referenz ist die
+<strong>minimale Evapotranspiration der gültigen Szenarien</strong>
+(Anzahl Überlaufereignisse ≤ Schwellenwert; gibt es keine gültigen, der
+komplette Modelllauf) — diese Basis-Evapotranspiration ist damit
+„gratis”; bezahlt wird nur der Zugewinn. Die <strong>Referenz</strong>
+(minimale Evapotranspiration [%], Gültigkeitskriterium und zugehörige
+Szenario-ID) steht in der zweiten Titelzeile; Szenarien auf oder unter
+der Referenz (inkl. des Referenz-Szenarios selbst) haben keine
+definierte Kennzahl und entfallen im Plot. Aufteilung je <strong>Anzahl
+Überlaufereignisse</strong>, wieder mit den beiden <strong>Speichertypen
+als zwei Panels untereinander</strong>. Je Box und Panel ist das
+Szenario mit den <strong>geringsten Kosten je Prozentpunkt</strong>
+markiert und mit seinem Wert [€/%] plus dem erkauften Zugewinn
+<strong>„(+ x.x % Evapotranspiration)“</strong> beschriftet; die
+<strong>Punktgröße kodiert die Evapotranspiration [%]</strong>. So lässt
+sich direkt ablesen, mit welcher Speichertechnik und welchem Design ein
+zusätzlicher Prozentpunkt Evapotranspiration am günstigsten erkauft
+wird.</p>
+<ul>
+<li><a href="./simulation_results_optimisation_Eisenstadt_2005_cost-per-evap-boxplot.html">Eisenstadt_2005</a></li>
+<li><a href="./simulation_results_optimisation_Wien_cost-per-evap-boxplot.html">Wien</a></li>
+<li><a href="./simulation_results_optimisation_BadAussee_cost-per-evap-boxplot.html">BadAussee</a></li>
 </ul>
 </div>
 </div>

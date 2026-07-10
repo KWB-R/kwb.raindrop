@@ -91,7 +91,28 @@ mulde_area <- c(25, 50, 75, 100, 125, 150, 175, 200)
 mulde_height <- c(100, 200, 300)
 filter_hydraulicconductivity <-  c(36, 180, 360)
 filter_height <- 300
-storage_height <- c(100, 500, 1000)
+# Storage-layer (Speicher = 2nd Bodenschichtung layer) presets per storage type.
+# Each type brings its own storage_height levels plus the Speicher soil
+# parameters (theta*). They are written to the model in the run loop below:
+#   storage_height                      -> Schichtdicken[2]
+#   Startwerte_theta_ActualSoilMoisture -> Startwerte_theta_ActualSoilMoisture[2]
+#   thetaWP/thetaFC/thetaS              -> //Bodenarten/Speicher/theta*
+storage_type <- list(
+  "infiltration_box" = list(
+    storage_height                      = c(300, 600, 900, 1200),
+    Startwerte_theta_ActualSoilMoisture = 0,
+    thetaWP_MoistureAtWiltingPoint      = 0,
+    thetaFC_MoistureAtFieldCapacity     = 0,
+    thetaS_MoistureAtSaturation         = 0.95
+  ),
+  "gravel_trench" = list(
+    storage_height                      = 3 * c(300, 600, 900, 1200),
+    Startwerte_theta_ActualSoilMoisture = 0,
+    thetaWP_MoistureAtWiltingPoint      = 0,
+    thetaFC_MoistureAtFieldCapacity     = 0,
+    thetaS_MoistureAtSaturation         = 0.3
+  )
+)
 rain_factor <- 1
 bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
 # LAI for Mulde_Rigole only (Dach kept at H5 default).
@@ -101,6 +122,22 @@ bottom_hydraulicconductivity <- 12 #c(1,5,10,20,45,90,180,270,360,1860,3600)
 lai <- 3.9
 
 
+# storage_height is coupled to storage_type (each type has its own levels), so
+# build one row per (storage_type, storage_height) carrying the matching
+# Speicher soil parameters, then cross-join with all remaining combinations.
+storage_grid <- do.call(rbind, lapply(names(storage_type), function(type_name) {
+  spec <- storage_type[[type_name]]
+  data.frame(
+    storage_type        = type_name,
+    storage_height      = spec$storage_height,
+    storage_theta_start = spec$Startwerte_theta_ActualSoilMoisture,
+    storage_thetaWP     = spec$thetaWP_MoistureAtWiltingPoint,
+    storage_thetaFC     = spec$thetaFC_MoistureAtFieldCapacity,
+    storage_thetaS      = spec$thetaS_MoistureAtSaturation,
+    stringsAsFactors    = FALSE
+  )
+}))
+
 # Alle Kombinationen erzeugen
 param_grid_all_combinations <- expand.grid(
   connected_area = connected_area,
@@ -108,15 +145,24 @@ param_grid_all_combinations <- expand.grid(
   mulde_height = mulde_height,
   filter_hydraulicconductivity = filter_hydraulicconductivity,
   filter_height = filter_height,
-  storage_height = storage_height,
   bottom_hydraulicconductivity = bottom_hydraulicconductivity,
   rain_factor = rain_factor,
-  lai = lai
+  lai = lai,
+  stringsAsFactors = FALSE
 )
+
+# Cross-join the free parameters with the coupled storage grid.
+param_grid_all_combinations <- merge(param_grid_all_combinations, storage_grid,
+                                     by = NULL)
 
 param_grid_all_combinations <- param_grid_all_combinations %>% 
   dplyr::bind_cols(tibble::tibble(scenario_name = sprintf("s%05d", 
                                                           seq_len(nrow(param_grid_all_combinations)))))
+
+# Reference = first storage type at its smallest storage_height (storage_height
+# is coupled to storage_type, so both are fixed together).
+ref_storage_type   <- names(storage_type)[1]
+ref_storage_height <- min(storage_type[[ref_storage_type]]$storage_height)
 
 ref_scenario <- param_grid_all_combinations %>%
        dplyr::filter(connected_area == min(unique(param_grid_all_combinations$connected_area)),
@@ -125,7 +171,8 @@ ref_scenario <- param_grid_all_combinations %>%
                      filter_hydraulicconductivity == min(param_grid_all_combinations$filter_hydraulicconductivity),
                      bottom_hydraulicconductivity == min(unique(param_grid_all_combinations$bottom_hydraulicconductivity)),
                      mulde_height == min(param_grid_all_combinations$mulde_height),
-                     storage_height == min(param_grid_all_combinations$storage_height),
+                     storage_type == ref_storage_type,
+                     storage_height == ref_storage_height,
                      lai == max(param_grid_all_combinations$lai)) %>%
        dplyr::pull(scenario_name)
 
@@ -136,12 +183,26 @@ scenarios_with_single_parameter_variation <- kwb.raindrop::find_single_param_var
   ref_scenario = ref_scenario
   ) %>% 
   dplyr::pull(scenario_name) %>% unique()
-#> Rows with exactly one differing parameter: 13 of 216
-#> Single-parameter variations per parameter: connected_area=0, mulde_area=7, mulde_height=2, filter_hydraulicconductivity=2, filter_height=0, storage_height=2, bottom_hydraulicconductivity=0, rain_factor=0, lai=0
+#> Rows with exactly one differing parameter: 14 of 576
+#> Single-parameter variations per parameter: connected_area=0, mulde_area=7, mulde_height=2, filter_hydraulicconductivity=2, filter_height=0, bottom_hydraulicconductivity=0, rain_factor=0, lai=0, storage_type=0, storage_height=3, storage_theta_start=0, storage_thetaWP=0, storage_thetaFC=0, storage_thetaS=0
 
 param_grid <- param_grid_all_combinations  %>% 
   dplyr::filter(scenario_name %in% scenarios_with_single_parameter_variation)
 param_grid <- param_grid_all_combinations
+
+# Nutzbares Speichervolumen der Speicherschicht [m3] = Muldenflaeche x
+# Speicherhoehe x nutzbare Porositaet (thetaS - thetaFC) des Speichertyps
+# (Sickerbox 0.95, Schotterrigole 0.3). thetaFC statt thetaWP: nur das
+# oberhalb der Feldkapazitaet entwaesserbare Porenvolumen leert sich zwischen
+# den Ereignissen und steht als Retentionsvolumen erneut zur Verfuegung;
+# Wasser zwischen WP und FC haelt die Schicht gegen die Schwerkraft (in den
+# Presets sind thetaFC = thetaWP = 0, beide Definitionen also identisch).
+# Erscheint in der Grid-Tabelle, den Ergebnis-CSVs und im Plot-Tooltip.
+param_grid <- param_grid %>%
+  dplyr::mutate(
+    storage_volume_m3 = mulde_area * storage_height / 1000 *
+      (storage_thetaS - storage_thetaFC)
+  )
 
 DT::datatable(param_grid,
               filter = "top",
@@ -245,14 +306,14 @@ txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %%
 message(txt)
 #> Für den Datensatz 'D:/a/_temp/Library/kwb.raindrop/extdata/models/wien/rain.csv.gz' gibt es 0.00 % NA Werte und 96.04 % Werte die gleich Null sind. (Regenmenge: 647.465225 mm/a)
 
-txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Verdunstungs: %f mm/a)\n",
+txt <- sprintf("F\u00fcr den Datensatz '%s' gibt es %.2f %% NA Werte und %.2f %% Werte die gleich Null sind. (Evapotranspirations: %f mm/a)\n",
         paths$path_et,
         100*sum(is.na(timeseries_et$value))/nrow(timeseries_et),
         100*sum(timeseries_et$value == 0, na.rm = TRUE)/nrow(timeseries_et),
         sum(timeseries_et$value, na.rm = TRUE)/((range(timeseries_rain$time)[2] - range(timeseries_rain$time)[1])/24/365))
 
 message(txt)
-#> Für den Datensatz 'D:/a/_temp/Library/kwb.raindrop/extdata/models/wien/et.csv' gibt es 0.00 % NA Werte und 0.00 % Werte die gleich Null sind. (Verdunstungs: 888.173330 mm/a)
+#> Für den Datensatz 'D:/a/_temp/Library/kwb.raindrop/extdata/models/wien/et.csv' gibt es 0.00 % NA Werte und 0.00 % Werte die gleich Null sind. (Evapotranspirations: 888.173330 mm/a)
 
 
 ### Convert rain from mm to mm/h
@@ -311,9 +372,14 @@ run_one <- function(i,
       vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- 1
       vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
       vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- param_grid_tmp$mulde_height
-      vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
+      vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, param_grid_tmp$storage_theta_start)
       vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(param_grid_tmp$filter_height,
                                                                                  param_grid_tmp$storage_height)
+      # Speicher (2nd Bodenschichtung layer) soil parameters depend on the
+      # storage type (infiltration_box vs. gravel_trench); see `storage_type`.
+      vals$`//Bodenarten/Speicher/thetaWP_MoistureAtWiltingPoint`  <- param_grid_tmp$storage_thetaWP
+      vals$`//Bodenarten/Speicher/thetaFC_MoistureAtFieldCapacity` <- param_grid_tmp$storage_thetaFC
+      vals$`//Bodenarten/Speicher/thetaS_MoistureAtSaturation`     <- param_grid_tmp$storage_thetaS
       vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
       
       vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
@@ -420,6 +486,16 @@ htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
 ### Plot results
 
 
+# Fuer Plots/Tooltips: die an storage_type gekoppelten Speicher-Bodenparameter
+# (storage_theta*) sind durch den Typ bestimmt, also redundant - sie wuerden
+# nur jeden Tooltip aufblaehen. Fuer den Modelllauf oben werden sie gebraucht,
+# ab hier nicht mehr. storage_volume_m3 bekommt im Tooltip eine eigene Zeile
+# (aus den Ergebnisdaten) und fliegt hier ebenfalls raus, sonst stuende es
+# doppelt unter "Variierende Parameter".
+param_grid <- param_grid %>%
+  dplyr::select(-dplyr::starts_with("storage_theta"),
+                -dplyr::any_of("storage_volume_m3"))
+
 params <- c(
   #"connected_area",
   "mulde_area",
@@ -429,11 +505,17 @@ params <- c(
   "storage_height",
   #"bottom_hydraulicconductivity",
   #"rain_factor",
-  "lai"
+  "lai",
+  "storage_type"
 )
 
 lang <- "de"
 max_n_overflows <- 5
+
+# Kostensaetze-Caption fuer die interaktiven Kostenplots: ggplotly verwirft
+# ggplot-Captions, daher wird sie dort per plotly_add_caption() nachgeruestet;
+# die PDFs bekommen sie automatisch ueber den caption-Default der Funktionen.
+cost_caption <- kwb.raindrop::cost_rates_caption(lang)
 
 pdff <- sprintf("simulation_results_optimisation_%s_main-effects.pdf",
                 paths$modelname)
@@ -471,6 +553,7 @@ grDevices::pdf(pdff, width = 9, height = 4, onefile = TRUE)
     alpha_max = 1,
     drop_overflow_gt_valid_max = FALSE,
     keep_param_grid_limits = TRUE,
+    facet_storage_type = TRUE,
     lang = lang,
     subtitle = ""
   )
@@ -511,11 +594,15 @@ for (y in c("mulde_height", "filter_hydraulicconductivity", "storage_height")) {
     alpha_min = 0.25,
     alpha_max = 1,
     drop_overflow_gt_valid_max = FALSE,
-    keep_param_grid_limits = TRUE
+    keep_param_grid_limits = TRUE,
+    facet_storage_type = TRUE
   )
 
-  # interaktiv als HTML
+  # interaktiv als HTML; Farb-Legende je Ueberlaufklasse statt
+  # (Farbe, Form)-Tupeln - die Formen erklaeren die Panel-Beschriftungen.
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  plotly_p <- kwb.raindrop::plotly_split_legend(plotly_p, lang = lang,
+                                                add_shape_legend = FALSE)
   htmlwidgets::saveWidget(
     widget = plotly_p,
     file = sprintf("simulation_results_optimisation_%s_design-space_mulde-area_vs_%s.html", 
@@ -545,8 +632,10 @@ p <- kwb.raindrop::plot_wb_tradeoff_overflows(
   use_jitter = TRUE
   )
 
-  # interaktiv als HTML
+  # interaktiv als HTML; getrennte Legenden (Ueberlaufklassen + Speichertyp)
+  # statt der (Farbe, Form)-Tupel von ggplotly
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  plotly_p <- kwb.raindrop::plotly_split_legend(plotly_p, lang = lang)
   htmlwidgets::saveWidget(
     widget = plotly_p,
     file = sprintf("simulation_results_optimisation_%s_water-balance.html",
@@ -573,8 +662,11 @@ p <- kwb.raindrop::plot_cost_vs_overflow_volume(
   use_jitter = TRUE
 )
 
-# interaktiv als HTML
+# interaktiv als HTML; getrennte Legenden (Ueberlaufklassen + Speichertyp)
+# statt der (Farbe, Form)-Tupel von ggplotly
 plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+plotly_p <- kwb.raindrop::plotly_split_legend(plotly_p, lang = lang)
+plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
 htmlwidgets::saveWidget(
   widget = plotly_p,
   file = sprintf("simulation_results_optimisation_%s_cost-vs-overflow-volume.html",
@@ -591,8 +683,11 @@ dev.off()
 
 # Drei Kosten-Boxplots mit unterschiedlichem Optimierungsziel je Kategorie
 # (Kosten als Tie-Break): (i) guenstigste; (ii) geringstes Ueberlaufvolumen
-# (Label m3 + %); (iii) hoechste Verdunstung (Label %, Punktgroesse =
-# Verdunstung). x = max_n_overflows, Linie ueber alle Klassen.
+# (Label m3 + %); (iii) hoechste Evapotranspiration (Label %, Punktgroesse =
+# Evapotranspiration). x = max_n_overflows, Linie ueber alle Klassen. Die beiden
+# Speichertypen liegen als zwei Panels untereinander (Sickerbox oben,
+# Schotterrigol unten); die Punkte bleiben Kreise, da die Panel-Streifen
+# den Typ bereits benennen.
 cost_boxplots <- list(
   list(suffix = "cheapest",     best_by = "min_cost",
        size_by = "overflow_volume",    label_best = FALSE),
@@ -614,6 +709,7 @@ for (cb in cost_boxplots) {
     filter_n_gtx = FALSE,
     use_jitter = TRUE,
     lang = lang,
+    facet_storage_type = TRUE,
     size_by = cb$size_by,
     best_by = cb$best_by,
     label_best = cb$label_best
@@ -621,6 +717,7 @@ for (cb in cost_boxplots) {
 
   # interaktiv als HTML
   plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+  plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
   htmlwidgets::saveWidget(
     widget = plotly_p,
     file = sprintf(
@@ -634,4 +731,79 @@ for (cb in cost_boxplots) {
   suppressWarnings(print(p))
   dev.off()
 }
+
+
+# Kosten vs. Evapotranspiration: Streudiagramm ueber den Design-Raum, Punktform
+# kodiert den Speichertyp (Viereck = Sickerbox, Dreieck = Schotterrigol),
+# Farbe die Anzahl Ueberlaufereignisse.
+pdff <- sprintf("simulation_results_optimisation_%s_cost-vs-evaporation.pdf",
+                paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_cost_vs_evaporation(
+  simulation_results_optimisation = simulation_results_optimisation,
+  param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE,
+  lang = lang
+)
+
+# interaktiv als HTML; getrennte Legenden (Ueberlaufklassen + Speichertyp)
+# statt der (Farbe, Form)-Tupel von ggplotly
+plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+plotly_p <- kwb.raindrop::plotly_split_legend(plotly_p, lang = lang)
+plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
+htmlwidgets::saveWidget(
+  widget = plotly_p,
+  file = sprintf("simulation_results_optimisation_%s_cost-vs-evaporation.html",
+                 paths$modelname),
+  selfcontained = TRUE,
+  title = sprintf("'%s' - Cost vs. evapotranspiration",
+                  paths$modelname)
+)
+
+# statisch ins PDF (WICHTIG!)
+suppressWarnings(print(p))
+dev.off()
+
+
+# Kosten je Prozent Evapotranspiration [EUR/%]: Boxplot je Ueberlaufklasse mit den
+# beiden Speichertypen als zwei Panels untereinander (Sickerbox oben,
+# Schotterrigol unten); guenstigstes Szenario je Box markiert (Label EUR/%),
+# Punktgroesse = Evapotranspiration.
+pdff <- sprintf(
+  "simulation_results_optimisation_%s_cost-per-evap-boxplot.pdf",
+  paths$modelname)
+kwb.utils::preparePdf(pdfFile = pdff)
+
+p <- kwb.raindrop::plot_cost_overflow_boxplot(
+  simulation_results_optimisation = simulation_results_optimisation,
+  param_grid = param_grid,
+  x = max_n_overflows,
+  filter_n_gtx = FALSE,
+  use_jitter = TRUE,
+  lang = lang,
+  y_var = "cost_per_evap_pct",
+  facet_storage_type = TRUE,
+  size_by = "evapotranspiration",
+  best_by = "min_cost",
+  label_best = TRUE
+)
+
+# interaktiv als HTML
+plotly_p <- suppressWarnings(plotly::ggplotly(p, tooltip = "text"))
+plotly_p <- kwb.raindrop::plotly_add_caption(plotly_p, cost_caption)
+htmlwidgets::saveWidget(
+  widget = plotly_p,
+  file = sprintf(
+    "simulation_results_optimisation_%s_cost-per-evap-boxplot.html",
+    paths$modelname),
+  selfcontained = TRUE,
+  title = sprintf("'%s' - Cost per %% evapotranspiration", paths$modelname)
+)
+
+# statisch ins PDF (WICHTIG!)
+suppressWarnings(print(p))
+dev.off()
 ```

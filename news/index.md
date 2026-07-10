@@ -5,6 +5,154 @@
 ### New features
 
 - New exported plot
+  [`plot_cost_vs_evaporation()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_evaporation.md)
+  — third cost view: scatters `cost_total` (EUR, x) against the element
+  evapotranspiration share (`element.WB_Evapotranspiration_`, %, y).
+  Points share the overflow-count palette of the sibling plots and are
+  **shaped by the storage type** (filled square = infiltration box /
+  Sickerbox, filled triangle = gravel trench / Schotterrigol); identical
+  tooltip. Rendered as `*_cost-vs-evaporation.html` in the three
+  case-study vignettes and linked from `vignettes/index.Rmd` under
+  “Kosten vs. Evapotranspiration”.
+
+- [`plot_cost_overflow_boxplot()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.md)
+  gains `y_var = "cost_per_evap_pct"` (y-axis = total cost per
+  percentage point of evapotranspiration **above the reference minimum**
+  — the lowest evapotranspiration among the scenarios satisfying the
+  validity criterion (`n_overflows <= x`; fallback: complete run) —,
+  EUR/%; the reference (minimum share, criterion and scenario id) is
+  named on a second title line, and `label_best = TRUE` annotates the
+  evapotranspiration gain `"(+NN % Evapotranspiration)"` after the
+  price; titles, y-label and the `min_cost` objective/label follow) and
+  `facet_storage_type = TRUE` (two stacked storage-type panels —
+  infiltration box on top, gravel trench below — each with its own
+  best-per-box markers and frontier line;
+  [`plotly::ggplotly()`](https://rdrr.io/pkg/plotly/man/ggplotly.html)
+  keeps the split as stacked subplots). When both storage types share
+  one panel (no faceting) the overlaid points are shaped by the storage
+  type like the scatter siblings; faceted panels keep plain circles for
+  readability. The vignettes render the three existing boxplot variants
+  with storage-type panels plus the new `*_cost-per-evap-boxplot.html`
+  (cheapest EUR/% per class, point size = evapotranspiration), linked
+  from `vignettes/index.Rmd` under “Boxplot – Kosten je Prozent
+  Evapotranspiration”.
+
+- [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
+  points are now also **shaped by the storage type** (square/triangle,
+  own legend under the colour legend).
+
+- The shared cost tooltip gains a derived **“Kosten je %
+  Evapotranspiration (über Min. von X %) \[€/%\]”** line right below the
+  total cost: the total cost per percentage point of element
+  evapotranspiration **above the reference minimum** (the lowest
+  evapotranspiration among the scenarios satisfying the validity
+  criterion `n_overflows <= x`; fallback: complete run) — the baseline
+  comes “for free”, only the gain is paid for. The reference value is
+  named in the line; “-” at or below the minimum. Shown consistently in
+  both cost scatters and all cost boxplot variants. German labels
+  consistently say **“Evapotranspiration”** instead of “Verdunstung”
+  throughout.
+
+- New **usable storage volume** of the storage layer:
+  `storage_volume_m3 = mulde_area * storage_height/1000 * (thetaS - thetaFC)`
+  (usable porosity 0.95 infiltration box / 0.3 gravel trench). The
+  vignettes add the column to the parameter grid (grid datatable +
+  results CSV) and the tooltips of **all** scenario plots show it as
+  “Nutzbares Speichervolumen \[m³\]” — the cost scatters and boxplots
+  (right below the storage type), the water-balance trade-off plot and
+  the design-space plots (there sourced from `sim_results`, since the
+  plotting grid drops the helper columns) — computed on the fly from the
+  `storage_theta*` columns for existing result sets without the column.
+  In the “Variierende Parameter” block the raw storage_type values are
+  now translated too (`Speichertyp=Schotterrigol` instead of
+  `=gravel_trench`; shared value labels with the
+  [`plot_main_effects()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_main_effects.md)
+  storage-type panel).
+
+- The boxplots’ point-size legend keys match the plotted markers: with
+  storage-type shapes in use (no faceting) they are drawn with the grey
+  square/triangle instead of the default circle; the faceted variants
+  use circular points and matching circular keys.
+
+- Storage-type names in legends and facet strips are now the **short,
+  language-specific** ones (“Sickerbox” / “Schotterrigol” for
+  `lang = "de"`, “Infiltration box” / “Gravel trench” for `"en"`); only
+  the bold tooltip line keeps the long bilingual form.
+
+- All cost plots now carry a **caption naming the unit-cost rates** they
+  were computed with (new exported
+  [`cost_rates_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/cost_rates_caption.md),
+  built from
+  \[[`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md)\]:
+  Aushub 70 €/m³ · Profilierung + Begrünung 10 €/m² · Bodenfilter 200
+  €/m³ · Sickerbox 350 €/m³ · Schotterrigol 50 €/m³,
+  incl. installation). ggplot renders it at the bottom of the PDFs
+  (`caption` argument, `""` to drop); since
+  [`plotly::ggplotly()`](https://rdrr.io/pkg/plotly/man/ggplotly.html)
+  drops captions, the new exported
+  [`plotly_add_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_add_caption.md)
+  re-adds it as a bottom annotation in the interactive HTMLs (wired up
+  in all three vignettes).
+
+- New exported helper
+  [`plotly_split_legend()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_split_legend.md)
+  — cleans up the interactive legends:
+  [`plotly::ggplotly()`](https://rdrr.io/pkg/plotly/man/ggplotly.html)
+  flattens colour + shape into unreadable
+  `"(0,Sickerbox / Infiltration box)"` tuple entries. The helper
+  rebuilds the legend from legend-only keys with unambiguous glyphs: one
+  **neutral circle per overflow class in the class colour** (clicking
+  toggles both storage types of the class) plus two **neutral grey**
+  square/triangle keys under a “Speichertyp” / “Storage type” group
+  title (skippable via `add_shape_legend = FALSE` for faceted plots) — a
+  coloured square/triangle key would wrongly suggest one specific
+  (colour, type) combination. The storage-type keys are **individually
+  clickable** (a JavaScript handler toggles all traces with that marker
+  symbol, since the traces’ only legend group is taken by the overflow
+  class); the overlapping combined legend title is removed and the
+  legend moves to a vertical layout on the right. Applied in all three
+  vignettes to the cost-vs-overflow, cost-vs-evaporation, water-balance
+  and design-space HTMLs.
+
+- [`plot_wb_tradeoff_overflows()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_wb_tradeoff_overflows.md)
+  no longer crashes with “Can’t combine `mulde_area` and `storage_type`
+  ” on two-type grids: its inline copy of the varying-parameter tooltip
+  block was replaced by the shared `build_varying_param_html()` helper
+  (the tooltip parameter names are now translated via
+  [`default_param_labels()`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md),
+  as in the cost plots). When the results carry a `storage_type` column,
+  its points are shaped by the storage type (square/triangle) and the
+  tooltip names the type; single-type result sets plot as before.
+
+- [`plot_valid_design_space()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_valid_design_space.md)
+  gains `facet_storage_type` — two stacked storage-type panels with
+  **free y-scales**, so disjoint per-type levels (storage_height:
+  300–1200 mm boxes vs. 900–3600 mm trenches) fill their own panel;
+  duplicate-based alpha is then counted per panel and the points stay
+  plain circles (the strips name the type). Without faceting, points are
+  shaped by the storage type whenever `storage_type` varies. The
+  vignettes facet both design-space blocks.
+
+- [`plot_main_effects()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_main_effects.md)
+  now supports character parameters (the pivot previously failed on
+  mixed types), keeps numeric level ordering (“500” no longer sorts
+  after “1000”), and renders `storage_type` as its own panel with
+  display names (Sickerbox/Schotterrigol or Infiltration box/Gravel
+  trench). The vignettes add `storage_type` to the main-effects
+  parameter set.
+
+- Fixed `build_varying_param_html()` (the shared tooltip helper): it
+  errored with “Can’t combine `storage_height` and `storage_type` ” as
+  soon as the character column `storage_type` varied across scenarios —
+  i.e. for every grid sweeping both storage types
+  (`values_transform = as.character` in the pivot). Numbers in the
+  varying-parameters tooltip block are now formatted element-wise, so
+  one decimal-valued parameter no longer forces trailing “.00” onto
+  every other value. The vignettes additionally drop the storage_theta\*
+  helper columns (fully determined by `storage_type`) from the plotting
+  `param_grid`, keeping tooltips lean.
+
+- New exported plot
   [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
   — companion to
   [`plot_wb_tradeoff_overflows()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_wb_tradeoff_overflows.md)
@@ -177,7 +325,7 @@
 - New vignette `example_wien_minimal`: a self-contained smoke test of
   the full input → engine → results loop on Wien. Now extended into an
   ET-diagnostics grid that sweeps three engine switches —
-  `keineVerdunstungBeiRegen`, `Hoernschemeyer_aktiv` and the
+  `keineEvapotranspirationBeiRegen`, `Hoernschemeyer_aktiv` and the
   `ET0ref_GrasReferenzverdunstung` factor (`0`, `1`, `100`) — at
   Daniel’s reference geometry (12 scenarios total). Daniel’s three
   XLSX-review corrections (`Dach/Evapotranspiration_aktiv = 0`,

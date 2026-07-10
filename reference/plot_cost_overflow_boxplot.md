@@ -33,10 +33,13 @@ plot_cost_overflow_boxplot(
   param_labels = NULL,
   size_by = c("overflow_volume", "evapotranspiration"),
   best_by = c("min_cost", "min_overflow", "max_evapotranspiration"),
+  y_var = c("cost_total", "cost_per_evap_pct"),
+  facet_storage_type = FALSE,
   label_best = FALSE,
   title = NULL,
   lab_x = NULL,
   lab_y = NULL,
+  caption = NULL,
   lab_size = NULL,
   mark_best = TRUE,
   connect_best = TRUE,
@@ -127,20 +130,67 @@ plot_cost_overflow_boxplot(
   by `scenario_name`), `"min_overflow"` (smallest overflow volume) or
   `"max_evapotranspiration"` (highest evapotranspiration). In the `">x"`
   box the fewest-overflow scenario is picked first, `best_by` then
-  breaking ties.
+  breaking ties. "Cost" always refers to the active `y_var`, so with
+  `y_var = "cost_per_evap_pct"` the `"min_cost"` objective picks the
+  scenario with the lowest cost per percentage point of
+  evapotranspiration.
+
+- y_var:
+
+  Character. Which cost measure the y-axis (boxes, points, best markers,
+  frontier) shows: `"cost_total"` (default; total construction cost,
+  EUR) or `"cost_per_evap_pct"` (total cost divided by the element
+  evapotranspiration share **above the reference minimum**, EUR per
+  percentage point – the marginal cost efficiency of evapotranspiration;
+  the baseline comes "for free"). The reference is the **lowest
+  evapotranspiration among the scenarios that satisfy the validity
+  criterion** (`n_overflows <= x`; fallback: the complete run when none
+  does) and is named – share, criterion and scenario id – on a second
+  title line. Scenarios at or below the reference (including the
+  reference scenario itself) have no defined marginal cost and are
+  dropped from the `"cost_per_evap_pct"` variant; `label_best = TRUE`
+  additionally annotates the evapotranspiration gain
+  (`"(+NN % Evapotranspiration)"`) after the price. Titles and the
+  y-axis label switch accordingly.
+
+- facet_storage_type:
+
+  Logical. If `TRUE`, the plot is split by `storage_type` into two
+  stacked panels (infiltration box on top, gravel trench below, via
+  [`ggplot2::facet_grid()`](https://ggplot2.tidyverse.org/reference/facet_grid.html)),
+  each with its own boxes, best-per-box markers and frontier line; the
+  overlaid points then stay plain circles (the strips already name the
+  type).
+  [`plotly::ggplotly()`](https://rdrr.io/pkg/plotly/man/ggplotly.html)
+  keeps the panel split as stacked subplots. Default `FALSE`.
 
 - label_best:
 
   Logical. If `TRUE`, the best scenario per box is annotated next to it:
   overflow volume plus overflow share (`"NN m3 / NN %"`) for
   `min_overflow`, the evapotranspiration share (`"NN %"`) for
-  `max_evapotranspiration`, or the total cost for `min_cost`. Default
-  `FALSE`.
+  `max_evapotranspiration`, or the active `y_var` value for `min_cost` –
+  the total cost (`"NN EUR"`) by default, the cost per percentage point
+  of evapotranspiration (`"NN EUR/%"`) with
+  `y_var = "cost_per_evap_pct"`. Default `FALSE`.
 
 - title, lab_x, lab_y:
 
   Optional character overrides for the default language-specific title /
   axis labels.
+
+- caption:
+
+  Character or `NULL`. Caption below the plot naming the unit-cost rates
+  the EUR values were computed with. `NULL` (default) uses
+  [`cost_rates_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/cost_rates_caption.md)
+  with the
+  [`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md);
+  pass your own string if the costs were computed with different rates,
+  or `""` to drop the caption. Note that
+  [`plotly::ggplotly()`](https://rdrr.io/pkg/plotly/man/ggplotly.html)
+  drops ggplot captions – re-add it to the interactive version via
+  [`plotly_add_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_add_caption.md).
 
 - lab_size:
 
@@ -160,7 +210,7 @@ plot_cost_overflow_boxplot(
 
 - legend_position:
 
-  Character. Legend position, default `"top"`.
+  Character. Legend position, default `"right"`.
 
 ## Value
 
@@ -184,14 +234,26 @@ balance (evapotranspiration / infiltration / overflow, %), the cost
 breakdown (EUR) and the varying `param_grid` parameters translated via
 `param_labels`. Points and boxes are coloured with the same green (low
 counts) to red (`">x"`) palette as the sibling plots; because the colour
-merely echoes the x-axis it carries no separate legend – only the
-point-size legend is shown.
+merely echoes the x-axis it carries no separate legend. When both
+storage types share one panel, the overlaid points are additionally
+**shaped by the storage type** (filled square = infiltration box /
+Sickerbox, filled triangle = gravel trench / Schotterrigol), matching
+the scatter siblings, and a storage-type legend is shown next to the
+point-size legend. With `facet_storage_type = TRUE` the plot splits into
+two stacked storage-type panels instead; the facet strips then carry
+that information and the points stay **plain circles** for readability.
+`y_var = "cost_per_evap_pct"` switches the y-axis to the cost per
+percentage point of evapotranspiration (EUR/%).
 
 The point-size scale is calibrated to the valid region (`0..x`): the
 extreme overflow volumes of the `">x"` catch-all are capped and a
 minimum size keeps even zero-volume points (the `0`-overflow box)
 visible, so the many-overflow outliers no longer shrink every
-valid-region point to an invisible dot.
+valid-region point to an invisible dot. When the storage-type shapes are
+in use (no faceting), its legend keys are drawn with the storage-type
+marker (grey; the single present shape, or the square when both types
+are shown) instead of the default circle; the faceted variant uses
+circular points and matching circular keys.
 
 ## See also
 

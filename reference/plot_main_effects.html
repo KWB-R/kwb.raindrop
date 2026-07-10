@@ -108,6 +108,10 @@ removed before computing violin and boxplots. Defaults to <code>0</code>.</p></d
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The function is intended for optimisation or sensitivity grids with many
 parameters, where a single 2D scatter plot is not informative.</p>
+<p>Both numeric and character parameters are supported; a character parameter
+such as <code>storage_type</code> gets its own facet panel (its levels are shown
+as <code>Sickerbox</code> / <code>Schotterrigol</code> for <code>lang = "de"</code>,
+<code>Infiltration box</code> / <code>Gravel trench</code> for <code>lang = "en"</code>).</p>
 <p>The plot language can be switched via <code>lang = "de"</code> or
 <code>lang = "en"</code>. This affects the title, y-axis label, and selected
 parameter labels.</p>

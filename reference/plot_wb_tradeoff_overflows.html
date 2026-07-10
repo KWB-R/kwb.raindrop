@@ -161,7 +161,14 @@ levels <code>1..(x-1)</code></p></li>
 <code>lang = "en"</code>. This affects title, axis labels, legend title, and
 tooltip labels unless custom labels are supplied explicitly.</p>
 <p>Tooltip text additionally includes all parameters from <code>param_grid</code> that
-vary across scenarios, excluding <code>scenario_name</code>.</p>
+vary across scenarios, excluding <code>scenario_name</code> (translated via
+<code><a href="default_param_labels.html">default_param_labels</a></code>; mixed numeric / character parameters
+such as <code>storage_type</code> are supported).</p>
+<p>If <code>simulation_results_optimisation</code> carries a <code>storage_type</code>
+column, the points are additionally <strong>shaped by the storage type</strong> (filled
+square = infiltration box / Sickerbox, filled triangle = gravel trench /
+Schotterrigol, as in the cost plots) and the tooltip names the storage
+type; older single-type result sets plot exactly as before.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

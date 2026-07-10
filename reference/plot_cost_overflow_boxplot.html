@@ -91,10 +91,13 @@ tie-breaker) – so the three variants trace three different frontier lines.
 <span>  param_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  size_by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"overflow_volume"</span>, <span class="st">"evapotranspiration"</span><span class="op">)</span>,</span>
 <span>  best_by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"min_cost"</span>, <span class="st">"min_overflow"</span>, <span class="st">"max_evapotranspiration"</span><span class="op">)</span>,</span>
+<span>  y_var <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cost_total"</span>, <span class="st">"cost_per_evap_pct"</span><span class="op">)</span>,</span>
+<span>  facet_storage_type <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  label_best <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  title <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lab_x <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lab_y <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  caption <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lab_size <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mark_best <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  connect_best <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -182,20 +185,61 @@ element evapotranspiration share in %, from <code>element.WB_Evapotranspiration_
 box, with cost as the tie-breaker: <code>"min_cost"</code> (default; cheapest, ties
 broken by <code>scenario_name</code>), <code>"min_overflow"</code> (smallest overflow volume) or
 <code>"max_evapotranspiration"</code> (highest evapotranspiration). In the <code>"&gt;x"</code> box
-the fewest-overflow scenario is picked first, <code>best_by</code> then breaking ties.</p></dd>
+the fewest-overflow scenario is picked first, <code>best_by</code> then breaking ties.
+"Cost" always refers to the active <code>y_var</code>, so with
+<code>y_var = "cost_per_evap_pct"</code> the <code>"min_cost"</code> objective picks the
+scenario with the lowest cost per percentage point of evapotranspiration.</p></dd>
+
+
+<dt id="arg-y-var">y_var<a class="anchor" aria-label="anchor" href="#arg-y-var"></a></dt>
+<dd><p>Character. Which cost measure the y-axis (boxes, points, best
+markers, frontier) shows: <code>"cost_total"</code> (default; total construction
+cost, EUR) or <code>"cost_per_evap_pct"</code> (total cost divided by the element
+evapotranspiration share <strong>above the reference minimum</strong>, EUR per
+percentage point – the marginal cost efficiency of evapotranspiration;
+the baseline comes "for free"). The reference is the <strong>lowest
+evapotranspiration among the scenarios that satisfy the validity
+criterion</strong> (<code>n_overflows &lt;= x</code>; fallback: the complete run when none
+does) and is named – share, criterion and scenario id – on a second
+title line. Scenarios at or below the reference (including the reference
+scenario itself) have no defined marginal cost and are dropped from the
+<code>"cost_per_evap_pct"</code> variant; <code>label_best = TRUE</code> additionally
+annotates the evapotranspiration gain (<code>"(+NN % Evapotranspiration)"</code>)
+after the price. Titles and the y-axis label switch accordingly.</p></dd>
+
+
+<dt id="arg-facet-storage-type">facet_storage_type<a class="anchor" aria-label="anchor" href="#arg-facet-storage-type"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, the plot is split by
+<code>storage_type</code> into two stacked panels (infiltration box on top, gravel
+trench below, via <code><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">ggplot2::facet_grid()</a></code>), each with its own boxes,
+best-per-box markers and frontier line; the overlaid points then stay
+plain circles (the strips already name the type).
+<code><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">plotly::ggplotly()</a></code> keeps the panel split as stacked subplots.
+Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-label-best">label_best<a class="anchor" aria-label="anchor" href="#arg-label-best"></a></dt>
 <dd><p>Logical. If <code>TRUE</code>, the best scenario per box is annotated
 next to it: overflow volume plus overflow share (<code>"NN m3 / NN %"</code>) for
 <code>min_overflow</code>, the evapotranspiration share (<code>"NN %"</code>) for
-<code>max_evapotranspiration</code>, or the total cost for <code>min_cost</code>. Default
-<code>FALSE</code>.</p></dd>
+<code>max_evapotranspiration</code>, or the active <code>y_var</code> value for <code>min_cost</code> –
+the total cost (<code>"NN EUR"</code>) by default, the cost per percentage point of
+evapotranspiration (<code>"NN EUR/%"</code>) with <code>y_var = "cost_per_evap_pct"</code>.
+Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-title-lab-x-lab-y">title, lab_x, lab_y<a class="anchor" aria-label="anchor" href="#arg-title-lab-x-lab-y"></a></dt>
 <dd><p>Optional character overrides for the default
 language-specific title / axis labels.</p></dd>
+
+
+<dt id="arg-caption">caption<a class="anchor" aria-label="anchor" href="#arg-caption"></a></dt>
+<dd><p>Character or <code>NULL</code>. Caption below the plot naming the
+unit-cost rates the EUR values were computed with. <code>NULL</code> (default)
+uses <code><a href="cost_rates_caption.html">cost_rates_caption()</a></code> with the <code><a href="default_cost_rates.html">default_cost_rates()</a></code>; pass your
+own string if the costs were computed with different rates, or <code>""</code> to
+drop the caption. Note that <code><a href="https://rdrr.io/pkg/plotly/man/ggplotly.html" class="external-link">plotly::ggplotly()</a></code> drops ggplot captions
+– re-add it to the interactive version via <code><a href="plotly_add_caption.html">plotly_add_caption()</a></code>.</p></dd>
 
 
 <dt id="arg-lab-size">lab_size<a class="anchor" aria-label="anchor" href="#arg-lab-size"></a></dt>
@@ -215,7 +259,7 @@ catch-all) are connected by a line – the best-per-overflow-level frontier.</p>
 
 
 <dt id="arg-legend-position">legend_position<a class="anchor" aria-label="anchor" href="#arg-legend-position"></a></dt>
-<dd><p>Character. Legend position, default <code>"top"</code>.</p></dd>
+<dd><p>Character. Legend position, default <code>"right"</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -239,11 +283,22 @@ balance (evapotranspiration / infiltration / overflow, %), the cost breakdown
 and the varying <code>param_grid</code> parameters translated via <code>param_labels</code>.
 Points and boxes are coloured with the same green (low counts) to red
 (<code>"&gt;x"</code>) palette as the sibling plots; because the colour merely echoes the
-x-axis it carries no separate legend – only the point-size legend is shown.</p>
+x-axis it carries no separate legend. When both storage types share one
+panel, the overlaid points are additionally <strong>shaped by the storage type</strong>
+(filled square = infiltration box / Sickerbox, filled triangle = gravel
+trench / Schotterrigol), matching the scatter siblings, and a storage-type
+legend is shown next to the point-size legend. With <code>facet_storage_type = TRUE</code> the plot splits into two stacked storage-type panels instead; the
+facet strips then carry that information and the points stay <strong>plain
+circles</strong> for readability. <code>y_var = "cost_per_evap_pct"</code> switches the
+y-axis to the cost per percentage point of evapotranspiration (EUR/%).</p>
 <p>The point-size scale is calibrated to the valid region (<code>0..x</code>): the extreme
 overflow volumes of the <code>"&gt;x"</code> catch-all are capped and a minimum size keeps
 even zero-volume points (the <code>0</code>-overflow box) visible, so the many-overflow
-outliers no longer shrink every valid-region point to an invisible dot.</p>
+outliers no longer shrink every valid-region point to an invisible dot.
+When the storage-type shapes are in use (no faceting), its legend keys are
+drawn with the storage-type marker (grey; the single present shape, or the
+square when both types are shown) instead of the default circle; the
+faceted variant uses circular points and matching circular keys.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

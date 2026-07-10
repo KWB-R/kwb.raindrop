@@ -115,4 +115,13 @@ This affects title, axis labels, legend title, and tooltip labels unless
 custom labels are supplied explicitly.
 
 Tooltip text additionally includes all parameters from `param_grid` that
-vary across scenarios, excluding `scenario_name`.
+vary across scenarios, excluding `scenario_name` (translated via
+[`default_param_labels`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md);
+mixed numeric / character parameters such as `storage_type` are
+supported).
+
+If `simulation_results_optimisation` carries a `storage_type` column,
+the points are additionally **shaped by the storage type** (filled
+square = infiltration box / Sickerbox, filled triangle = gravel trench /
+Schotterrigol, as in the cost plots) and the tooltip names the storage
+type; older single-type result sets plot exactly as before.

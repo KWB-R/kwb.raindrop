@@ -7,6 +7,8 @@
   simulation results
 - [`compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md)
   : Compute construction costs for an infiltration-swale parameter grid
+- [`cost_rates_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/cost_rates_caption.md)
+  : Caption line naming the unit-cost rates behind the cost plots
 - [`default_canonical_wb_variables()`](https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.md)
   : Canonical water-balance variable names emitted by the Tandler engine
 - [`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md)
@@ -37,9 +39,16 @@
   your hdf5r build)
 - [`list_h5_datasets()`](https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.md)
   : List all datasets (recursive)
+- [`plotly_add_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_add_caption.md)
+  : Add a caption annotation to a ggplotly object
+- [`plotly_split_legend()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_split_legend.md)
+  : Split the combined (colour, shape) ggplotly legend into two clean
+  legends
 - [`plot_cost_overflow_boxplot()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.md)
   : Cost boxplot per overflow-event count, points sized by overflow
   volume
+- [`plot_cost_vs_evaporation()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_evaporation.md)
+  : Cost vs. evapotranspiration scatter with storage-type shapes
 - [`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
   : Cost vs. overflow-volume scatter with n_overflows-coloured points
 - [`plot_hpond_vs_ref()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_hpond_vs_ref.md)

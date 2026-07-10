@@ -83,6 +83,7 @@ vs. <code>mulde_height</code>) and highlights valid solutions (by default
 <span>  alpha_min <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  alpha_max <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  keep_param_grid_limits <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  facet_storage_type <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  lang <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"de"</span>, <span class="st">"en"</span><span class="op">)</span>,</span>
 <span>  title <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  subtitle <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -196,6 +197,19 @@ same x/y. Default <code>"none"</code>.</p></dd>
 <code>drop_overflow_gt_valid_max = TRUE</code>, the x/y axis limits are fixed to
 the full range or full set of levels found in <code>param_grid</code>, so the
 design-space axes do not shrink after filtering. Default <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-facet-storage-type">facet_storage_type<a class="anchor" aria-label="anchor" href="#arg-facet-storage-type"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, the design space is
+split by <code>storage_type</code> into two stacked panels (infiltration box on
+top, gravel trench below) with free y-scales, so disjoint per-type levels
+(e.g. <code>storage_height</code>: 300-1200 mm boxes vs. 900-3600 mm trenches)
+fill their own panel; duplicate counting for <code>alpha_mode =
+"duplicates"</code> then happens per panel and the points stay plain circles
+(the strips already name the type). Requires a <code>storage_type</code>
+column in <code>param_grid</code>. Without faceting, points are shaped by the
+storage type (filled square = infiltration box, filled triangle = gravel
+trench) whenever <code>storage_type</code> varies. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-lang">lang<a class="anchor" aria-label="anchor" href="#arg-lang"></a></dt>

@@ -1,19 +1,20 @@
-# Cost vs. overflow-volume scatter with n_overflows-coloured points
+# Cost vs. evapotranspiration scatter with storage-type shapes
 
-Companion to
-[`plot_wb_tradeoff_overflows`](https://kwb-r.github.io/kwb.raindrop/reference/plot_wb_tradeoff_overflows.md)
+Second companion to
+[`plot_cost_vs_overflow_volume`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
 for cost-aware optimisation. Plots the per-scenario **total construction
-cost** (EUR) on the x-axis against the **overflow volume** (m3) on the
-y-axis, with the points coloured discretely by the **number** of
-overflow events (same 0..x / \>x palette used by
-`plot_wb_tradeoff_overflows`, legend at the top) and **shaped by the
+cost** (EUR) on the x-axis against the element **evapotranspiration
+share** (% of the total water input, from
+`element.WB_Evapotranspiration_`) on the y-axis. Points are coloured
+discretely by the **number** of overflow events (same 0..x / \>x palette
+used by the sibling plots, legend at the top) and **shaped by the
 storage type**: filled square = infiltration box (Sickerbox), filled
 triangle = gravel trench (Schotterrigol).
 
 ## Usage
 
 ``` r
-plot_cost_vs_overflow_volume(
+plot_cost_vs_evaporation(
   simulation_results_optimisation,
   param_grid,
   x = 1,
@@ -115,23 +116,17 @@ A `ggplot` object. Convert to interactive via
 
 ## Details
 
-Overflow volume is computed from `sum_overflows` (in mm on the swale
-surface, as returned by
-[`add_overflow_events_and_waterbalance()`](https://kwb-r.github.io/kwb.raindrop/reference/add_overflow_events_and_waterbalance.md))
-multiplied by `mulde_area` (m2) and converted to m3:
-`overflow_volume_m3 = sum_overflows * mulde_area / 1000`.
-
-The tooltip carries the element water balance
-(`element.WB_Evapotranspiration_`, `element.WB_InfiltrationNetto_`,
+The tooltip is identical to
+[`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md):
+scenario, overflow count / sum (mm) / volume (m3), the element water
+balance (`element.WB_Evapotranspiration_`,
+`element.WB_InfiltrationNetto_`,
 `element.WB_Oberflaechenablauf_Ueberlauf_`, all as % of the total water
-input) and the cost breakdown (`cost_excavation`, `cost_profiling`,
+input), the storage type, the usable storage volume of the storage layer
+(m3), the cost breakdown (`cost_excavation`, `cost_profiling`,
 `cost_filter`, `cost_storage`, `cost_total`), the derived **cost per
-percentage point of evapotranspiration** (EUR/%), the **usable storage
-volume** of the storage layer (m3; area x height x usable porosity
-`thetaS - thetaFC`, from a `storage_volume_m3` column or derived from
-the `storage_theta*` columns) plus the varying parameters from
-`param_grid` (excluding `scenario_name`), so the user can hover over a
-scatter point and see exactly why it landed where it did.
+percentage point of evapotranspiration** (EUR/%) plus the varying
+parameters from `param_grid` (excluding `scenario_name`).
 
 The plot language can be switched via `lang = "de"` or `lang = "en"`.
 Titles / axis labels / legend / tooltip labels follow the choice unless
@@ -139,8 +134,8 @@ explicit overrides are supplied.
 
 ## See also
 
+[`plot_cost_vs_overflow_volume()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_overflow_volume.md)
+for cost vs. overflow volume and
 [`plot_cost_overflow_boxplot()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_overflow_boxplot.md)
-for the same data / tooltip shown as a cost-by-overflow-count boxplot
-and
-[`plot_cost_vs_evaporation()`](https://kwb-r.github.io/kwb.raindrop/reference/plot_cost_vs_evaporation.md)
-for cost vs. the element evapotranspiration share.
+for the boxplot views (including `y_var = "cost_per_evap_pct"`, the cost
+per percentage point of evapotranspiration).

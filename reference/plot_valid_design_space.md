@@ -31,6 +31,7 @@ plot_valid_design_space(
   alpha_min = 0.2,
   alpha_max = 1,
   keep_param_grid_limits = TRUE,
+  facet_storage_type = FALSE,
   lang = c("de", "en"),
   title = NULL,
   subtitle = NULL,
@@ -136,6 +137,19 @@ plot_valid_design_space(
   axis limits are fixed to the full range or full set of levels found in
   `param_grid`, so the design-space axes do not shrink after filtering.
   Default `TRUE`.
+
+- facet_storage_type:
+
+  Logical. If `TRUE`, the design space is split by `storage_type` into
+  two stacked panels (infiltration box on top, gravel trench below) with
+  free y-scales, so disjoint per-type levels (e.g. `storage_height`:
+  300-1200 mm boxes vs. 900-3600 mm trenches) fill their own panel;
+  duplicate counting for `alpha_mode = "duplicates"` then happens per
+  panel and the points stay plain circles (the strips already name the
+  type). Requires a `storage_type` column in `param_grid`. Without
+  faceting, points are shaped by the storage type (filled square =
+  infiltration box, filled triangle = gravel trench) whenever
+  `storage_type` varies. Default `FALSE`.
 
 - lang:
 

@@ -1,0 +1,293 @@
+---
+title: "Workflow Optimierung (Eisenstadt · Wien · Bad Aussee)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Workflow Optimierung (Eisenstadt · Wien · Bad Aussee)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7.5,
+  fig.height = 3.2
+)
+is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true" ||
+  tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
+
+# extdata robust aufloesen: zuerst installiertes Paket, sonst Quellbaum
+# (Knit direkt im Repo, auch ohne installiertes kwb.raindrop)
+extdata_path <- function(...) {
+  p <- system.file("extdata", ..., package = "kwb.raindrop")
+  if (nzchar(p)) return(p)
+  src <- file.path("..", "inst", "extdata", ...)
+  if (file.exists(src)) normalizePath(src) else ""
+}
+
+path_base <- extdata_path("models", "eisenstadt-2005", "base.h5")
+data_available <- nzchar(path_base) && file.exists(path_base)
+is_windows <- Sys.info()[["sysname"]] == "Windows"
+can_run <- data_available && is_windows && !is_ghactions
+```
+
+## Ziel
+
+Dieser Workflow findet für **alle drei Standorte** (Eisenstadt 2005,
+Wien, Bad Aussee) die **günstigste Muldenkonfiguration je Überlaufziel**
+x = 0…5 — pro Speichertyp (Sickerbox / Schotterrigol) — mit
+`optimise_swale_design()` statt eines Brute-Force-Rasters. Das Verfahren
+ist reine Bisektion ("Zahlenraten"): Fläche schrumpfen, dann Muldentiefe,
+Speicher nur erhöhen, wenn die Fläche am Anschlag klemmt. Voraussetzung
+ist die in der Vignette `monotonicity_analysis` belegte Monotonie
+("größer = nie mehr Überläufe"); die dort abgeleiteten Absicherungen
+(Rand-Guard, Volumen-Schiedsrichter) sind in `find_min_feasible()`
+eingebaut.
+
+Die Filterdurchlässigkeit wird fest auf das Maximum gesetzt (kostenfrei
+dominant: gleiche Verdunstung, nie mehr Überläufe), Fläche und
+Muldentiefe werden stufenlos gesucht, die Sickerbox in den
+Default-Stufen 300/600/900/1200 mm (`sickerbox_level_presets()` bietet
+Hersteller-Alternativen), der Schotterrigol stufenlos im 3-fachen
+Box-Bereich.
+
+**Laufzeit:** Ein Engine-Lauf dauert ~2 s (Eisenstadt, 1 Jahr) bzw.
+~15 s (Wien / Bad Aussee, 15-Jahres-Serien); der komplette Workflow
+liegt damit bei ca. 30–40 Minuten.
+
+```{r availability_note, echo = FALSE, results = 'asis', eval = !can_run}
+cat(sprintf(paste0(
+  "> **Hinweis:** Die Rechen-Chunks wurden übersprungen. Prüfungen: ",
+  "Windows: %s · CI/GitHub Actions: %s · base.h5 gefunden: %s (%s). ",
+  "Auf einem lokalen Windows-Rechner sollten alle drei Bedingungen ",
+  "erfüllt sein — falls base.h5 fehlt: Vignette aus dem Paket-Repo ",
+  "heraus rendern oder das Paket installieren.\n"),
+  is_windows, is_ghactions, data_available,
+  if (nzchar(path_base)) path_base else "weder installiert noch ../inst/extdata"
+))
+```
+
+## Standort-Konfiguration
+
+Die Standorte unterscheiden sich nur in zwei Punkten: dem
+Modell-Template (`base.h5`) und der Frage, ob eigene Regen-/ET0-Zeitreihen
+in die Engine geschrieben werden (Wien und Bad Aussee) oder die Kurven
+aus `base.h5` verwendet werden (Eisenstadt). Beides kapselt
+`make_swale_runner()`; die Zeitreihen-Aufbereitung (mm/h-Konvention,
+Serien-Angleichung) übernimmt `read_site_timeseries()`.
+
+```{r site_config, eval = can_run}
+# Im Quellbaum die Entwicklungsversion laden (immer aktuell, auch wenn
+# das installierte Paket aelter ist); ausserhalb: installiertes Paket.
+if (file.exists("../DESCRIPTION") &&
+    requireNamespace("pkgload", quietly = TRUE)) {
+  pkgload::load_all("..", quiet = TRUE)
+} else {
+  library(kwb.raindrop)
+}
+
+sites <- list(
+ Eisenstadt_2005 = list(dir = "eisenstadt-2005", timeseries = FALSE,
+   prior = "simulation_results_optimisation_Eisenstadt_2005.csv"),
+ Wien = list(dir = "wien", timeseries = TRUE,
+   prior = "simulation_results_optimisation_Wien.csv"),
+ BadAussee = list(dir = "badaussee", timeseries = TRUE,
+   prior = "simulation_results_optimisation_BadAussee.csv")
+)
+
+fixed <- list(connected_area = 1000,
+              filter_height = 300,
+              filter_hydraulicconductivity = 360,  # Rastermaximum, gratis
+              bottom_hydraulicconductivity = 12)
+
+make_path_list <- function(modelname, model_dir) {
+  list(
+    modelname = modelname,
+    root_path = file.path(tempdir(), paste0("raindrop_opt_", model_dir)),
+    dir_input  = "<root_path>/models/<modelname>/input",
+    dir_output = "<root_path>/models/<modelname>/output",
+    dir_target_output = "<dir_output>/<dir_target>",
+    file_errors_hdf5 = "Fehlerprotokoll.h5",
+    file_results_hdf5_element = "Mulde_Rigole.h5",
+    file_results_hdf5_flaeche = "Dach.h5",
+    file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
+    file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+    file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
+    file_target = "<dir_target>.h5",
+    path_base = extdata_path("models", model_dir, "base.h5"),
+    path_exe  = download_engine(),
+    path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
+    path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
+    path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
+    path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
+    path_results_txt = "<dir_target_output>/<file_results_txt>",
+    path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
+    path_target_input = "<dir_input>/<file_target>"
+  )
+}
+```
+
+## Suchraum und Kostensätze
+
+Die Suchbereiche der variablen Parameter sind die Default-Argumente von
+`optimise_swale_design()` — bewusst identisch mit den min/max-Bereichen
+des Brute-Force-Rasters, denn nur dort ist die Monotonie geprüft. Hier
+stehen sie explizit, damit sie sichtbar und anpassbar sind:
+
+```{r search_space, eval = can_run}
+area_bounds   <- c(25, 200)   # Muldenflaeche [m2], stufenlos
+area_tol      <- 2            # Aufloesung der Flaechensuche [m2]
+height_bounds <- c(100, 300)  # Muldentiefe [mm], stufenlos
+height_tol    <- 10           # Aufloesung der Tiefensuche [mm]
+storage_spec  <- default_storage_spec()
+# Alternativ Hersteller-Stufen, z. B.:
+# storage_spec <- default_storage_spec(
+#   levels = sickerbox_level_presets()$graf_ecobloc_smart)
+
+knitr::kable(tibble::tibble(
+  Parameter = c("mulde_area [m2]", "mulde_height [mm]",
+                "storage_height Sickerbox [mm]",
+                "storage_height Schotterrigol [mm]",
+                "filter_hydraulicconductivity [mm/h]",
+                "filter_height [mm]"),
+  Suchraum = c(
+    sprintf("stufenlos %g bis %g (Toleranz %g)",
+            area_bounds[1], area_bounds[2], area_tol),
+    sprintf("stufenlos %g bis %g (Toleranz %g)",
+            height_bounds[1], height_bounds[2], height_tol),
+    paste("Stufen:",
+          paste(storage_spec$infiltration_box$levels, collapse = " / ")),
+    sprintf("stufenlos %g bis %g (Toleranz %g)",
+            storage_spec$gravel_trench$bounds[1],
+            storage_spec$gravel_trench$bounds[2],
+            storage_spec$gravel_trench$tol),
+    "fix = 360 (Rastermaximum; kostenfrei dominant)",
+    "fix = 300"
+  )
+))
+```
+
+Die Kostensätze sind die Defaults nach Leimgruber (2026-03-27,
+`default_cost_rates()`); einzelne Sätze lassen sich hier überschreiben —
+gerechnet wird zunächst mit den Defaults:
+
+```{r cost_rates, eval = can_run}
+cost_rates <- default_cost_rates()
+# Beispiel fuer eine Anpassung (auskommentiert):
+# cost_rates$excavation_eur_per_m3       <- 85
+# cost_rates$infiltration_box_eur_per_m3 <- 400
+
+knitr::kable(
+  tibble::tibble(Kostensatz = names(cost_rates),
+                 `EUR je m2/m3` = unlist(cost_rates)),
+  caption = "Kostensaetze (inkl. Einbau)"
+)
+```
+
+## Optimierung aller Standorte
+
+Liegen die Rasterergebnisse der Workflow-Vignetten als CSV neben dieser
+Vignette, verengen sie als Warmstart die erste Flächensuche auf einen
+25-m²-Rasterschritt.
+
+```{r optimise_all, eval = can_run}
+opt_all <- purrr::map_dfr(names(sites), function(site) {
+  cfg <- sites[[site]]
+  message("=== ", site, " ===")
+
+  ts <- if (cfg$timeseries) {
+    read_site_timeseries(
+      extdata_path("models", cfg$dir, "rain.csv.gz"),
+      extdata_path("models", cfg$dir, "et.csv")
+    )
+  } else {
+    NULL
+  }
+
+  run_fn <- make_swale_runner(make_path_list(site, cfg$dir),
+                              timeseries_rain = ts$rain,
+                              timeseries_et = ts$et)
+
+  prior <- if (file.exists(cfg$prior)) {
+    readr::read_csv(cfg$prior, show_col_types = FALSE)
+  } else {
+    NULL
+  }
+
+  t0 <- Sys.time()
+  opt <- optimise_swale_design(run_fn, x_targets = 0:5,
+                               area_bounds = area_bounds,
+                               area_tol = area_tol,
+                               height_bounds = height_bounds,
+                               height_tol = height_tol,
+                               storage_spec = storage_spec,
+                               fixed = fixed,
+                               prior_results = prior,
+                               cost_rates = cost_rates,
+                               verbose = TRUE)
+  opt$site <- site
+  opt$n_runs_site <- attr(opt, "n_runs_total")
+  opt$minutes_site <- round(as.numeric(
+    difftime(Sys.time(), t0, units = "mins")), 1)
+  message(sprintf("%s fertig: %d Engine-Laeufe in %.1f min",
+                  site, opt$n_runs_site[1], opt$minutes_site[1]))
+  opt
+})
+```
+
+## Ergebnis: günstigstes Design je Standort und Überlaufziel
+
+```{r results_table, eval = can_run}
+knitr::kable(
+  opt_all[, c("site", "x", "storage_type", "status", "mulde_area",
+              "mulde_height", "storage_height", "n_overflows",
+              "overflow_volume_m3", "et_pct", "cost_total")],
+  digits = c(NA, 0, NA, NA, 1, 0, 0, 0, 1, 1, 0)
+)
+```
+
+```{r cost_curves, eval = can_run, fig.height = 3.4}
+library(ggplot2)
+
+ok <- opt_all[opt_all$status == "ok", ]
+ggplot(ok, aes(x, cost_total / 1000, colour = storage_type)) +
+  geom_line() +
+  geom_point(size = 2) +
+  facet_wrap(~ site, scales = "free_y") +
+  scale_x_continuous(breaks = 0:5) +
+  labs(title = "Kosten-Wirksamkeits-Kurven: Was kostet ein Ueberlauf weniger?",
+       x = "Ueberlaufziel x (zulaessige Ereignisse)",
+       y = "Kosten Optimum [Tsd. EUR]",
+       colour = "Speichertyp",
+       caption = cost_rates_caption("de", cost_rates)) +
+  theme_bw()
+```
+
+```{r export, eval = can_run}
+readr::write_csv(opt_all, "optimisation_results_all_sites.csv")
+for (site in unique(opt_all$site)) {
+  readr::write_csv(opt_all[opt_all$site == site, ],
+                   sprintf("optimisation_results_%s.csv", site))
+}
+
+knitr::kable(unique(opt_all[, c("site", "n_runs_site", "minutes_site")]),
+             col.names = c("Standort", "Engine-Laeufe", "Minuten"))
+```
+
+## Einordnung
+
+- **Plausibilität:** Die Optima müssen auf oder knapp unter den
+  günstigsten zulässigen Rasterzellen liegen (Warmstart-Tabelle der
+  Monotonie-Analyse); die Kostenkurven müssen monoton fallen.
+  `monotonicity_warning = TRUE` in einer Zeile hieße: Zähler *und*
+  Volumen sind gemeinsam gestiegen — dann Branch prüfen.
+- **Wien x = 0** ist der Stresstest: Im Raster war das Ziel mit
+  minimalem Speicher teils unerreichbar — hier greift die
+  Speicher-Eskalation automatisch; "infeasible_within_bounds" wäre ein
+  reguläres Ergebnis, kein Fehler.
+- **Bad Aussee x = 1** trägt den bekannten +1-Zählwobble am Rasterrand;
+  der Rand-Guard in `find_min_feasible()` deckt ihn ab.
+- **Nebenbedingung Tiefe:** `max_total_depth` (mm) begrenzt
+  Muldentiefe + Filter + Speicher analytisch (DWA-A 138 / Überdeckung),
+  ohne zusätzliche Läufe.

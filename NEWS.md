@@ -2,6 +2,70 @@
 
 ## New features
 
+* New **swale-design optimiser** — finds the cost-minimal design per
+  overflow target (`n_overflows <= x`) with roughly ten engine runs per
+  (storage type, target) cell instead of a full factorial sweep, at finer
+  resolution (2 m² / 10 mm instead of 25 m² / 100 mm grid steps):
+  - `find_min_feasible()` — the single primitive everything is built
+    from: bisection for the smallest feasible value of one design
+    parameter, over continuous bounds (`lower`/`upper`/`tol`) or discrete
+    stack `levels` (binary search). Evaluations are memoised and two
+    safety rules from the monotonicity analysis are built in: an **edge
+    guard** for the +1 event-counting wobble of the 4-h event separation
+    (a descending ladder below an "infeasible by exactly one event" upper
+    edge, so the Bad Aussee 175-m²-feasible/200-m²-infeasible pattern
+    cannot eat a solution) and a **volume referee** that warns — and
+    flags the result — iff the overflow count *and* the overflow volume
+    increase together (real non-monotonicity; never observed in the
+    5 112 validation comparisons).
+  - `optimise_swale_design()` — coordinate descent in cost order: shrink
+    `mulde_area` (the expensive lever) first, then `mulde_height` (the
+    cheap one); the storage layer starts at its smallest level and is
+    escalated only when the area is stuck at its upper bound. One shared
+    evaluation cache spans all `x_targets` and both storage types (a run
+    classifies itself for every target at once), warm-start brackets are
+    derived from prior brute-force results (CSV schema of the
+    workflows), `max_total_depth` adds an analytic depth constraint
+    (DWA-A 138 groundwater clearance / cover requirements) that costs no
+    simulation runs, and "infeasible within bounds" is a regular result
+    status, not an error. Costs are attached via `compute_costs()`; all
+    evaluated designs ship as attribute `"evaluations"`.
+  - `make_swale_runner()` — package-level refactoring of the `run_one()`
+    function previously duplicated across the three case-study
+    vignettes: one closure factory covering both variants (Eisenstadt:
+    `base.h5` rain curve scaled by `rain_factor`; Wien / Bad Aussee: own
+    rain + ET0 series in mm/h incl. the Growth/Shading end-time fix).
+    Returns the thinned one-row optimisation result augmented with
+    `overflow_volume_m3` (= `sum_overflows` [mm] × `mulde_area` / 1000).
+  - `stack_levels()`, `sickerbox_level_presets()`,
+    `default_storage_spec()`, `default_storage_types()` — storage-layer
+    search spaces: achievable stack heights from module heights (incl.
+    mixed combinations such as Rigofill full + half block), manufacturer
+    presets (GRAF, Fränkische, ACO, Wavin; verify against data sheets
+    before productive runs) with the brute-force grid levels
+    300/600/900/1200 mm as the default, and the gravel-trench range
+    coupled at 3 × the box range (usable-porosity ratio 0.95 / 0.3).
+
+* New conditional vignette `monotonicity_analysis` — validates the
+  optimiser's core assumption on the three brute-force result sets
+  (5 112 neighbour comparisons): `n_overflows` is quasi-monotone in
+  every design parameter (13 violations, all +1 counting artefacts of
+  the 4-h event separation), the overflow volume (in m³) is monotone
+  without exception, ET depends on `mulde_area` only, and the filter
+  conductivity is a cost-free dominant lever (fix at maximum). Renders
+  after the three workflow vignettes into
+  `vignettes/monotonicity_analysis/` (deploy unit with the plain-language
+  report `index.html` and the exported `mono_*` detail tables as CSV +
+  interactive HTML).
+
+* **testthat suite added** (edition 3; `tests/testthat/`): unit tests for
+  the bisection primitive (threshold accuracy, run counts, wobble guard,
+  volume referee, discrete levels) and end-to-end optimiser tests
+  against a synthetic monotone hydraulic model, verified against a fine
+  brute-force reference (cost within 5 %, monotone cost-effectiveness
+  curve, storage escalation, infeasibility handling, warm-start
+  savings, `max_total_depth`).
+
 * New exported plot `plot_cost_vs_evaporation()` — third cost view:
   scatters `cost_total` (EUR, x) against the element evapotranspiration
   share (`element.WB_Evapotranspiration_`, %, y). Points share the

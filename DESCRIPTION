@@ -41,9 +41,11 @@ Suggests:
     plotly,
     readr,
     rmarkdown,
+    testthat (>= 3.0.0),
     writexl
-VignetteBuilder: 
+VignetteBuilder:
     knitr
+Config/testthat/edition: 3
 Remotes:
     github::kwb-r/kwb.event,
     github::kwb-r/kwb.utils

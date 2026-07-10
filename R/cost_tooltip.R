@@ -250,7 +250,7 @@ storage_type_shapes <- function(storage_type, lang = c("de", "en")) {
   )
 }
 
-#' Usable storage volume of the storage layer [m3] per row
+#' Usable storage volume of the storage layer (m3) per row
 #'
 #' Area x height x usable porosity (thetaS - thetaFC) of the storage type.
 #' Taken from a precomputed `storage_volume_m3` column when available,
@@ -282,7 +282,7 @@ storage_volume_from_df <- function(df) {
 #' @param df Data frame with the columns listed above.
 #' @param tt Label list from `cost_tooltip_labels()`.
 #' @param digits Integer. Rounding for the numeric tooltip values.
-#' @param evap_min Numeric. Minimum element evapotranspiration share [%] of
+#' @param evap_min Numeric. Minimum element evapotranspiration share (%) of
 #'   the complete model run — the reference for the cost-per-percent line.
 #'   `NULL` falls back to the minimum within `df` (identical as long as `df`
 #'   is unfiltered).

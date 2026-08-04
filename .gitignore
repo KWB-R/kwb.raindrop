@@ -19,3 +19,7 @@ Rplots.pdf
 # Das betrifft auch den handgeschriebenen Ergebnisbericht index.html
 # (liegt lokal, als claude.ai-Artefakt und deployt auf dem Server).
 vignettes/monotonicity_analysis/
+
+# Deploy-Ordner der Vergleichs-Praesentation Optimierer vs. Brute-Force
+# (handgeschriebenes index.html, liegt auch als claude.ai-Artefakt vor)
+vignettes/optimiser_vs_bruteforce/

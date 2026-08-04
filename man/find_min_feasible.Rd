@@ -12,6 +12,7 @@ find_min_feasible(
   tol = 1,
   levels = NULL,
   wobble = 1L,
+  split_jitter = 0,
   volume_column = "overflow_volume_m3",
   verbose = FALSE
 )
@@ -34,6 +35,13 @@ performed.}
 
 \item{wobble}{Maximum counting-artefact size tolerated by the edge guard
 (default 1, matching the observed +1 flips).}
+
+\item{split_jitter}{Numeric in \verb{[0, 0.45]}, default 0. With 0 the
+interval is split exactly in half (deterministic). A positive value
+draws the split fraction uniformly from \code{0.5 +- split_jitter} --
+a Monte-Carlo of the \emph{search path}: repeated runs with different
+seeds take different routes to the threshold and must agree within
+\code{tol} if the result is a property of the problem, not of the path.}
 
 \item{volume_column}{Name of the volume element in the \code{evaluate} result
 used by the volume referee (default \code{"overflow_volume_m3"}).}

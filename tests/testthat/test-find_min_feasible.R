@@ -65,6 +65,27 @@ test_that("Volumen-Schiedsrichter: Warnung nur bei echter Nicht-Monotonie", {
   expect_false(res_ok$monotonicity_violation)
 })
 
+test_that("split_jitter: zufaellige Suchpfade treffen dieselbe Schwelle", {
+  f <- function(v) list(n_overflows = if (v >= 137.4) 0L else 10L)
+  vals <- vapply(1:5, function(s) {
+    set.seed(s)
+    find_min_feasible(f, x_max = 0, lower = 25, upper = 200, tol = 2,
+                      split_jitter = 0.3)$value
+  }, numeric(1))
+  expect_true(all(vals >= 137.4 & vals <= 137.4 + 2))
+  # verschiedene Seeds -> verschiedene Pfade (fast sicher versch. Werte)
+  expect_gt(length(unique(round(vals, 6))), 1)
+
+  # diskrete Levels mit Jitter: identisches Ergebnis wie deterministisch
+  lv <- c(300, 600, 900, 1200)
+  g <- function(v) list(n_overflows = if (v >= 900) 0L else 7L)
+  set.seed(99)
+  expect_equal(
+    find_min_feasible(g, x_max = 0, levels = lv, split_jitter = 0.3)$value,
+    900
+  )
+})
+
 test_that("diskrete Levels: Binaersuche ueber Stufen", {
   lv <- c(300, 600, 900, 1200)
   f <- function(v) list(n_overflows = if (v >= 900) 0L else 7L)

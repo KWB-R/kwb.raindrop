@@ -119,6 +119,22 @@ test_that("Warmstart aus Rasterergebnissen spart Laeufe", {
   expect_lt(attr(warm, "n_runs_total"), attr(cold, "n_runs_total"))
 })
 
+test_that("Such-MC: gejitterte Pfade treffen das deterministische Optimum", {
+  run <- synthetic_run_factory(demand = 3.6e5)
+  det <- optimise_swale_design(run, x_targets = 1, fixed = test_fixed,
+                               verbose = FALSE)
+  for (s in 1:3) {
+    set.seed(s)
+    jit <- optimise_swale_design(run, x_targets = 1, fixed = test_fixed,
+                                 split_jitter = 0.3, verbose = FALSE)
+    expect_equal(jit$storage_height, det$storage_height)
+    expect_lte(max(abs(jit$mulde_area - det$mulde_area)), 2)      # area_tol
+    expect_lte(max(abs(jit$mulde_height - det$mulde_height)), 10) # height_tol
+    expect_lte(max(abs(jit$cost_total - det$cost_total) / det$cost_total),
+               0.03)
+  }
+})
+
 test_that("max_total_depth wirkt als analytische Nebenbedingung", {
   run <- synthetic_run_factory(demand = 3.6e5)
   out <- optimise_swale_design(run, x_targets = 0, fixed = test_fixed,

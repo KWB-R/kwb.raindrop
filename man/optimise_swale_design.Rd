@@ -15,6 +15,7 @@ optimise_swale_design(
   fixed = list(connected_area = 1000, filter_height = 300, filter_hydraulicconductivity =
     360, bottom_hydraulicconductivity = 12),
   prior_results = NULL,
+  split_jitter = 0,
   max_total_depth = NULL,
   cost_rates = default_cost_rates(),
   verbose = TRUE
@@ -47,6 +48,11 @@ continuous \code{bounds} + \code{tol} (gravel trench).}
 \item{prior_results}{Optional data.frame with prior (grid) results in
 the workflow CSV schema, used as warm start (narrows the first area
 bracket to one grid step).}
+
+\item{split_jitter}{Passed to \code{\link[=find_min_feasible]{find_min_feasible()}}: 0 (default) =
+deterministic halving; > 0 randomises every bisection split point
+(Monte-Carlo of the search path -- repeated runs with different
+seeds must agree within the search tolerances).}
 
 \item{max_total_depth}{Optional analytic depth constraint in mm:
 \code{mulde_height + filter_height + storage_height <= max_total_depth}

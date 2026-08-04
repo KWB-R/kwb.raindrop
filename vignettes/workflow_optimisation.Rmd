@@ -30,6 +30,8 @@ path_base <- extdata_path("models", "eisenstadt-2005", "base.h5")
 data_available <- nzchar(path_base) && file.exists(path_base)
 is_windows <- Sys.info()[["sysname"]] == "Windows"
 can_run <- data_available && is_windows && !is_ghactions
+
+t_vignette_start <- Sys.time()
 ```
 
 ## Ziel
@@ -53,8 +55,9 @@ Hersteller-Alternativen), der Schotterrigol stufenlos im 3-fachen
 Box-Bereich.
 
 **Laufzeit:** Ein Engine-Lauf dauert ~2 s (Eisenstadt, 1 Jahr) bzw.
-~15 s (Wien / Bad Aussee, 15-Jahres-Serien); der komplette Workflow
-liegt damit bei ca. 30–40 Minuten.
+~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 6 Tasks
+(Standort × Speichertyp) laufen parallel; die Gesamtdauer entspricht
+dem längsten Einzeltask — ca. 15–20 Minuten.
 
 ```{r availability_note, echo = FALSE, results = 'asis', eval = !can_run}
 cat(sprintf(paste0(
@@ -185,21 +188,49 @@ knitr::kable(
 )
 ```
 
-## Optimierung aller Standorte
+## Optimierung aller Standorte (parallel)
+
+Parallelisiert wird über **Standort × Speichertyp = 6 unabhängige
+Tasks**: Die Bisektion innerhalb einer Suche ist prinzipbedingt
+sequentiell, und die x-Ziele eines Speichertyps teilen sich den
+Evaluations-Cache — aber Box- und Rigol-Läufe teilen keinen einzigen
+Engine-Lauf (der Cache-Schlüssel enthält den Typ). Jeder Worker ist ein
+eigener R-Prozess mit eigenem `tempdir()`, Kollisionen sind damit
+ausgeschlossen. Die Wall-Time entspricht dem längsten Einzeltask
+(Wien/Rigol, ~15–20 min) statt der Summe aller Tasks (~65 min).
 
 Liegen die Rasterergebnisse der Workflow-Vignetten als CSV neben dieser
 Vignette, verengen sie als Warmstart die erste Flächensuche auf einen
 25-m²-Rasterschritt.
 
 ```{r optimise_all, eval = can_run}
-opt_all <- purrr::map_dfr(names(sites), function(site) {
-  cfg <- sites[[site]]
-  message("=== ", site, " ===")
+t_opt_start <- Sys.time()
 
+tasks <- expand.grid(site = names(sites), type = names(storage_spec),
+                     stringsAsFactors = FALSE)
+
+future::plan(future::multisession,
+             workers = min(nrow(tasks),
+                           max(1, parallel::detectCores() - 1)))
+
+opt_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
+  site <- tasks$site[i]
+  type <- tasks$type[i]
+
+  # Worker = eigener Prozess: Paket dort genauso laden wie im Hauptprozess
+  if (file.exists("../DESCRIPTION") &&
+      requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("..", quiet = TRUE)
+  } else {
+    library(kwb.raindrop)
+  }
+
+  cfg <- sites[[site]]
   ts <- if (cfg$timeseries) {
     read_site_timeseries(
       extdata_path("models", cfg$dir, "rain.csv.gz"),
-      extdata_path("models", cfg$dir, "et.csv")
+      extdata_path("models", cfg$dir, "et.csv"),
+      verbose = FALSE
     )
   } else {
     NULL
@@ -221,19 +252,22 @@ opt_all <- purrr::map_dfr(names(sites), function(site) {
                                area_tol = area_tol,
                                height_bounds = height_bounds,
                                height_tol = height_tol,
-                               storage_spec = storage_spec,
+                               storage_spec = storage_spec[type],
                                fixed = fixed,
                                prior_results = prior,
                                cost_rates = cost_rates,
-                               verbose = TRUE)
+                               verbose = FALSE)
   opt$site <- site
-  opt$n_runs_site <- attr(opt, "n_runs_total")
-  opt$minutes_site <- round(as.numeric(
+  opt$n_runs_task <- attr(opt, "n_runs_total")
+  opt$minutes_task <- round(as.numeric(
     difftime(Sys.time(), t0, units = "mins")), 1)
-  message(sprintf("%s fertig: %d Engine-Laeufe in %.1f min",
-                  site, opt$n_runs_site[1], opt$minutes_site[1]))
   opt
-})
+}, future.seed = TRUE)
+
+future::plan(future::sequential)
+opt_all <- dplyr::bind_rows(opt_list)
+
+t_opt_end <- Sys.time()
 ```
 
 ## Ergebnis: günstigstes Design je Standort und Überlaufziel
@@ -271,8 +305,155 @@ for (site in unique(opt_all$site)) {
                    sprintf("optimisation_results_%s.csv", site))
 }
 
-knitr::kable(unique(opt_all[, c("site", "n_runs_site", "minutes_site")]),
-             col.names = c("Standort", "Engine-Laeufe", "Minuten"))
+task_stats <- unique(opt_all[, c("site", "storage_type", "n_runs_task",
+                                 "minutes_task")])
+knitr::kable(
+  task_stats,
+  col.names = c("Standort", "Speichertyp", "Engine-Laeufe", "Minuten")
+)
+```
+
+```{r runtime_total, echo = FALSE, results = 'asis', eval = can_run}
+opt_wall_min <- as.numeric(difftime(t_opt_end, t_opt_start, units = "mins"))
+cat(sprintf(paste0(
+  "**Gesamtlaufzeit Optimierung:** %d Engine-Läufe · Summe der ",
+  "Task-Zeiten %.1f min · tatsächliche Laufzeit %.1f min ",
+  "(paralleler Speedup %.1f×).\n"),
+  sum(task_stats$n_runs_task), sum(task_stats$minutes_task),
+  opt_wall_min, sum(task_stats$minutes_task) / max(opt_wall_min, 0.1)
+))
+```
+
+## Monte-Carlo-Analyse: Wie robust ist die Suche selbst?
+
+Die Bisektion ist deterministisch: gleiche Eingaben, gleicher Pfad,
+gleiches Ergebnis. Die Monte-Carlo-Frage lautet deshalb: **Hängt das
+gefundene Optimum vom Suchpfad ab?** Dazu wird der Teilungspunkt jeder
+Bisektion zufällig verschoben (`split_jitter = 0.3`: Teilung zufällig
+zwischen 20 % und 80 % des Intervalls statt exakt mittig) und die
+Optimierung `n_mc`-mal mit unterschiedlichen Seeds wiederholt — **Regen,
+Kostensätze und alle übrigen Eingaben bleiben unverändert** (x = 1, ohne
+Warmstart, damit jede Wiederholung den vollen Suchraum durchläuft).
+Gerechnet wird der volle Pool **3 Standorte × 2 Speichertypen ×
+`n_mc` Wiederholungen = 60 unabhängige Tasks**, alle parallel (je Task
+eine komplette Neu-Optimierung mit ~15 Engine-Läufen; Wall-Time je nach
+Kernzahl ~20–35 min). Erwartung, wenn das Optimum eine
+Eigenschaft des Problems ist — und nicht des Wegs, den die Suche
+genommen hat: **identische Speicherstufe, Flächen-Spanne ≤
+2 × `area_tol`, Kostenspanne von wenigen Prozent**. Die Muldentiefe
+darf etwas weiter streuen als 2 × `height_tol`: Sie ist über die
+Hydraulik an die gefundene Fläche gekoppelt (eine um `area_tol` größere
+Fläche erlaubt eine entsprechend geringere Tiefe), sodass sich dort die
+Toleranzen beider Suchen addieren.
+
+```{r mc_config, eval = can_run}
+n_mc <- 10
+mc_seeds <- 1:n_mc
+```
+
+```{r mc_search, eval = can_run}
+t_mc_start <- Sys.time()
+
+mc_tasks <- expand.grid(site = names(sites), type = names(storage_spec),
+                        rep = seq_len(n_mc), stringsAsFactors = FALSE)
+
+future::plan(future::multisession,
+             workers = min(nrow(mc_tasks),
+                           max(1, parallel::detectCores() - 1)))
+
+mc_search <- future.apply::future_lapply(seq_len(nrow(mc_tasks)), function(i) {
+  site <- mc_tasks$site[i]
+  type <- mc_tasks$type[i]
+  rep  <- mc_tasks$rep[i]
+
+  if (file.exists("../DESCRIPTION") &&
+      requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("..", quiet = TRUE)
+  } else {
+    library(kwb.raindrop)
+  }
+  set.seed(mc_seeds[rep])
+
+  cfg <- sites[[site]]
+  ts <- if (cfg$timeseries) {
+    read_site_timeseries(
+      extdata_path("models", cfg$dir, "rain.csv.gz"),
+      extdata_path("models", cfg$dir, "et.csv"),
+      verbose = FALSE
+    )
+  } else {
+    NULL
+  }
+  run_fn <- make_swale_runner(make_path_list(paste0(site, "_MC"), cfg$dir),
+                              timeseries_rain = ts$rain,
+                              timeseries_et = ts$et)
+
+  opt <- optimise_swale_design(
+    run_fn, x_targets = 1,
+    area_bounds = area_bounds, area_tol = area_tol,
+    height_bounds = height_bounds, height_tol = height_tol,
+    storage_spec = storage_spec[type],
+    fixed = fixed,
+    split_jitter = 0.3,
+    cost_rates = cost_rates, verbose = FALSE
+  )
+  opt$site <- site
+  opt$rep <- rep
+  opt$n_runs_rep <- attr(opt, "n_runs_total")
+  opt
+}, future.seed = TRUE)
+
+future::plan(future::sequential)
+mc_search <- dplyr::bind_rows(mc_search)
+
+t_mc_end <- Sys.time()
+```
+
+```{r mc_search_summary, eval = can_run, fig.height = 3.4}
+ok_mc <- mc_search[mc_search$status == "ok", ]
+
+ggplot(ok_mc, aes(rep, cost_total / 1000, colour = storage_type)) +
+  geom_point(size = 2) +
+  facet_wrap(~ site, scales = "free_y") +
+  scale_x_continuous(breaks = seq_len(n_mc)) +
+  labs(title = sprintf(
+         "Such-Monte-Carlo (x = 1, %d zufaellige Suchpfade je Standort und Typ)",
+         n_mc),
+       x = "Wiederholung (Seed)",
+       y = "Kosten Optimum [Tsd. EUR]",
+       colour = "Speichertyp") +
+  theme_bw()
+
+knitr::kable(
+  ok_mc %>%
+    dplyr::group_by(site, storage_type) %>%
+    dplyr::summarise(
+      flaeche_spanne_m2 = max(mulde_area) - min(mulde_area),
+      tiefe_spanne_mm = max(mulde_height) - min(mulde_height),
+      speicher_identisch = dplyr::n_distinct(storage_height) == 1,
+      kosten_min = min(cost_total),
+      kosten_max = max(cost_total),
+      kosten_spanne_pct = round(100 * (max(cost_total) - min(cost_total)) /
+                                  min(cost_total), 2),
+      .groups = "drop"
+    ),
+  digits = 1,
+  caption = paste("Streuung ueber die Suchpfade -- erwartet: identische",
+                  "Speicherstufe, Flaechen-Spanne <= 2 x area_tol,",
+                  "Kostenspanne wenige Prozent; die Tiefe streut wegen",
+                  "der Flaechen-Kopplung weiter")
+)
+```
+
+```{r mc_runtime, echo = FALSE, results = 'asis', eval = can_run}
+cat(sprintf(paste0(
+  "**Laufzeit Such-Monte-Carlo:** %d Engine-Läufe in %.1f min ",
+  "(parallel über %d Tasks: %d Standorte × %d Speichertypen × ",
+  "%d Wiederholungen).\n"),
+  sum(mc_search$n_runs_rep),
+  as.numeric(difftime(t_mc_end, t_mc_start, units = "mins")),
+  nrow(mc_tasks), length(sites), length(storage_spec), n_mc
+))
 ```
 
 ## Einordnung
@@ -291,3 +472,15 @@ knitr::kable(unique(opt_all[, c("site", "n_runs_site", "minutes_site")]),
 - **Nebenbedingung Tiefe:** `max_total_depth` (mm) begrenzt
   Muldentiefe + Filter + Speicher analytisch (DWA-A 138 / Überdeckung),
   ohne zusätzliche Läufe.
+
+```{r vignette_runtime, echo = FALSE, results = 'asis', eval = can_run}
+cat(sprintf(paste0(
+  "---\n\n**Gesamtlaufzeit dieser Vignette:** %.1f Minuten ",
+  "(Optimierung %.1f min · Such-Monte-Carlo %.1f min · ",
+  "Rest: Setup und Rendern).\n"),
+  as.numeric(difftime(Sys.time(), t_vignette_start, units = "mins")),
+  opt_wall_min,
+  as.numeric(difftime(t_mc_end, t_mc_start, units = "mins"))
+))
+```
+

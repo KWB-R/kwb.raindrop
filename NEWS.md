@@ -17,7 +17,9 @@
     cannot eat a solution) and a **volume referee** that warns — and
     flags the result — iff the overflow count *and* the overflow volume
     increase together (real non-monotonicity; never observed in the
-    5 112 validation comparisons).
+    5 112 validation comparisons). An optional `split_jitter` randomises
+    the bisection split point — a Monte-Carlo of the search path
+    (repeated runs with different seeds must agree within `tol`).
   - `optimise_swale_design()` — coordinate descent in cost order: shrink
     `mulde_area` (the expensive lever) first, then `mulde_height` (the
     cheap one); the storage layer starts at its smallest level and is
@@ -57,6 +59,33 @@
   `vignettes/monotonicity_analysis/` (deploy unit with the plain-language
   report `index.html` and the exported `mono_*` detail tables as CSV +
   interactive HTML).
+
+* New conditional vignette `workflow_optimisation` — runs the optimiser
+  for all three sites (Eisenstadt 2005, Wien, Bad Aussee), **parallelised
+  over site × storage type** (6 independent tasks via
+  `future`/`future.apply`; wall time = longest single task, ~15–20 min
+  instead of ~65 min sequential — bisection within a search is inherently
+  sequential and the x-targets of one storage type share the evaluation
+  cache, but box and trench never share a single engine run). Exposes the
+  search space and the cost rates as explicit, adjustable code (defaults
+  used), warm-starts from the grid CSVs, renders the combined optimum
+  table, per-site cost-effectiveness curves, total-runtime reporting
+  (per task, per section and for the whole document) and a
+  **Monte-Carlo section** (`n_mc = 10`) evaluating the robustness of the
+  *search itself*: every bisection split point is randomly displaced
+  (`split_jitter = 0.3`) while rain, cost rates and all other inputs
+  stay fixed; the repetitions with different seeds must agree on the
+  storage level, keep the area within 2 × `area_tol` and the cost within
+  a few percent — the swale depth may scatter somewhat more because it
+  is hydraulically coupled to the found area (x = 1; the full pool of
+  3 sites × 2 storage types × 10 repetitions runs as 60 parallel tasks,
+  one full re-optimisation each).
+
+* New exported helper `read_site_timeseries()` — the rain/ET0 time-series
+  preparation previously duplicated in the Wien and Bad Aussee vignettes
+  (hours since start, series-end alignment, engine mm/h convention);
+  selects strictly `time` + `value`, tolerating extra raw-data columns
+  (Bad Aussee ships a `substation` column that Wien does not have).
 
 * **testthat suite added** (edition 3; `tests/testthat/`): unit tests for
   the bisection primitive (threshold accuracy, run counts, wobble guard,

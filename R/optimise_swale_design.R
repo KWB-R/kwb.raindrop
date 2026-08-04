@@ -60,6 +60,10 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #' @param prior_results Optional data.frame with prior (grid) results in
 #'   the workflow CSV schema, used as warm start (narrows the first area
 #'   bracket to one grid step).
+#' @param split_jitter Passed to [find_min_feasible()]: 0 (default) =
+#'   deterministic halving; > 0 randomises every bisection split point
+#'   (Monte-Carlo of the search path -- repeated runs with different
+#'   seeds must agree within the search tolerances).
 #' @param max_total_depth Optional analytic depth constraint in mm:
 #'   `mulde_height + filter_height + storage_height <= max_total_depth`
 #'   (e.g. from DWA-A 138 groundwater clearance or cover requirements).
@@ -92,6 +96,7 @@ optimise_swale_design <- function(run_fn,
                                     bottom_hydraulicconductivity = 12
                                   ),
                                   prior_results = NULL,
+                                  split_jitter = 0,
                                   max_total_depth = NULL,
                                   cost_rates = default_cost_rates(),
                                   verbose = TRUE) {
@@ -143,19 +148,19 @@ optimise_swale_design <- function(run_fn,
   search_area <- function(eval_a, x, bracket) {
     res <- find_min_feasible(eval_a, x_max = x,
                              lower = bracket[1], upper = bracket[2],
-                             tol = area_tol)
+                             tol = area_tol, split_jitter = split_jitter)
     if (identical(res$status, "at_lower_bound") &&
         bracket[1] > area_bounds[1]) {
       res <- find_min_feasible(eval_a, x_max = x,
                                lower = area_bounds[1], upper = bracket[1],
-                               tol = area_tol)
+                               tol = area_tol, split_jitter = split_jitter)
     }
     if (identical(res$status, "infeasible") &&
         bracket[2] < area_bounds[2]) {
       # warm start was too optimistic -> retry up to the full upper bound
       res <- find_min_feasible(eval_a, x_max = x,
                                lower = bracket[1], upper = area_bounds[2],
-                               tol = area_tol)
+                               tol = area_tol, split_jitter = split_jitter)
     }
     res
   }
@@ -211,12 +216,14 @@ optimise_swale_design <- function(run_fn,
       if (discrete) {
         rest <- levels_all[levels_all > h_s]
         if (length(rest) == 0) return(infeasible_row())
-        res_s <- find_min_feasible(eval_s, x_max = x, levels = rest)
+        res_s <- find_min_feasible(eval_s, x_max = x, levels = rest,
+                                   split_jitter = split_jitter)
       } else {
         if (h_s >= gb[2]) return(infeasible_row())
         res_s <- find_min_feasible(eval_s, x_max = x,
                                    lower = h_s, upper = gb[2],
-                                   tol = gravel_tol)
+                                   tol = gravel_tol,
+                                   split_jitter = split_jitter)
       }
       mono_warn <- mono_warn || res_s$monotonicity_violation
       if (identical(res_s$status, "infeasible")) return(infeasible_row())
@@ -233,7 +240,7 @@ optimise_swale_design <- function(run_fn,
       res_h <- find_min_feasible(
         function(h) eval_design(type, a_star, h, h_s),
         x_max = x, lower = height_bounds[1], upper = h_m_up,
-        tol = height_tol
+        tol = height_tol, split_jitter = split_jitter
       )
       mono_warn <- mono_warn || res_h$monotonicity_violation
       if (!identical(res_h$status, "infeasible")) h_m_star <- res_h$value

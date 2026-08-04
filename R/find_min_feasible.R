@@ -32,6 +32,12 @@
 #'   performed.
 #' @param wobble Maximum counting-artefact size tolerated by the edge guard
 #'   (default 1, matching the observed +1 flips).
+#' @param split_jitter Numeric in `[0, 0.45]`, default 0. With 0 the
+#'   interval is split exactly in half (deterministic). A positive value
+#'   draws the split fraction uniformly from `0.5 +- split_jitter` --
+#'   a Monte-Carlo of the *search path*: repeated runs with different
+#'   seeds take different routes to the threshold and must agree within
+#'   `tol` if the result is a property of the problem, not of the path.
 #' @param volume_column Name of the volume element in the `evaluate` result
 #'   used by the volume referee (default `"overflow_volume_m3"`).
 #' @param verbose Print one line per evaluation.
@@ -61,8 +67,11 @@ find_min_feasible <- function(evaluate,
                               tol = 1,
                               levels = NULL,
                               wobble = 1L,
+                              split_jitter = 0,
                               volume_column = "overflow_volume_m3",
                               verbose = FALSE) {
+
+  stopifnot(split_jitter >= 0, split_jitter <= 0.45)
 
   discrete <- !is.null(levels)
   if (discrete) {
@@ -146,8 +155,17 @@ find_min_feasible <- function(evaluate,
       hi <- lo                          # optimum at (or below) the lower end
     }
     while ((hi - lo) > axis_tol) {
-      mid <- (lo + hi) / 2
-      if (discrete) mid <- floor(mid)
+      frac <- if (split_jitter > 0) {
+        stats::runif(1, 0.5 - split_jitter, 0.5 + split_jitter)
+      } else {
+        0.5
+      }
+      mid <- lo + frac * (hi - lo)
+      if (discrete) {
+        mid <- floor(mid)
+        if (mid <= lo) mid <- lo + 1
+        if (mid >= hi) mid <- hi - 1
+      }
       if (mid <= lo || mid >= hi) break
       if (feasible(mid)) hi <- mid else lo <- mid
     }

@@ -34,31 +34,45 @@
     evaluated designs ship as attribute `"evaluations"`.
   - `optimise_swale_design_simultaneous()` — alternative optimiser that
     searches **all design parameters at once** (`mulde_area`,
-    `mulde_height`, `storage_height`) with a penalised Nelder-Mead
-    simplex (`stats::optim()`, no new dependency) instead of
-    per-parameter bisection: infeasible designs are not excluded but
-    penalised (any infeasible design is worse than any feasible one;
-    excess overflow events grade the penalty and steer the simplex back),
-    so the search can trade the parameters against each other in a
-    single step and does not rely on the per-parameter monotonicity the
-    bisection exploits. Engine runs are kept in check by snapping every
-    candidate to the search tolerances (the shared cache absorbs
-    repeats across all `x_targets`), a deterministic multistart (prior
-    warm start, previous-target optimum, one anchor start per storage
-    level — the flat cost valley along the feasibility boundary makes
-    the cheapest storage level easy to miss from a single start — then
-    space-filling points; every start gets an equal slice of the
-    `max_evals` run budget) and a final lattice polish that makes the
-    result locally optimal on the tolerance lattice. Same interface and
-    result schema as `optimise_swale_design()` (incl. `max_total_depth`,
-    warm start and the `"evaluations"` attribute); a pairwise dominance
-    check per cell (a strictly larger design with more overflows *and*
-    more overflow volume) replaces the bisection's volume referee.
-    Needs more engine runs per cell (typically 30–80 instead of ~15)
-    but serves as an independent cross-check that coordinate descent
-    did not miss a cheaper corner of the design space; the
-    `workflow_optimisation` vignette gained a section running both
-    optimisers for all three sites and tabulating the cost deltas.
+    `mulde_height`, `storage_height`) instead of per-parameter
+    bisection: infeasible designs are not excluded but penalised (any
+    infeasible design is worse than any feasible one; excess overflow
+    events grade the penalty and steer the search back towards the
+    feasibility boundary, where the optimum lives), so the search can
+    trade the parameters against each other in a single step and does
+    not rely on the per-parameter monotonicity the bisection exploits.
+    Three search `method`s share this penalised objective, the
+    tolerance snapping (the shared cache absorbs repeats across all
+    `x_targets`) and a final **multi-valley lattice polish**
+    (accelerated 8/4/2/1-tolerance pattern descent from the cheapest
+    feasible design of every storage level visited — the storage axis
+    separates cost valleys that single coordinate steps cannot cross):
+    `"nelder_mead"` (default; deterministic multistart via
+    `stats::optim()` — prior warm start, previous-target optimum, one
+    anchor start per storage level, space-filling points; every start
+    gets an equal slice of the `max_evals` run budget),
+    `"diff_evolution"` (compact DE/rand/1/bin for comparison;
+    deterministic via an internal Park-Miller generator seeded with
+    `seed` — R's global RNG stays untouched) and `"halton_search"`
+    (quasi-random space-filling baseline). Same interface and result
+    schema as `optimise_swale_design()` (incl. `max_total_depth`, warm
+    start and the `"evaluations"` attribute) plus a `method` column; a
+    pairwise dominance check per cell (a strictly larger design with
+    more overflows *and* more overflow volume) replaces the bisection's
+    volume referee. Needs considerably more engine runs per cell
+    (typically 60–120 instead of ~15) but serves as an independent
+    cross-check that coordinate descent did not miss a cheaper corner
+    of the design space.
+
+* New conditional vignette `workflow_optimisation_simultaneous` — the
+  simultaneous counterpart of `workflow_optimisation` (which stays
+  bisection-only and now points here): runs the Nelder-Mead sweep for
+  all three sites in parallel (site × storage type), compares the
+  optima cell by cell against the bisection CSV export when present
+  (`delta_pct` table), and benchmarks the three search methods
+  (Nelder-Mead / differential evolution / Halton baseline) on the same
+  x = 1 cell across all sites and storage types — 12 parallel tasks —
+  to show what the structured searches contribute over naive sampling.
   - `make_swale_runner()` — package-level refactoring of the `run_one()`
     function previously duplicated across the three case-study
     vignettes: one closure factory covering both variants (Eisenstadt:

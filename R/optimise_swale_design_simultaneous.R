@@ -25,19 +25,72 @@ prior_start_design <- function(prior, type, x, filter_height, cost_rates) {
     c("mulde_area", "mulde_height", "storage_height"), drop = FALSE]
 }
 
+#' Radical-inverse (van der Corput) sequence element
+#' @keywords internal
+#' @noRd
+halton_1d <- function(i, base) {
+  f <- 1
+  r <- 0
+  while (i > 0) {
+    f <- f / base
+    r <- r + f * (i %% base)
+    i <- i %/% base
+  }
+  r
+}
+
+#' i-th point of the 3-dimensional Halton sequence (bases 2, 3, 5)
+#' @keywords internal
+#' @noRd
+halton_point <- function(i) {
+  c(halton_1d(i, 2), halton_1d(i, 3), halton_1d(i, 5))
+}
+
+#' Minimal deterministic uniform generator (Park-Miller LCG)
+#'
+#' Self-contained pseudo-random stream for the differential-evolution
+#' method: fully reproducible from `seed` and independent of R's global
+#' RNG (`.Random.seed` is neither read nor written).
+#'
+#' @keywords internal
+#' @noRd
+make_lcg <- function(seed) {
+  state <- (abs(as.double(seed)) %% 2147483646) + 1
+  function() {
+    # 16807 * state < 2^53, exact in double arithmetic
+    state <<- (16807 * state) %% 2147483647
+    state / 2147483647
+  }
+}
+
 #' Find the cost-optimal swale design by simultaneous parameter search
 #'
 #' Alternative to the coordinate-descent optimiser
 #' ([optimise_swale_design()], bisection per parameter): all design
 #' parameters -- `mulde_area`, `mulde_height` and `storage_height` -- are
-#' optimised **simultaneously** with a penalised Nelder-Mead search
-#' (`stats::optim()`). Infeasible designs (`n_overflows > x`) are not
-#' excluded but penalised (any infeasible design is worse than any feasible
-#' one; the number of excess events grades the penalty, steering the
-#' simplex back towards feasibility), so the search moves freely through
-#' the full parameter space and can trade the parameters against each
-#' other in a single step -- it does not rely on the per-parameter
+#' optimised **simultaneously**. Infeasible designs (`n_overflows > x`)
+#' are not excluded but penalised (any infeasible design is worse than any
+#' feasible one; the number of excess events grades the penalty, steering
+#' the search back towards feasibility), so the search moves freely
+#' through the full parameter space and can trade the parameters against
+#' each other in a single step -- it does not rely on the per-parameter
 #' monotonicity that the bisection exploits.
+#'
+#' Three search `method`s share this penalised objective (plus cache,
+#' tolerance snapping and final lattice polish) and differ only in how
+#' they propose candidates:
+#' \itemize{
+#'   \item `"nelder_mead"` (default): multistart Nelder-Mead simplex via
+#'     `stats::optim()` -- the recommended method.
+#'   \item `"diff_evolution"`: a compact differential evolution
+#'     (DE/rand/1/bin, population 12, F = 0.7, CR = 0.9), included for
+#'     comparison. Deterministic: it draws from an internal Park-Miller
+#'     generator seeded with `seed` and leaves R's global RNG
+#'     (`.Random.seed`) untouched.
+#'   \item `"halton_search"`: quasi-random space-filling sampling
+#'     (Halton sequence, bases 2/3/5) -- a deliberately simple baseline
+#'     showing what the structured searches must beat.
+#' }
 #'
 #' Three ingredients keep the number of engine runs in check:
 #' \itemize{
@@ -57,10 +110,13 @@ prior_start_design <- function(prior, type, x, filter_height, cost_rates) {
 #'     search paths -- the counterpart of `split_jitter` in the bisection
 #'     optimiser. Every start receives an equal slice of the remaining
 #'     `max_evals` budget (unused runs roll over).
-#'   \item \strong{Lattice polish}: from the best feasible design found,
-#'     single tolerance steps downwards (cheaper by construction) are
-#'     tested until no parameter can be reduced any further -- the result
-#'     is locally optimal on the tolerance lattice.
+#'   \item \strong{Lattice polish}: an accelerated pattern descent
+#'     (steps of 8/4/2/1 tolerances downwards, cheaper by construction)
+#'     runs from the cheapest feasible design of *every storage level
+#'     visited* -- the storage axis separates cost valleys that single
+#'     coordinate steps cannot cross -- until no parameter can be reduced
+#'     any further: the result is locally optimal on the tolerance
+#'     lattice, whatever the search method delivered.
 #' }
 #'
 #' The discrete infiltration-box levels are mapped onto a continuous
@@ -71,11 +127,12 @@ prior_start_design <- function(prior, type, x, filter_height, cost_rates) {
 #' construction (the `mulde_height` axis is compressed to the remaining
 #' depth), so no simulation runs are spent on depth-invalid designs.
 #'
-#' Compared to [optimise_swale_design()] this needs more engine runs per
-#' cell (typically 30-60 instead of ~15) but serves as an independent
-#' cross-check: it can discover cheaper corners of the design space that
-#' coordinate descent would miss if the parameter interaction were
-#' stronger than the monotonicity analysis suggests.
+#' Compared to [optimise_swale_design()] this needs considerably more
+#' engine runs per cell (typically 60-120 instead of ~15; search phase
+#' plus multi-valley polish) but serves as an independent cross-check: it
+#' can discover cheaper corners of the design space that coordinate
+#' descent would miss if the parameter interaction were stronger than the
+#' monotonicity analysis suggests.
 #'
 #' @param run_fn `function(params)` running one scenario and returning at
 #'   least `n_overflows` plus `sum_overflows` (mm) or `overflow_volume_m3`;
@@ -96,16 +153,23 @@ prior_start_design <- function(prior, type, x, filter_height, cost_rates) {
 #'   `filter_height` for the cost model.
 #' @param prior_results Optional data.frame with prior (grid) results in
 #'   the workflow CSV schema, used as warm start (the cheapest feasible
-#'   grid cell of the branch becomes the first Nelder-Mead start).
+#'   grid cell of the branch becomes the first start / seeds the
+#'   population).
+#' @param method Search method, see Details: `"nelder_mead"` (default),
+#'   `"diff_evolution"` or `"halton_search"` (the latter two mainly for
+#'   comparison).
 #' @param n_starts Number of Nelder-Mead starts per (storage type, x)
-#'   cell (default 4). Warm starts (prior, previous target) count towards
-#'   this number, then the storage-ladder anchors, then the space-filling
-#'   points.
-#' @param max_evals Soft cap on fresh engine runs per cell: once reached,
-#'   the Nelder-Mead phase winds down (already cached designs remain
-#'   free); the final lattice polish may add a few runs beyond the cap.
-#'   Default 80 -- thanks to the shared cache the later `x_targets` of a
-#'   storage type stay far below this.
+#'   cell (default 4; only used by `method = "nelder_mead"`). Warm starts
+#'   (prior, previous target) count towards this number, then the
+#'   storage-ladder anchors, then the space-filling points.
+#' @param seed Integer seed of the internal deterministic generator used
+#'   by `method = "diff_evolution"` (ignored by the other methods). R's
+#'   global RNG state is not touched.
+#' @param max_evals Soft cap on fresh engine runs per cell for the search
+#'   phase: once reached, the search winds down (already cached designs
+#'   remain free). The final multi-valley lattice polish adds its own
+#'   runs on top (typically 20-50 per cell). Default 80 -- thanks to the
+#'   shared cache the later `x_targets` of a storage type stay cheaper.
 #' @param wobble Maximum counting-artefact size tolerated at the upper
 #'   corner (default 1, matching the +1 event-counting wobble): only if
 #'   the maximal design overflows by more than `wobble` events is the
@@ -118,14 +182,15 @@ prior_start_design <- function(prior, type, x, filter_height, cost_rates) {
 #' @param verbose Print one progress line per solved cell.
 #'
 #' @return Tibble with one row per (storage type, x), same schema as
-#'   [optimise_swale_design()]: the optimal design (`mulde_area`,
-#'   `mulde_height`, `storage_height`), its metrics (`n_overflows`,
-#'   `overflow_volume_m3`, `et_pct`), cost columns from [compute_costs()],
-#'   a `status` (`"ok"` or `"infeasible_within_bounds"`),
-#'   `monotonicity_warning` (`TRUE` if a strictly larger design produced
-#'   more overflows *and* more overflow volume among the cell's
-#'   evaluations) and `n_runs_new` (fresh engine runs spent on this cell).
-#'   All evaluated designs are attached as attribute `"evaluations"`.
+#'   [optimise_swale_design()] plus a `method` column: the optimal design
+#'   (`mulde_area`, `mulde_height`, `storage_height`), its metrics
+#'   (`n_overflows`, `overflow_volume_m3`, `et_pct`), cost columns from
+#'   [compute_costs()], a `status` (`"ok"` or
+#'   `"infeasible_within_bounds"`), `monotonicity_warning` (`TRUE` if a
+#'   strictly larger design produced more overflows *and* more overflow
+#'   volume among the cell's evaluations) and `n_runs_new` (fresh engine
+#'   runs spent on this cell). All evaluated designs are attached as
+#'   attribute `"evaluations"`.
 #'
 #' @examples
 #' # synthetic monotone model: overflows fall with retention capacity
@@ -159,13 +224,18 @@ optimise_swale_design_simultaneous <- function(run_fn,
                                                  bottom_hydraulicconductivity = 12
                                                ),
                                                prior_results = NULL,
+                                               method = c("nelder_mead",
+                                                          "diff_evolution",
+                                                          "halton_search"),
                                                n_starts = 4,
                                                max_evals = 80,
+                                               seed = 1,
                                                wobble = 1L,
                                                max_total_depth = NULL,
                                                cost_rates = default_cost_rates(),
                                                verbose = TRUE) {
 
+  method <- match.arg(method)
   stopifnot(is.function(run_fn), !is.null(fixed$filter_height),
             n_starts >= 1, max_evals >= 10)
   filter_height <- fixed$filter_height
@@ -275,7 +345,8 @@ optimise_swale_design_simultaneous <- function(run_fn,
 
     infeasible_row <- function() list(
       row = tibble::tibble(
-        x = x, storage_type = type, status = "infeasible_within_bounds",
+        x = x, storage_type = type, method = method,
+        status = "infeasible_within_bounds",
         mulde_area = NA_real_, mulde_height = NA_real_,
         storage_height = NA_real_, n_overflows = NA_real_,
         overflow_volume_m3 = NA_real_, et_pct = NA_real_,
@@ -388,14 +459,14 @@ optimise_swale_design_simultaneous <- function(run_fn,
     # anchor per storage level (min storage first -- the storage ladder
     # guards the flat cost valley along the feasibility boundary), then
     # fixed space-filling points --------------------------------------------
-    starts <- list()
+    starts_all <- list()
     ps <- prior_start_design(prior_results, type, x, filter_height,
                              cost_rates)
     if (!is.null(ps)) {
-      starts <- c(starts, list(encode(ps$mulde_area, ps$mulde_height,
-                                      ps$storage_height)))
+      starts_all <- c(starts_all, list(encode(ps$mulde_area, ps$mulde_height,
+                                              ps$storage_height)))
     }
-    if (!is.null(extra_start)) starts <- c(starts, list(extra_start))
+    if (!is.null(extra_start)) starts_all <- c(starts_all, list(extra_start))
     ladder_u3 <- if (discrete) {
       (seq_along(levels_all) - 0.5) / length(levels_all)
     } else {
@@ -404,19 +475,71 @@ optimise_swale_design_simultaneous <- function(run_fn,
     ladder <- lapply(seq_along(ladder_u3), function(i) {
       c(if (i %% 2 == 1) 0.85 else 0.45, 0.90, ladder_u3[[i]])
     })
-    starts <- c(starts, ladder, default_starts)
-    starts <- starts[seq_len(min(length(starts), n_starts))]
+    starts_all <- c(starts_all, ladder, default_starts)
 
-    # every start gets a slice of the remaining run budget, unused runs
-    # roll over to the following starts
-    for (si in seq_along(starts)) {
-      used <- runs_executed - runs_before
-      if (max_evals - used <= 2) break
-      start_cap <- used + ceiling((max_evals - used) /
-                                    (length(starts) - si + 1))
-      stats::optim(starts[[si]], objective, method = "Nelder-Mead",
-                   control = list(maxit = 200, reltol = 1e-4,
-                                  warn.1d.NelderMead = FALSE))
+    if (method == "nelder_mead") {
+      # every start gets a slice of the remaining run budget, unused
+      # runs roll over to the following starts
+      starts <- starts_all[seq_len(min(length(starts_all), n_starts))]
+      for (si in seq_along(starts)) {
+        used <- runs_executed - runs_before
+        if (max_evals - used <= 2) break
+        start_cap <- used + ceiling((max_evals - used) /
+                                      (length(starts) - si + 1))
+        stats::optim(starts[[si]], objective, method = "Nelder-Mead",
+                     control = list(maxit = 200, reltol = 1e-4,
+                                    warn.1d.NelderMead = FALSE))
+      }
+    } else if (method == "diff_evolution") {
+      # DE/rand/1/bin on the unit cube; deterministic via internal LCG
+      start_cap <- max_evals
+      rng <- make_lcg(seed)
+      n_pop <- 12
+      pop <- lapply(seq_len(n_pop), function(i) {
+        if (i <= length(starts_all)) starts_all[[i]] else halton_point(i)
+      })
+      fit <- vapply(pop, objective, numeric(1))
+      pick_other <- function(i) {
+        repeat {
+          r <- 1L + as.integer(floor(rng() * n_pop))
+          if (r != i && r <= n_pop) return(r)
+        }
+      }
+      gen <- 0
+      while (!budget_hit() && gen < 60) {
+        gen <- gen + 1
+        for (i in seq_len(n_pop)) {
+          if (budget_hit()) break
+          r1 <- pick_other(i)
+          r2 <- pick_other(i)
+          r3 <- pick_other(i)
+          mutant <- pop[[r1]] + 0.7 * (pop[[r2]] - pop[[r3]])
+          trial <- pop[[i]]
+          j_rand <- 1L + as.integer(floor(rng() * 3))
+          for (j in 1:3) {
+            if (j == j_rand || rng() < 0.9) trial[j] <- mutant[j]
+          }
+          trial <- pmin(1, pmax(0, trial))
+          f_trial <- objective(trial)
+          if (f_trial <= fit[i]) {
+            pop[[i]] <- trial
+            fit[i] <- f_trial
+          }
+        }
+      }
+    } else {  # halton_search
+      # quasi-random space-filling baseline: warm starts first, then the
+      # Halton sequence until the run budget is spent
+      start_cap <- max_evals
+      for (u0 in starts_all) {
+        if (budget_hit()) break
+        objective(u0)
+      }
+      i <- 0
+      while (!budget_hit() && i < 50 * max_evals) {
+        i <- i + 1
+        objective(halton_point(i))
+      }
     }
 
     if (is.null(best)) {
@@ -424,36 +547,70 @@ optimise_swale_design_simultaneous <- function(run_fn,
       return(infeasible_row())
     }
 
-    # --- lattice polish: single tolerance steps downwards ----------------
-    # (any reduction is cheaper by construction; stop when none is
-    # feasible any more -> locally optimal on the tolerance lattice)
-    for (polish_round in seq_len(20)) {
-      b <- best
-      candidates <- list()
-      if (b$area - area_tol >= area_bounds[1] - 1e-9) {
-        candidates <- c(candidates, list(
-          list(area = b$area - area_tol, h_m = b$h_m, h_s = b$h_s)
-        ))
+    # --- lattice polish: accelerated pattern descent ---------------------
+    # (any reduction is cheaper by construction; step 8/4/2/1 tolerances
+    # downwards, halving the step whenever nothing improves -> locally
+    # optimal on the tolerance lattice, whatever the search delivered)
+    polish_from <- function(b0) {
+      cur <- b0
+      scale <- 8
+      rounds <- 0
+      while (scale >= 1 && rounds < 80) {
+        rounds <- rounds + 1
+        candidates <- list()
+        a_down <- max(area_bounds[1], cur$area - scale * area_tol)
+        if (a_down < cur$area - 1e-9) {
+          candidates <- c(candidates, list(
+            list(area = a_down, h_m = cur$h_m, h_s = cur$h_s)
+          ))
+        }
+        hm_down <- max(height_bounds[1], cur$h_m - scale * height_tol)
+        if (hm_down < cur$h_m - 1e-9) {
+          candidates <- c(candidates, list(
+            list(area = cur$area, h_m = hm_down, h_s = cur$h_s)
+          ))
+        }
+        h_s_down <- if (discrete) {
+          lower <- levels_all[levels_all < cur$h_s]
+          if (length(lower)) max(lower) else NA_real_
+        } else {
+          s_down <- max(gb[1], cur$h_s - scale * s_tol)
+          if (s_down < cur$h_s - 1e-9) s_down else NA_real_
+        }
+        if (!is.na(h_s_down)) {
+          candidates <- c(candidates, list(
+            list(area = cur$area, h_m = cur$h_m, h_s = h_s_down)
+          ))
+        }
+        improved <- FALSE
+        for (p in candidates) {
+          r <- consider(p$area, p$h_m, p$h_s)
+          if (r$feasible && r$cost < cur$cost - 1e-9) {
+            cur <- list(area = p$area, h_m = p$h_m, h_s = p$h_s,
+                        cost = r$cost)
+            improved <- TRUE
+          }
+        }
+        if (!improved) scale <- scale / 2
       }
-      if (b$h_m - height_tol >= height_bounds[1] - 1e-9) {
-        candidates <- c(candidates, list(
-          list(area = b$area, h_m = b$h_m - height_tol, h_s = b$h_s)
-        ))
-      }
-      h_s_down <- if (discrete) {
-        lower <- levels_all[levels_all < b$h_s]
-        if (length(lower)) max(lower) else NA_real_
-      } else {
-        if (b$h_s - s_tol >= gb[1] - 1e-9) b$h_s - s_tol else NA_real_
-      }
-      if (!is.na(h_s_down)) {
-        candidates <- c(candidates, list(
-          list(area = b$area, h_m = b$h_m, h_s = h_s_down)
-        ))
-      }
-      for (p in candidates) consider(p$area, p$h_m, p$h_s)
-      if (best$cost >= b$cost - 1e-9) break
     }
+
+    # the storage axis separates cost valleys that single coordinate
+    # steps cannot cross (dropping the storage level breaks feasibility
+    # on the boundary) -> polish the cheapest feasible design of every
+    # storage level visited, not only the single global best
+    seeds <- list()
+    for (e in cell_evals) {
+      if (is.na(e$n) || e$n > x) next
+      key <- format(e$h_s, digits = 10)
+      cost <- cost_total_of(type, e$area, e$h_m, e$h_s)
+      if (is.null(seeds[[key]]) || cost < seeds[[key]]$cost) {
+        seeds[[key]] <- list(area = e$area, h_m = e$h_m, h_s = e$h_s,
+                             cost = cost)
+      }
+    }
+    seeds <- seeds[order(vapply(seeds, function(s) s$cost, numeric(1)))]
+    for (s in seeds[seq_len(min(length(seeds), 6))]) polish_from(s)
 
     mono_warn <- dominance_violation(cell_evals)
     if (mono_warn) {
@@ -469,14 +626,14 @@ optimise_swale_design_simultaneous <- function(run_fn,
     final <- eval_design(type, best$area, best$h_m, best$h_s)
     if (isTRUE(verbose)) {
       message(sprintf(
-        "[%s | x = %d] area %s m2, height %s mm, storage %s mm (%d neue Laeufe)",
-        type, x, format(best$area), format(best$h_m), format(best$h_s),
-        runs_executed - runs_before
+        "[%s | x = %d | %s] area %s m2, height %s mm, storage %s mm (%d neue Laeufe)",
+        type, x, method, format(best$area), format(best$h_m),
+        format(best$h_s), runs_executed - runs_before
       ))
     }
     list(
       row = tibble::tibble(
-        x = x, storage_type = type, status = "ok",
+        x = x, storage_type = type, method = method, status = "ok",
         mulde_area = best$area, mulde_height = best$h_m,
         storage_height = best$h_s,
         n_overflows = final$n_overflows,

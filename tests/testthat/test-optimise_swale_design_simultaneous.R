@@ -145,7 +145,58 @@ test_that("max_total_depth wirkt als analytische Nebenbedingung", {
                   <= 1200 + 1e-9))
 })
 
-test_that("mehr Starts finden nie ein schlechteres Optimum", {
+test_that("alle Suchverfahren treffen das Brute-Force-Optimum", {
+  run <- sim_run_factory(demand = 3.6e5)
+  # NM ist am praezisesten, DE nah dran, Halton ist die naive Baseline
+  slack <- c(nelder_mead = 1.05, diff_evolution = 1.08, halton_search = 1.12)
+  for (m in names(slack)) {
+    out <- optimise_swale_design_simultaneous(run, x_targets = c(0, 2),
+                                              fixed = sim_fixed, method = m,
+                                              verbose = FALSE)
+    expect_true(all(out$status == "ok"), info = m)
+    expect_true(all(out$method == m), info = m)
+    expect_true(all(out$n_overflows <= out$x), info = m)
+    for (i in seq_len(nrow(out))) {
+      type <- out$storage_type[i]
+      stor <- if (type == "infiltration_box") c(300, 600, 900, 1200)
+              else seq(900, 3600, by = 25)
+      ref <- sim_reference_optimum(run, type, out$x[i], stor)
+      expect_lte(out$cost_total[i], ref$cost_total * slack[[m]])
+    }
+  }
+})
+
+test_that("Differential Evolution ist deterministisch und laesst Rs RNG in Ruhe", {
+  run <- sim_run_factory(demand = 3.6e5)
+
+  set.seed(4711)
+  rng_before <- .Random.seed
+  de1 <- optimise_swale_design_simultaneous(run, x_targets = 1,
+                                            fixed = sim_fixed,
+                                            method = "diff_evolution",
+                                            verbose = FALSE)
+  # .Random.seed unveraendert: der interne LCG ersetzt Rs Zufallsstrom
+  expect_identical(.Random.seed, rng_before)
+
+  de2 <- optimise_swale_design_simultaneous(run, x_targets = 1,
+                                            fixed = sim_fixed,
+                                            method = "diff_evolution",
+                                            verbose = FALSE)
+  expect_identical(de1$cost_total, de2$cost_total)
+  expect_identical(de1$mulde_area, de2$mulde_area)
+
+  # anderer Seed = anderer Suchpfad, aber gleiches Optimum (Toleranzen)
+  de3 <- optimise_swale_design_simultaneous(run, x_targets = 1,
+                                            fixed = sim_fixed,
+                                            method = "diff_evolution",
+                                            seed = 99, verbose = FALSE)
+  expect_equal(de3$cost_total, de1$cost_total, tolerance = 0.05)
+})
+
+test_that("verschiedene Start-Konfigurationen treffen dasselbe Optimum", {
+  # verschiedene Suchpfade besuchen verschiedene Gitterpunkte -- die
+  # Optima muessen innerhalb der Suchtoleranzen uebereinstimmen
+  # (analog zur split_jitter-Erwartung der Bisektion)
   run <- sim_run_factory(demand = 3.6e5)
   few <- optimise_swale_design_simultaneous(run, x_targets = 1,
                                             fixed = sim_fixed, n_starts = 1,
@@ -154,5 +205,10 @@ test_that("mehr Starts finden nie ein schlechteres Optimum", {
                                              fixed = sim_fixed, n_starts = 5,
                                              max_evals = 120,
                                              verbose = FALSE)
-  expect_true(all(many$cost_total <= few$cost_total * 1.001))
+  # Sickerbox: identische Stufe; Schotterrigol (stufenlos): eine
+  # Toleranzstufe (25 mm) Spielraum
+  tol_hs <- ifelse(many$storage_type == "infiltration_box", 0, 25)
+  expect_true(all(abs(many$storage_height - few$storage_height) <= tol_hs))
+  expect_true(all(abs(many$cost_total - few$cost_total) <=
+                    0.03 * few$cost_total))
 })

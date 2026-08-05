@@ -15,8 +15,10 @@ optimise_swale_design_simultaneous(
   fixed = list(connected_area = 1000, filter_height = 300, filter_hydraulicconductivity =
     360, bottom_hydraulicconductivity = 12),
   prior_results = NULL,
+  method = c("nelder_mead", "diff_evolution", "halton_search"),
   n_starts = 4,
   max_evals = 80,
+  seed = 1,
   wobble = 1L,
   max_total_depth = NULL,
   cost_rates = default_cost_rates(),
@@ -49,18 +51,27 @@ continuous \code{bounds} + \code{tol} (gravel trench).}
 
 \item{prior_results}{Optional data.frame with prior (grid) results in
 the workflow CSV schema, used as warm start (the cheapest feasible
-grid cell of the branch becomes the first Nelder-Mead start).}
+grid cell of the branch becomes the first start / seeds the
+population).}
+
+\item{method}{Search method, see Details: \code{"nelder_mead"} (default),
+\code{"diff_evolution"} or \code{"halton_search"} (the latter two mainly for
+comparison).}
 
 \item{n_starts}{Number of Nelder-Mead starts per (storage type, x)
-cell (default 4). Warm starts (prior, previous target) count towards
-this number, then the storage-ladder anchors, then the space-filling
-points.}
+cell (default 4; only used by \code{method = "nelder_mead"}). Warm starts
+(prior, previous target) count towards this number, then the
+storage-ladder anchors, then the space-filling points.}
 
-\item{max_evals}{Soft cap on fresh engine runs per cell: once reached,
-the Nelder-Mead phase winds down (already cached designs remain
-free); the final lattice polish may add a few runs beyond the cap.
-Default 80 -- thanks to the shared cache the later \code{x_targets} of a
-storage type stay far below this.}
+\item{max_evals}{Soft cap on fresh engine runs per cell for the search
+phase: once reached, the search winds down (already cached designs
+remain free). The final multi-valley lattice polish adds its own
+runs on top (typically 20-50 per cell). Default 80 -- thanks to the
+shared cache the later \code{x_targets} of a storage type stay cheaper.}
+
+\item{seed}{Integer seed of the internal deterministic generator used
+by \code{method = "diff_evolution"} (ignored by the other methods). R's
+global RNG state is not touched.}
 
 \item{wobble}{Maximum counting-artefact size tolerated at the upper
 corner (default 1, matching the +1 event-counting wobble): only if
@@ -78,29 +89,45 @@ Enforced without any simulation runs.}
 }
 \value{
 Tibble with one row per (storage type, x), same schema as
-\code{\link[=optimise_swale_design]{optimise_swale_design()}}: the optimal design (\code{mulde_area},
-\code{mulde_height}, \code{storage_height}), its metrics (\code{n_overflows},
-\code{overflow_volume_m3}, \code{et_pct}), cost columns from \code{\link[=compute_costs]{compute_costs()}},
-a \code{status} (\code{"ok"} or \code{"infeasible_within_bounds"}),
-\code{monotonicity_warning} (\code{TRUE} if a strictly larger design produced
-more overflows \emph{and} more overflow volume among the cell's
-evaluations) and \code{n_runs_new} (fresh engine runs spent on this cell).
-All evaluated designs are attached as attribute \code{"evaluations"}.
+\code{\link[=optimise_swale_design]{optimise_swale_design()}} plus a \code{method} column: the optimal design
+(\code{mulde_area}, \code{mulde_height}, \code{storage_height}), its metrics
+(\code{n_overflows}, \code{overflow_volume_m3}, \code{et_pct}), cost columns from
+\code{\link[=compute_costs]{compute_costs()}}, a \code{status} (\code{"ok"} or
+\code{"infeasible_within_bounds"}), \code{monotonicity_warning} (\code{TRUE} if a
+strictly larger design produced more overflows \emph{and} more overflow
+volume among the cell's evaluations) and \code{n_runs_new} (fresh engine
+runs spent on this cell). All evaluated designs are attached as
+attribute \code{"evaluations"}.
 }
 \description{
 Alternative to the coordinate-descent optimiser
 (\code{\link[=optimise_swale_design]{optimise_swale_design()}}, bisection per parameter): all design
 parameters -- \code{mulde_area}, \code{mulde_height} and \code{storage_height} -- are
-optimised \strong{simultaneously} with a penalised Nelder-Mead search
-(\code{stats::optim()}). Infeasible designs (\code{n_overflows > x}) are not
-excluded but penalised (any infeasible design is worse than any feasible
-one; the number of excess events grades the penalty, steering the
-simplex back towards feasibility), so the search moves freely through
-the full parameter space and can trade the parameters against each
-other in a single step -- it does not rely on the per-parameter
+optimised \strong{simultaneously}. Infeasible designs (\code{n_overflows > x})
+are not excluded but penalised (any infeasible design is worse than any
+feasible one; the number of excess events grades the penalty, steering
+the search back towards feasibility), so the search moves freely
+through the full parameter space and can trade the parameters against
+each other in a single step -- it does not rely on the per-parameter
 monotonicity that the bisection exploits.
 }
 \details{
+Three search \code{method}s share this penalised objective (plus cache,
+tolerance snapping and final lattice polish) and differ only in how
+they propose candidates:
+\itemize{
+\item \code{"nelder_mead"} (default): multistart Nelder-Mead simplex via
+\code{stats::optim()} -- the recommended method.
+\item \code{"diff_evolution"}: a compact differential evolution
+(DE/rand/1/bin, population 12, F = 0.7, CR = 0.9), included for
+comparison. Deterministic: it draws from an internal Park-Miller
+generator seeded with \code{seed} and leaves R's global RNG
+(\code{.Random.seed}) untouched.
+\item \code{"halton_search"}: quasi-random space-filling sampling
+(Halton sequence, bases 2/3/5) -- a deliberately simple baseline
+showing what the structured searches must beat.
+}
+
 Three ingredients keep the number of engine runs in check:
 \itemize{
 \item \strong{Snapping}: every candidate is snapped to the search
@@ -119,10 +146,13 @@ easily missed from a single start. Different starts take different
 search paths -- the counterpart of \code{split_jitter} in the bisection
 optimiser. Every start receives an equal slice of the remaining
 \code{max_evals} budget (unused runs roll over).
-\item \strong{Lattice polish}: from the best feasible design found,
-single tolerance steps downwards (cheaper by construction) are
-tested until no parameter can be reduced any further -- the result
-is locally optimal on the tolerance lattice.
+\item \strong{Lattice polish}: an accelerated pattern descent
+(steps of 8/4/2/1 tolerances downwards, cheaper by construction)
+runs from the cheapest feasible design of \emph{every storage level
+visited} -- the storage axis separates cost valleys that single
+coordinate steps cannot cross -- until no parameter can be reduced
+any further: the result is locally optimal on the tolerance
+lattice, whatever the search method delivered.
 }
 
 The discrete infiltration-box levels are mapped onto a continuous
@@ -133,11 +163,12 @@ be fixed at the maximum via \code{fixed} (cost-free and dominant, see the
 construction (the \code{mulde_height} axis is compressed to the remaining
 depth), so no simulation runs are spent on depth-invalid designs.
 
-Compared to \code{\link[=optimise_swale_design]{optimise_swale_design()}} this needs more engine runs per
-cell (typically 30-60 instead of ~15) but serves as an independent
-cross-check: it can discover cheaper corners of the design space that
-coordinate descent would miss if the parameter interaction were
-stronger than the monotonicity analysis suggests.
+Compared to \code{\link[=optimise_swale_design]{optimise_swale_design()}} this needs considerably more
+engine runs per cell (typically 60-120 instead of ~15; search phase
+plus multi-valley polish) but serves as an independent cross-check: it
+can discover cheaper corners of the design space that coordinate
+descent would miss if the parameter interaction were stronger than the
+monotonicity analysis suggests.
 }
 \examples{
 # synthetic monotone model: overflows fall with retention capacity

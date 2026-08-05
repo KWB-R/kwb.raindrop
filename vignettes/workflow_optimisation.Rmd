@@ -45,10 +45,11 @@ Speicher nur erhöhen, wenn die Fläche am Anschlag klemmt. Voraussetzung
 ist die in der Vignette `monotonicity_analysis` belegte Monotonie
 ("größer = nie mehr Überläufe"); die dort abgeleiteten Absicherungen
 (Rand-Guard, Volumen-Schiedsrichter) sind in `find_min_feasible()`
-eingebaut. Als Gegenprobe optimiert der Abschnitt *Alternative* weiter
-unten **alle Parameter gleichzeitig**
-(`optimise_swale_design_simultaneous()`, Nelder-Mead mit Straffunktion)
-— ohne die Monotonie-Annahme.
+eingebaut. Eine unabhängige **Gegenprobe ohne Monotonie-Annahme** —
+simultane Optimierung aller Parameter, plus weitere Suchverfahren zum
+Vergleich — führt die separate Vignette
+`workflow_optimisation_simultaneous` durch; sie liest die hier
+exportierte CSV als Vergleichsbasis.
 
 Die Filterdurchlässigkeit wird fest auf das Maximum gesetzt (kostenfrei
 dominant: gleiche Verdunstung, nie mehr Überläufe), Fläche und
@@ -60,10 +61,7 @@ Box-Bereich.
 **Laufzeit:** Ein Engine-Lauf dauert ~2 s (Eisenstadt, 1 Jahr) bzw.
 ~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 6 Tasks
 (Standort × Speichertyp) laufen parallel; die Gesamtdauer entspricht
-dem längsten Einzeltask — ca. 15–20 Minuten. Die simultane Gegenprobe
-(Abschnitt *Alternative*) braucht je Zelle mehr Läufe (typisch 30–80
-statt ~15); ihr längster Einzeltask (Wien / Rigol) kann entsprechend
-~1–1.5 h dauern.
+dem längsten Einzeltask — ca. 15–20 Minuten.
 
 ```{r availability_note, echo = FALSE, results = 'asis', eval = !can_run}
 cat(sprintf(paste0(
@@ -330,136 +328,6 @@ cat(sprintf(paste0(
 ))
 ```
 
-## Alternative: Simultane Optimierung aller Parameter (Nelder-Mead)
-
-Die Bisektion optimiert die Parameter *nacheinander* und stützt sich
-dabei auf die Monotonie je Parameter. Als unabhängige Gegenprobe
-optimiert `optimise_swale_design_simultaneous()` **alle Parameter
-gleichzeitig**: Ein Nelder-Mead-Simplex (`stats::optim()`) wandert frei
-durch den Raum (Fläche × Muldentiefe × Speicherhöhe) und kann die
-Parameter in einem einzigen Schritt gegeneinander tauschen — unzulässige
-Designs werden dabei nicht ausgeschlossen, sondern bestraft (jedes
-unzulässige Design ist teurer als jedes zulässige; überzählige
-Überlaufereignisse staffeln die Strafe und lenken den Simplex zurück).
-Drei Zutaten halten die Zahl der Engine-Läufe im Rahmen: Kandidaten
-werden auf die Suchtoleranzen gerastert (der Evaluations-Cache füllt
-sich über die x-Ziele hinweg), ein deterministischer Multistart —
-Warmstart, Optimum des vorigen x-Ziels, je ein Anker-Start pro
-Speicherstufe (das Kostental entlang der Zulässigkeitsgrenze ist flach,
-die günstigste Speicherstufe wird von einem einzelnen Start leicht
-verfehlt), Raumfüller — mit je einem gleichen Anteil am Laufbudget
-(`max_evals`), und ein abschließender Gitter-Feinschliff (einzelne
-Toleranzschritte abwärts, bis kein Parameter mehr sinken kann). Der
-Preis: mehr Engine-Läufe je Zelle (typisch 30–80 statt ~15).
-
-```{r optimise_simultaneous, eval = can_run}
-t_nm_start <- Sys.time()
-
-future::plan(future::multisession,
-             workers = min(nrow(tasks),
-                           max(1, parallel::detectCores() - 1)))
-
-nm_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
-  site <- tasks$site[i]
-  type <- tasks$type[i]
-
-  if (file.exists("../DESCRIPTION") &&
-      requireNamespace("pkgload", quietly = TRUE)) {
-    pkgload::load_all("..", quiet = TRUE)
-  } else {
-    library(kwb.raindrop)
-  }
-
-  cfg <- sites[[site]]
-  ts <- if (cfg$timeseries) {
-    read_site_timeseries(
-      extdata_path("models", cfg$dir, "rain.csv.gz"),
-      extdata_path("models", cfg$dir, "et.csv"),
-      verbose = FALSE
-    )
-  } else {
-    NULL
-  }
-
-  run_fn <- make_swale_runner(make_path_list(paste0(site, "_NM"), cfg$dir),
-                              timeseries_rain = ts$rain,
-                              timeseries_et = ts$et)
-
-  prior <- if (file.exists(cfg$prior)) {
-    readr::read_csv(cfg$prior, show_col_types = FALSE)
-  } else {
-    NULL
-  }
-
-  t0 <- Sys.time()
-  opt <- optimise_swale_design_simultaneous(
-    run_fn, x_targets = 0:5,
-    area_bounds = area_bounds, area_tol = area_tol,
-    height_bounds = height_bounds, height_tol = height_tol,
-    storage_spec = storage_spec[type],
-    fixed = fixed,
-    prior_results = prior,
-    cost_rates = cost_rates,
-    verbose = FALSE
-  )
-  opt$site <- site
-  opt$n_runs_task <- attr(opt, "n_runs_total")
-  opt$minutes_task <- round(as.numeric(
-    difftime(Sys.time(), t0, units = "mins")), 1)
-  opt
-}, future.seed = TRUE)
-
-future::plan(future::sequential)
-nm_all <- dplyr::bind_rows(nm_list)
-
-t_nm_end <- Sys.time()
-```
-
-Beide Verfahren müssen — bis auf die Suchtoleranzen, also wenige
-Prozent — auf dieselben Kosten kommen. Fände die simultane Suche
-*systematisch günstigere* Designs, wäre das ein Hinweis auf
-Parameter-Wechselwirkungen, die die Koordinatensuche nicht sieht (und
-ein Fall für die Monotonie-Analyse); fände sie nur teurere, hat der
-Simplex sein Laufbudget nicht ausgeschöpft oder klemmt in einem lokalen
-Tal (`n_starts` / `max_evals` erhöhen).
-
-```{r compare_methods, eval = can_run}
-vergleich <- dplyr::full_join(
-  dplyr::select(opt_all, site, storage_type, x,
-                status_bisektion = status, kosten_bisektion = cost_total),
-  dplyr::select(nm_all, site, storage_type, x,
-                status_simultan = status, kosten_simultan = cost_total),
-  by = c("site", "storage_type", "x")
-) %>%
-  dplyr::mutate(
-    delta_pct = round(100 * (kosten_simultan - kosten_bisektion) /
-                        kosten_bisektion, 1)
-  ) %>%
-  dplyr::arrange(site, storage_type, x)
-
-knitr::kable(
-  vergleich, digits = 0,
-  caption = paste("Gegenprobe Bisektion vs. simultane Suche:",
-                  "delta_pct < 0 heisst, die simultane Suche hat ein",
-                  "guenstigeres Design gefunden")
-)
-
-readr::write_csv(nm_all, "optimisation_results_simultaneous_all_sites.csv")
-```
-
-```{r nm_runtime, echo = FALSE, results = 'asis', eval = can_run}
-nm_stats <- unique(nm_all[, c("site", "storage_type", "n_runs_task",
-                              "minutes_task")])
-nm_wall_min <- as.numeric(difftime(t_nm_end, t_nm_start, units = "mins"))
-cat(sprintf(paste0(
-  "**Laufzeit simultane Optimierung:** %d Engine-Läufe · Summe der ",
-  "Task-Zeiten %.1f min · tatsächliche Laufzeit %.1f min (Bisektion ",
-  "zum Vergleich: %d Läufe).\n"),
-  sum(nm_stats$n_runs_task), sum(nm_stats$minutes_task), nm_wall_min,
-  sum(task_stats$n_runs_task)
-))
-```
-
 ## Monte-Carlo-Analyse: Wie robust ist die Suche selbst?
 
 Die Bisektion ist deterministisch: gleiche Eingaben, gleicher Pfad,
@@ -612,10 +480,10 @@ cat(sprintf(paste0(
 ```{r vignette_runtime, echo = FALSE, results = 'asis', eval = can_run}
 cat(sprintf(paste0(
   "---\n\n**Gesamtlaufzeit dieser Vignette:** %.1f Minuten ",
-  "(Optimierung %.1f min · simultane Gegenprobe %.1f min · ",
-  "Such-Monte-Carlo %.1f min · Rest: Setup und Rendern).\n"),
+  "(Optimierung %.1f min · Such-Monte-Carlo %.1f min · ",
+  "Rest: Setup und Rendern).\n"),
   as.numeric(difftime(Sys.time(), t_vignette_start, units = "mins")),
-  opt_wall_min, nm_wall_min,
+  opt_wall_min,
   as.numeric(difftime(t_mc_end, t_mc_start, units = "mins"))
 ))
 ```

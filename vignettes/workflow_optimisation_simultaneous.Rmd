@@ -1,0 +1,425 @@
+---
+title: "Workflow Optimierung — Simultane Suche (alle Parameter gleichzeitig)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Workflow Optimierung — Simultane Suche (alle Parameter gleichzeitig)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7.5,
+  fig.height = 3.2
+)
+is_ghactions <- tolower(Sys.getenv("GITHUB_ACTIONS")) == "true" ||
+  tolower(Sys.getenv("CI")) %in% c("true", "1", "yes")
+
+# extdata robust aufloesen: zuerst installiertes Paket, sonst Quellbaum
+# (Knit direkt im Repo, auch ohne installiertes kwb.raindrop)
+extdata_path <- function(...) {
+  p <- system.file("extdata", ..., package = "kwb.raindrop")
+  if (nzchar(p)) return(p)
+  src <- file.path("..", "inst", "extdata", ...)
+  if (file.exists(src)) normalizePath(src) else ""
+}
+
+path_base <- extdata_path("models", "eisenstadt-2005", "base.h5")
+data_available <- nzchar(path_base) && file.exists(path_base)
+is_windows <- Sys.info()[["sysname"]] == "Windows"
+can_run <- data_available && is_windows && !is_ghactions
+
+t_vignette_start <- Sys.time()
+```
+
+## Ziel
+
+Die Vignette `workflow_optimisation` findet die günstigste
+Muldenkonfiguration je Überlaufziel per **Bisektion**: Parameter
+nacheinander, gestützt auf die Monotonie je Parameter
+(`monotonicity_analysis`). Diese Vignette ist die **unabhängige
+Gegenprobe**: `optimise_swale_design_simultaneous()` optimiert **alle
+Parameter gleichzeitig** — Fläche, Muldentiefe und Speicherhöhe in einem
+Zug — und kommt dabei *ohne* die Monotonie-Annahme aus.
+
+Warum das funktioniert: Unzulässige Designs (`n_overflows > x`) werden
+nicht ausgeschlossen, sondern **bestraft** — jedes unzulässige Design ist
+teurer als jedes zulässige, und überzählige Überlaufereignisse staffeln
+die Strafe. Das Optimum liegt (Kosten steigen monoton mit jedem
+Parameter) genau *auf* der Zulässigkeitsgrenze; die Straffunktion erlaubt
+der Suche, diese Grenze zu überqueren, auf beiden Seiten Information zu
+sammeln und die Parameter in einem einzigen Schritt gegeneinander zu
+tauschen (z. B. weniger Fläche gegen mehr Speicher). Ein Ausschluss
+unzulässiger Punkte würde der Suche jenseits der Grenze jede
+Richtungsinformation nehmen — sie würde blind an der Grenze abprallen,
+statt an ihr entlangzuwandern.
+
+Drei Suchverfahren teilen sich dieselbe Infrastruktur (Straf-Ziel,
+Evaluations-Cache, Toleranz-Rasterung, Multi-Tal-Feinschliff) und
+unterscheiden sich nur darin, wie sie Kandidaten vorschlagen
+(`method`-Argument):
+
+* **`nelder_mead`** (Default, Empfehlung): Multistart-Simplex
+  (`stats::optim()`) — Warmstart, Optimum des vorigen x-Ziels, je ein
+  Anker-Start pro Speicherstufe, Raumfüller; jeder Start erhält einen
+  gleichen Anteil am Laufbudget (`max_evals`).
+* **`diff_evolution`**: kompakte Differential Evolution (DE/rand/1/bin)
+  — Vergleichsverfahren; deterministisch über einen internen
+  Park-Miller-Generator (`seed`-Argument), Rs globaler Zufallsstrom
+  (`.Random.seed`) bleibt unangetastet.
+* **`halton_search`**: quasi-zufällige, raumfüllende Halton-Stichprobe —
+  bewusst naive Baseline, die zeigt, was die strukturierten Verfahren
+  schlagen müssen.
+
+**Laufzeit:** Die simultane Suche braucht je (Speichertyp, x)-Zelle mehr
+Engine-Läufe als die Bisektion (typisch 60–120 statt ~15; Suchphase plus
+Feinschliff). Bei ~15 s je Lauf (Wien / Bad Aussee) kann der längste
+Einzeltask des Nelder-Mead-Sweeps ~1.5–2.5 h dauern; Eisenstadt (~2 s je
+Lauf) bleibt bei Minuten. Der Methodenvergleich am Ende rechnet deshalb
+nur eine Zelle (x = 1) je Standort und Speichertyp.
+
+```{r availability_note, echo = FALSE, results = 'asis', eval = !can_run}
+cat(sprintf(paste0(
+  "> **Hinweis:** Die Rechen-Chunks wurden übersprungen. Prüfungen: ",
+  "Windows: %s · CI/GitHub Actions: %s · base.h5 gefunden: %s (%s). ",
+  "Auf einem lokalen Windows-Rechner sollten alle drei Bedingungen ",
+  "erfüllt sein — falls base.h5 fehlt: Vignette aus dem Paket-Repo ",
+  "heraus rendern oder das Paket installieren.\n"),
+  is_windows, is_ghactions, data_available,
+  if (nzchar(path_base)) path_base else "weder installiert noch ../inst/extdata"
+))
+```
+
+## Standort-Konfiguration
+
+Identisch mit der Vignette `workflow_optimisation` (gleiche Standorte,
+gleiche Suchräume, gleiche Kostensätze — nur so ist der Vergleich
+aussagekräftig):
+
+```{r site_config, eval = can_run}
+# Im Quellbaum die Entwicklungsversion laden (immer aktuell, auch wenn
+# das installierte Paket aelter ist); ausserhalb: installiertes Paket.
+if (file.exists("../DESCRIPTION") &&
+    requireNamespace("pkgload", quietly = TRUE)) {
+  pkgload::load_all("..", quiet = TRUE)
+} else {
+  library(kwb.raindrop)
+}
+
+sites <- list(
+ Eisenstadt_2005 = list(dir = "eisenstadt-2005", timeseries = FALSE,
+   prior = "simulation_results_optimisation_Eisenstadt_2005.csv"),
+ Wien = list(dir = "wien", timeseries = TRUE,
+   prior = "simulation_results_optimisation_Wien.csv"),
+ BadAussee = list(dir = "badaussee", timeseries = TRUE,
+   prior = "simulation_results_optimisation_BadAussee.csv")
+)
+
+fixed <- list(connected_area = 1000,
+              filter_height = 300,
+              filter_hydraulicconductivity = 360,  # Rastermaximum, gratis
+              bottom_hydraulicconductivity = 12)
+
+area_bounds   <- c(25, 200)   # Muldenflaeche [m2], stufenlos
+area_tol      <- 2            # Aufloesung der Flaechensuche [m2]
+height_bounds <- c(100, 300)  # Muldentiefe [mm], stufenlos
+height_tol    <- 10           # Aufloesung der Tiefensuche [mm]
+storage_spec  <- default_storage_spec()
+cost_rates    <- default_cost_rates()
+
+make_path_list <- function(modelname, model_dir) {
+  list(
+    modelname = modelname,
+    root_path = file.path(tempdir(), paste0("raindrop_sim_", model_dir)),
+    dir_input  = "<root_path>/models/<modelname>/input",
+    dir_output = "<root_path>/models/<modelname>/output",
+    dir_target_output = "<dir_output>/<dir_target>",
+    file_errors_hdf5 = "Fehlerprotokoll.h5",
+    file_results_hdf5_element = "Mulde_Rigole.h5",
+    file_results_hdf5_flaeche = "Dach.h5",
+    file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
+    file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+    file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
+    file_target = "<dir_target>.h5",
+    path_base = extdata_path("models", model_dir, "base.h5"),
+    path_exe  = download_engine(),
+    path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
+    path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
+    path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
+    path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
+    path_results_txt = "<dir_target_output>/<file_results_txt>",
+    path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
+    path_target_input = "<dir_input>/<file_target>"
+  )
+}
+
+# Ein Task = eine komplette Optimierung (Standort x Speichertyp x
+# Methode); gekapselt, damit Haupt-Sweep und Methodenvergleich denselben
+# Code nutzen
+run_simultaneous_task <- function(site, type, method, x_targets,
+                                  model_suffix) {
+  if (file.exists("../DESCRIPTION") &&
+      requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all("..", quiet = TRUE)
+  } else {
+    library(kwb.raindrop)
+  }
+
+  cfg <- sites[[site]]
+  ts <- if (cfg$timeseries) {
+    read_site_timeseries(
+      extdata_path("models", cfg$dir, "rain.csv.gz"),
+      extdata_path("models", cfg$dir, "et.csv"),
+      verbose = FALSE
+    )
+  } else {
+    NULL
+  }
+
+  run_fn <- make_swale_runner(
+    make_path_list(paste0(site, "_", model_suffix), cfg$dir),
+    timeseries_rain = ts$rain,
+    timeseries_et = ts$et
+  )
+
+  prior <- if (file.exists(cfg$prior)) {
+    readr::read_csv(cfg$prior, show_col_types = FALSE)
+  } else {
+    NULL
+  }
+
+  t0 <- Sys.time()
+  opt <- optimise_swale_design_simultaneous(
+    run_fn, x_targets = x_targets,
+    area_bounds = area_bounds, area_tol = area_tol,
+    height_bounds = height_bounds, height_tol = height_tol,
+    storage_spec = storage_spec[type],
+    fixed = fixed,
+    prior_results = prior,
+    method = method,
+    cost_rates = cost_rates,
+    verbose = FALSE
+  )
+  opt$site <- site
+  opt$n_runs_task <- attr(opt, "n_runs_total")
+  opt$minutes_task <- round(as.numeric(
+    difftime(Sys.time(), t0, units = "mins")), 1)
+  opt
+}
+```
+
+## Simultane Optimierung aller Standorte (Nelder-Mead, parallel)
+
+Wie im Bisektions-Workflow laufen **Standort × Speichertyp = 6
+unabhängige Tasks** parallel; innerhalb eines Tasks teilen sich die
+x-Ziele den Evaluations-Cache.
+
+```{r optimise_all, eval = can_run}
+t_nm_start <- Sys.time()
+
+tasks <- expand.grid(site = names(sites), type = names(storage_spec),
+                     stringsAsFactors = FALSE)
+
+future::plan(future::multisession,
+             workers = min(nrow(tasks),
+                           max(1, parallel::detectCores() - 1)))
+
+nm_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
+  run_simultaneous_task(tasks$site[i], tasks$type[i],
+                        method = "nelder_mead", x_targets = 0:5,
+                        model_suffix = "NM")
+}, future.seed = TRUE)
+
+future::plan(future::sequential)
+nm_all <- dplyr::bind_rows(nm_list)
+
+t_nm_end <- Sys.time()
+```
+
+## Ergebnis: günstigstes Design je Standort und Überlaufziel
+
+```{r results_table, eval = can_run}
+knitr::kable(
+  nm_all[, c("site", "x", "storage_type", "status", "mulde_area",
+             "mulde_height", "storage_height", "n_overflows",
+             "overflow_volume_m3", "et_pct", "cost_total")],
+  digits = c(NA, 0, NA, NA, 1, 0, 0, 0, 1, 1, 0)
+)
+```
+
+```{r cost_curves, eval = can_run, fig.height = 3.4}
+library(ggplot2)
+
+ok <- nm_all[nm_all$status == "ok", ]
+ggplot(ok, aes(x, cost_total / 1000, colour = storage_type)) +
+  geom_line() +
+  geom_point(size = 2) +
+  facet_wrap(~ site, scales = "free_y") +
+  scale_x_continuous(breaks = 0:5) +
+  labs(title = "Kosten-Wirksamkeits-Kurven (simultane Suche, Nelder-Mead)",
+       x = "Ueberlaufziel x (zulaessige Ereignisse)",
+       y = "Kosten Optimum [Tsd. EUR]",
+       colour = "Speichertyp",
+       caption = cost_rates_caption("de", cost_rates)) +
+  theme_bw()
+```
+
+```{r export, eval = can_run}
+readr::write_csv(nm_all, "optimisation_results_simultaneous_all_sites.csv")
+
+nm_stats <- unique(nm_all[, c("site", "storage_type", "n_runs_task",
+                              "minutes_task")])
+knitr::kable(
+  nm_stats,
+  col.names = c("Standort", "Speichertyp", "Engine-Laeufe", "Minuten")
+)
+```
+
+## Gegenprobe: Vergleich mit der Bisektion
+
+Liegt der Export der Bisektions-Vignette
+(`optimisation_results_all_sites.csv`) neben dieser Vignette, werden
+beide Optima Zelle für Zelle verglichen. Beide Verfahren müssen — bis
+auf die Suchtoleranzen, also wenige Prozent — auf dieselben Kosten
+kommen. Fände die simultane Suche *systematisch günstigere* Designs,
+wäre das ein Hinweis auf Parameter-Wechselwirkungen, die die
+Koordinatensuche nicht sieht (und ein Fall für die Monotonie-Analyse);
+fände sie nur teurere, hat der Simplex sein Laufbudget nicht
+ausgeschöpft oder klemmt in einem lokalen Tal (`n_starts` / `max_evals`
+erhöhen).
+
+```{r bisection_available, echo = FALSE, eval = can_run}
+has_bisection <- file.exists("optimisation_results_all_sites.csv")
+```
+
+```{r bisection_note, echo = FALSE, results = 'asis', eval = can_run && !has_bisection}
+cat(paste0(
+  "> **Hinweis:** `optimisation_results_all_sites.csv` nicht gefunden — ",
+  "zuerst die Vignette `workflow_optimisation` rendern, dann liefert ",
+  "dieser Abschnitt den Zellenvergleich.\n"
+))
+```
+
+```{r compare_bisection, eval = can_run && has_bisection}
+bisect_all <- readr::read_csv("optimisation_results_all_sites.csv",
+                              show_col_types = FALSE)
+
+vergleich <- dplyr::full_join(
+  dplyr::select(bisect_all, site, storage_type, x,
+                status_bisektion = status, kosten_bisektion = cost_total),
+  dplyr::select(nm_all, site, storage_type, x,
+                status_simultan = status, kosten_simultan = cost_total),
+  by = c("site", "storage_type", "x")
+) %>%
+  dplyr::mutate(
+    delta_pct = round(100 * (kosten_simultan - kosten_bisektion) /
+                        kosten_bisektion, 1)
+  ) %>%
+  dplyr::arrange(site, storage_type, x)
+
+knitr::kable(
+  vergleich, digits = 0,
+  caption = paste("Gegenprobe Bisektion vs. simultane Suche:",
+                  "delta_pct < 0 heisst, die simultane Suche hat ein",
+                  "guenstigeres Design gefunden")
+)
+```
+
+## Alternative Optimierer im Vergleich
+
+Dieselbe Zelle (x = 1, beide Speichertypen, alle Standorte), drei
+Suchverfahren: Nelder-Mead (aus dem Haupt-Sweep oben), Differential
+Evolution und die Halton-Baseline. Erwartung: Nelder-Mead und DE liegen
+innerhalb weniger Prozent beieinander; die naive Halton-Stichprobe
+bleibt trotz des gemeinsamen Feinschliffs messbar dahinter — der
+Abstand zeigt, wie viel die strukturierte Suche beiträgt. Parallelisiert
+über **Standort × Speichertyp × Methode = 12 Tasks**.
+
+```{r compare_methods_run, eval = can_run}
+t_cmp_start <- Sys.time()
+
+method_tasks <- expand.grid(site = names(sites),
+                            type = names(storage_spec),
+                            method = c("diff_evolution", "halton_search"),
+                            stringsAsFactors = FALSE)
+
+future::plan(future::multisession,
+             workers = min(nrow(method_tasks),
+                           max(1, parallel::detectCores() - 1)))
+
+cmp_list <- future.apply::future_lapply(seq_len(nrow(method_tasks)),
+                                        function(i) {
+  run_simultaneous_task(method_tasks$site[i], method_tasks$type[i],
+                        method = method_tasks$method[i], x_targets = 1,
+                        model_suffix = toupper(substr(
+                          method_tasks$method[i], 1, 2)))
+}, future.seed = TRUE)
+
+future::plan(future::sequential)
+
+methoden <- dplyr::bind_rows(
+  dplyr::filter(nm_all, x == 1),
+  dplyr::bind_rows(cmp_list)
+)
+
+t_cmp_end <- Sys.time()
+```
+
+```{r compare_methods_table, eval = can_run}
+methoden_breit <- methoden %>%
+  dplyr::select(site, storage_type, method, cost_total, n_runs_new) %>%
+  tidyr::pivot_wider(names_from = method,
+                     values_from = c(cost_total, n_runs_new))
+
+knitr::kable(
+  methoden_breit, digits = 0,
+  caption = paste("Methodenvergleich bei x = 1: Kosten des Optimums und",
+                  "frische Engine-Laeufe der Zelle je Suchverfahren.",
+                  "Der Nelder-Mead-Wert stammt aus dem Haupt-Sweep",
+                  "(profitiert dort vom Cache der uebrigen x-Ziele).")
+)
+```
+
+```{r compare_methods_plot, eval = can_run, fig.height = 3.4}
+ggplot(methoden[methoden$status == "ok", ],
+       aes(method, cost_total / 1000, fill = storage_type)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ site, scales = "free_y") +
+  labs(title = "Kosten des gefundenen Optimums je Suchverfahren (x = 1)",
+       x = "Suchverfahren",
+       y = "Kosten Optimum [Tsd. EUR]",
+       fill = "Speichertyp",
+       caption = cost_rates_caption("de", cost_rates)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+## Einordnung
+
+- **Konsistenz:** Bisektion und simultane Suche bestätigen sich
+  gegenseitig, wenn ihre Kosten je Zelle nur um wenige Prozent
+  differieren — dann ist das Optimum eine Eigenschaft des Problems,
+  nicht des Suchwegs.
+- **`monotonicity_warning = TRUE`** heißt hier: Unter den Evaluationen
+  der Zelle liegt ein *strikt größeres* Design mit mehr Überläufen
+  *und* mehr Überlaufvolumen — echte Nicht-Monotonie; dann verdient die
+  Zelle einen Blick in das `"evaluations"`-Attribut.
+- **Methodenwahl:** `nelder_mead` bleibt die Empfehlung (beste
+  Präzision je Engine-Lauf). `diff_evolution` ist die Absicherung gegen
+  Simplex-Artefakte, `halton_search` die Messlatte von unten.
+- **Budget:** `max_evals` begrenzt die Suchphase je Zelle; der
+  Feinschliff (Multi-Tal-Musterabstieg) kommt obendrauf. Wer Laufzeit
+  sparen muss, reduziert zuerst `x_targets`, dann `max_evals`.
+
+```{r vignette_runtime, echo = FALSE, results = 'asis', eval = can_run}
+cat(sprintf(paste0(
+  "---\n\n**Gesamtlaufzeit dieser Vignette:** %.1f Minuten ",
+  "(Nelder-Mead-Sweep %.1f min · Methodenvergleich %.1f min · ",
+  "Rest: Setup und Rendern).\n"),
+  as.numeric(difftime(Sys.time(), t_vignette_start, units = "mins")),
+  as.numeric(difftime(t_nm_end, t_nm_start, units = "mins")),
+  as.numeric(difftime(t_cmp_end, t_cmp_start, units = "mins"))
+))
+```

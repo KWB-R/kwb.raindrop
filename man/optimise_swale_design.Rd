@@ -84,6 +84,8 @@ engine run is cached, so the sweep over all \code{x_targets} and both storage
 types shares evaluations.
 }
 \seealso{
-\code{\link[=find_min_feasible]{find_min_feasible()}}, \code{\link[=make_swale_runner]{make_swale_runner()}},
-\code{\link[=default_storage_spec]{default_storage_spec()}}
+\code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}} (alternative: all
+parameters at once via penalised Nelder-Mead, as an independent
+cross-check of the coordinate descent), \code{\link[=find_min_feasible]{find_min_feasible()}},
+\code{\link[=make_swale_runner]{make_swale_runner()}}, \code{\link[=default_storage_spec]{default_storage_spec()}}
 }

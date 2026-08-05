@@ -32,6 +32,33 @@
     simulation runs, and "infeasible within bounds" is a regular result
     status, not an error. Costs are attached via `compute_costs()`; all
     evaluated designs ship as attribute `"evaluations"`.
+  - `optimise_swale_design_simultaneous()` — alternative optimiser that
+    searches **all design parameters at once** (`mulde_area`,
+    `mulde_height`, `storage_height`) with a penalised Nelder-Mead
+    simplex (`stats::optim()`, no new dependency) instead of
+    per-parameter bisection: infeasible designs are not excluded but
+    penalised (any infeasible design is worse than any feasible one;
+    excess overflow events grade the penalty and steer the simplex back),
+    so the search can trade the parameters against each other in a
+    single step and does not rely on the per-parameter monotonicity the
+    bisection exploits. Engine runs are kept in check by snapping every
+    candidate to the search tolerances (the shared cache absorbs
+    repeats across all `x_targets`), a deterministic multistart (prior
+    warm start, previous-target optimum, one anchor start per storage
+    level — the flat cost valley along the feasibility boundary makes
+    the cheapest storage level easy to miss from a single start — then
+    space-filling points; every start gets an equal slice of the
+    `max_evals` run budget) and a final lattice polish that makes the
+    result locally optimal on the tolerance lattice. Same interface and
+    result schema as `optimise_swale_design()` (incl. `max_total_depth`,
+    warm start and the `"evaluations"` attribute); a pairwise dominance
+    check per cell (a strictly larger design with more overflows *and*
+    more overflow volume) replaces the bisection's volume referee.
+    Needs more engine runs per cell (typically 30–80 instead of ~15)
+    but serves as an independent cross-check that coordinate descent
+    did not miss a cheaper corner of the design space; the
+    `workflow_optimisation` vignette gained a section running both
+    optimisers for all three sites and tabulating the cost deltas.
   - `make_swale_runner()` — package-level refactoring of the `run_one()`
     function previously duplicated across the three case-study
     vignettes: one closure factory covering both variants (Eisenstadt:

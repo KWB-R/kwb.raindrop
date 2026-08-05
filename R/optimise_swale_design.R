@@ -79,8 +79,10 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #'   runs spent on this cell). All evaluated designs are attached as
 #'   attribute `"evaluations"`.
 #'
-#' @seealso [find_min_feasible()], [make_swale_runner()],
-#'   [default_storage_spec()]
+#' @seealso [optimise_swale_design_simultaneous()] (alternative: all
+#'   parameters at once via penalised Nelder-Mead, as an independent
+#'   cross-check of the coordinate descent), [find_min_feasible()],
+#'   [make_swale_runner()], [default_storage_spec()]
 #' @export
 optimise_swale_design <- function(run_fn,
                                   x_targets = 0:5,

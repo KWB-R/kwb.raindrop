@@ -76,7 +76,13 @@
     keep their files) — without this, long searches (hundreds of engine
     runs per task, each with its own `base.h5` copy plus output HDF5s)
     fill the temp drive and the engine dies with HDF5 `errno = 28`
-    ("No space left on device").
+    ("No space left on device"). Prepares a **site master file** once
+    (base.h5 + calculation settings + ET/rain series) and writes only
+    the ~15 small parameter datasets per run instead of reading and
+    rewriting *every* dataset each time — that full HDF5 round trip
+    (plus process spawn and virus-scanner latency on new files) was the
+    dominant per-run cost of the optimisation searches, several times
+    the ~2 s engine time of the Eisenstadt model.
   - `stack_levels()`, `sickerbox_level_presets()`,
     `default_storage_spec()`, `default_storage_types()` — storage-layer
     search spaces: achievable stack heights from module heights (incl.

@@ -78,6 +78,15 @@ rain curve shipped in \code{base.h5} by \code{rain_factor} (leave
 \code{timeseries_rain} = \code{NULL}), Wien and Bad Aussee replace the rain and
 ET0 curves entirely (\code{timeseries_rain} / \code{timeseries_et}, values in
 mm/h as written by the vignettes).
+
+On the first call the runner prepares a \strong{site master file} once:
+\code{base.h5} plus everything identical for every run (calculation
+settings, ET/rain time series). Each run then copies the master and
+writes only its ~15 small parameter datasets. Compared to the
+previous full read/rewrite of \emph{all} datasets per run this removes
+the dominant per-run overhead of the optimisation searches
+(hundreds of runs; for Wien / Bad Aussee it skips rewriting the
+15-year rain series on every single engine run).
 }
 \seealso{
 \code{\link[=optimise_swale_design]{optimise_swale_design()}}, \code{\link[=find_min_feasible]{find_min_feasible()}}

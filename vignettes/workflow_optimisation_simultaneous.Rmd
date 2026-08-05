@@ -134,8 +134,11 @@ sites <- list(
  BadAussee = list(dir = "badaussee", timeseries = TRUE,
    prior = "simulation_results_optimisation_BadAussee.csv")
 )
-# Schneller Funktionstest (~10-15 min statt Stunden): nur Eisenstadt --
-# 1-Jahres-Modell, ~2 s je Engine-Lauf:
+# Schneller Funktionstest (~15-30 min statt Stunden): nur Eisenstadt --
+# 1-Jahres-Modell, ~2 s je Engine-Lauf. Zusaetzlich beschleunigt ein
+# reduziertes Budget (z. B. max_evals <- 50) und, auf Windows deutlich,
+# eine Virenscanner-Ausnahme fuer %LOCALAPPDATA%\Temp (jede Szenario-
+# Datei und jeder Engine-Start wird sonst einzeln gescannt):
 # sites <- sites["Eisenstadt_2005"]
 
 fixed <- list(connected_area = 1000,

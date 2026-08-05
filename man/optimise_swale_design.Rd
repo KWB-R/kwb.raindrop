@@ -83,6 +83,20 @@ cost-free and dominant, see the \code{monotonicity_analysis} vignette). Every
 engine run is cached, so the sweep over all \code{x_targets} and both storage
 types shares evaluations.
 }
+\details{
+\strong{The search order hard-codes a cost hierarchy} (per mm of storage
+capacity and m2 of swale, at the default rates: \code{mulde_height} costs
+only excavation ~0.07 EUR, box storage ~0.44 EUR, and \code{mulde_area}
+pays all four cost components at once). It picks the corner of the
+feasibility boundary that is optimal \emph{for rates in the neighbourhood
+of \code{\link[=default_cost_rates]{default_cost_rates()}}} -- \code{cost_rates} only prices the found
+designs afterwards, it does not steer the search. For strongly
+different rates (e.g. cheap storage material, expensive excavation)
+the cost-optimal corner moves and this optimiser will systematically
+miss it; use \code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}} -- which carries
+\code{cost_rates} inside its objective -- as the primary method for cost
+sensitivity studies.
+}
 \seealso{
 \code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}} (alternative: all
 parameters at once via penalised Nelder-Mead, as an independent

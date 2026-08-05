@@ -220,6 +220,32 @@ test_that("Ergebnis traegt die Attribute evaluations und n_runs_total", {
   expect_identical(attr(out, "n_runs_total"), nrow(ev))
 })
 
+test_that("simultane Suche folgt veraenderten Kostensaetzen, Bisektion nicht", {
+  # Die Bisektions-Reihenfolge (Flaeche zuerst, Speicher nur im
+  # Notfall) kodiert die Default-Kostenhierarchie; cost_rates bepreist
+  # dort nur nachtraeglich. Bei sehr billigem Speichermaterial liegt
+  # das Optimum bei hoher Speicherstufe + kleiner Flaeche -- eine Ecke,
+  # die die Bisektion nie besucht, die simultane Suche (cost_rates in
+  # der Zielfunktion) aber findet.
+  run <- sim_run_factory(demand = 3.6e5)
+  cheap_box <- default_cost_rates()
+  cheap_box$infiltration_box_eur_per_m3 <- 5
+  spec <- default_storage_spec()["infiltration_box"]
+
+  bis <- optimise_swale_design(run, x_targets = 0, fixed = sim_fixed,
+                               storage_spec = spec,
+                               cost_rates = cheap_box, verbose = FALSE)
+  sim <- optimise_swale_design_simultaneous(run, x_targets = 0,
+                                            fixed = sim_fixed,
+                                            storage_spec = spec,
+                                            cost_rates = cheap_box,
+                                            verbose = FALSE)
+  expect_identical(bis$status, "ok")
+  expect_identical(sim$status, "ok")
+  expect_gt(sim$storage_height, bis$storage_height)
+  expect_lt(sim$cost_total, bis$cost_total * 0.95)
+})
+
 test_that("alle Methoden funktionieren mit Ein-Typ-storage_spec", {
   run <- sim_run_factory(demand = 3.6e5)
   for (m in c("nelder_mead", "diff_evolution", "halton_search")) {

@@ -40,6 +40,19 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #' engine run is cached, so the sweep over all `x_targets` and both storage
 #' types shares evaluations.
 #'
+#' **The search order hard-codes a cost hierarchy** (per mm of storage
+#' capacity and m2 of swale, at the default rates: `mulde_height` costs
+#' only excavation ~0.07 EUR, box storage ~0.44 EUR, and `mulde_area`
+#' pays all four cost components at once). It picks the corner of the
+#' feasibility boundary that is optimal *for rates in the neighbourhood
+#' of [default_cost_rates()]* -- `cost_rates` only prices the found
+#' designs afterwards, it does not steer the search. For strongly
+#' different rates (e.g. cheap storage material, expensive excavation)
+#' the cost-optimal corner moves and this optimiser will systematically
+#' miss it; use [optimise_swale_design_simultaneous()] -- which carries
+#' `cost_rates` inside its objective -- as the primary method for cost
+#' sensitivity studies.
+#'
 #' @param run_fn `function(params)` running one scenario and returning at
 #'   least `n_overflows` plus `sum_overflows` (mm) or `overflow_volume_m3`;
 #'   typically created with [make_swale_runner()]. `params` is a named list

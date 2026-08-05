@@ -128,6 +128,10 @@
   (Nelder-Mead / differential evolution / Halton baseline) on the same
   x = 1 cell across all sites and storage types — 12 parallel tasks —
   to show what the structured searches contribute over naive sampling.
+  Both compute chunks report live progress across the worker boundary
+  (one \pkg{progressr} tick per engine run — a multi-hour sweep no
+  longer looks frozen), the site list has a quick-test switch
+  (Eisenstadt only) and `max_evals` is exposed as the runtime lever.
 
 * New exported helper `read_site_timeseries()` — the rain/ET0 time-series
   preparation previously duplicated in the Wien and Bad Aussee vignettes

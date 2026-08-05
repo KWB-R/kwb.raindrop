@@ -75,10 +75,19 @@ unterscheiden sich nur darin, wie sie Kandidaten vorschlagen
 
 **Laufzeit:** Die simultane Suche braucht je (Speichertyp, x)-Zelle mehr
 Engine-Läufe als die Bisektion (typisch 60–120 statt ~15; Suchphase plus
-Feinschliff). Bei ~15 s je Lauf (Wien / Bad Aussee) kann der längste
-Einzeltask des Nelder-Mead-Sweeps ~1.5–2.5 h dauern; Eisenstadt (~2 s je
-Lauf) bleibt bei Minuten. Der Methodenvergleich am Ende rechnet deshalb
-nur eine Zelle (x = 1) je Standort und Speichertyp.
+Feinschliff). Über 6 Überlaufziele summiert sich das auf ~400–700
+Engine-Läufe **je Task**; bei ~15 s je Lauf (Wien / Bad Aussee) sind das
+**2–3 h je Task** — und wenn weniger freie Kerne als 6 Tasks verfügbar
+sind, entsprechend mehr Wandzeit (realistisch **2–5 h** für den
+Nelder-Mead-Sweep). Eisenstadt (~2 s je Lauf) bleibt bei Minuten. Beide
+Rechen-Chunks zeigen deshalb einen **Live-Fortschrittsbalken** (ein Tick
+je Engine-Lauf, über `progressr` aus den Worker-Prozessen heraus) — ein
+über Minuten stehender Balken wäre ein echter Hänger, ein langsam
+wandernder ist Normalbetrieb. Der Methodenvergleich am Ende rechnet nur
+eine Zelle (x = 1) je Standort und Speichertyp. Wer zuerst einen
+schnellen Funktionstest will, rechnet nur Eisenstadt (Kommentar im
+Chunk `site_config`); der Laufzeit-Hebel für den vollen Sweep ist
+`max_evals` (Kommentar im selben Chunk).
 
 **Plattenplatz:** Jeder Engine-Lauf legt ein eigenes Szenario an (Kopie
 der `base.h5` plus Output-HDF5s). `make_swale_runner()` löscht diese
@@ -125,6 +134,9 @@ sites <- list(
  BadAussee = list(dir = "badaussee", timeseries = TRUE,
    prior = "simulation_results_optimisation_BadAussee.csv")
 )
+# Schneller Funktionstest (~10-15 min statt Stunden): nur Eisenstadt --
+# 1-Jahres-Modell, ~2 s je Engine-Lauf:
+# sites <- sites["Eisenstadt_2005"]
 
 fixed <- list(connected_area = 1000,
               filter_height = 300,
@@ -137,6 +149,9 @@ height_bounds <- c(100, 300)  # Muldentiefe [mm], stufenlos
 height_tol    <- 10           # Aufloesung der Tiefensuche [mm]
 storage_spec  <- default_storage_spec()
 cost_rates    <- default_cost_rates()
+max_evals     <- 80           # Laufzeit-Hebel: Budget an frischen
+                              # Engine-Laeufen je Zelle (Suchphase;
+                              # der Feinschliff kommt obendrauf)
 
 make_path_list <- function(modelname, model_dir) {
   list(
@@ -166,9 +181,13 @@ make_path_list <- function(modelname, model_dir) {
 
 # Ein Task = eine komplette Optimierung (Standort x Speichertyp x
 # Methode); gekapselt, damit Haupt-Sweep und Methodenvergleich denselben
-# Code nutzen
+# Code nutzen. tick/tick_cap: progressr-Fortschritt ueber die
+# Worker-Grenze hinweg -- ein Tick je Engine-Lauf, am Task-Ende wird
+# der Rest des Task-Kontingents aufgefuellt, damit der Balken exakt
+# bei 100 % endet.
 run_simultaneous_task <- function(site, type, method, x_targets,
-                                  model_suffix) {
+                                  model_suffix,
+                                  tick = NULL, tick_cap = Inf) {
   if (file.exists("../DESCRIPTION") &&
       requireNamespace("pkgload", quietly = TRUE)) {
     pkgload::load_all("..", quiet = TRUE)
@@ -193,6 +212,18 @@ run_simultaneous_task <- function(site, type, method, x_targets,
     timeseries_et = ts$et
   )
 
+  ticks_sent <- 0L
+  if (!is.null(tick)) {
+    inner_fn <- run_fn
+    run_fn <- function(params) {
+      if (ticks_sent < tick_cap) {
+        ticks_sent <<- ticks_sent + 1L
+        tick(sprintf("%s | %s | Lauf %d", site, type, ticks_sent))
+      }
+      inner_fn(params)
+    }
+  }
+
   prior <- if (file.exists(cfg$prior)) {
     readr::read_csv(cfg$prior, show_col_types = FALSE)
   } else {
@@ -208,6 +239,7 @@ run_simultaneous_task <- function(site, type, method, x_targets,
     fixed = fixed,
     prior_results = prior,
     method = method,
+    max_evals = max_evals,
     cost_rates = cost_rates,
     verbose = FALSE
   )
@@ -215,6 +247,11 @@ run_simultaneous_task <- function(site, type, method, x_targets,
   opt$n_runs_task <- attr(opt, "n_runs_total")
   opt$minutes_task <- round(as.numeric(
     difftime(Sys.time(), t0, units = "mins")), 1)
+  if (!is.null(tick) && is.finite(tick_cap) && tick_cap > ticks_sent) {
+    tick(sprintf("%s | %s fertig (%d Laeufe, %.1f min)",
+                 site, type, opt$n_runs_task[1], opt$minutes_task[1]),
+         amount = tick_cap - ticks_sent)
+  }
   opt
 }
 ```
@@ -235,14 +272,24 @@ future::plan(future::multisession,
              workers = min(nrow(tasks),
                            max(1, parallel::detectCores() - 1)))
 
-nm_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
-  run_simultaneous_task(tasks$site[i], tasks$type[i],
-                        method = "nelder_mead", x_targets = 0:5,
-                        model_suffix = "NM")
-}, future.seed = TRUE)
+# Live-Fortschritt ueber die Worker hinweg: 1 Tick = 1 Engine-Lauf
+# (tick_cap = grosszuegiges Kontingent je Task; der Rest wird am
+# Task-Ende aufgefuellt, der Balken endet also exakt bei 100 %)
+progressr::handlers(progressr::handler_txtprogressbar())
+tick_cap_nm <- 1000
+
+nm_all <- progressr::with_progress({
+  p <- progressr::progressor(steps = nrow(tasks) * tick_cap_nm)
+  nm_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
+    run_simultaneous_task(tasks$site[i], tasks$type[i],
+                          method = "nelder_mead", x_targets = 0:5,
+                          model_suffix = "NM",
+                          tick = p, tick_cap = tick_cap_nm)
+  }, future.seed = TRUE)
+  dplyr::bind_rows(nm_list)
+})
 
 future::plan(future::sequential)
-nm_all <- dplyr::bind_rows(nm_list)
 
 t_nm_end <- Sys.time()
 ```
@@ -358,19 +405,26 @@ future::plan(future::multisession,
              workers = min(nrow(method_tasks),
                            max(1, parallel::detectCores() - 1)))
 
-cmp_list <- future.apply::future_lapply(seq_len(nrow(method_tasks)),
-                                        function(i) {
-  run_simultaneous_task(method_tasks$site[i], method_tasks$type[i],
-                        method = method_tasks$method[i], x_targets = 1,
-                        model_suffix = toupper(substr(
-                          method_tasks$method[i], 1, 2)))
-}, future.seed = TRUE)
+tick_cap_cmp <- 300   # eine Zelle je Task
+
+cmp_all <- progressr::with_progress({
+  p <- progressr::progressor(steps = nrow(method_tasks) * tick_cap_cmp)
+  cmp_list <- future.apply::future_lapply(seq_len(nrow(method_tasks)),
+                                          function(i) {
+    run_simultaneous_task(method_tasks$site[i], method_tasks$type[i],
+                          method = method_tasks$method[i], x_targets = 1,
+                          model_suffix = toupper(substr(
+                            method_tasks$method[i], 1, 2)),
+                          tick = p, tick_cap = tick_cap_cmp)
+  }, future.seed = TRUE)
+  dplyr::bind_rows(cmp_list)
+})
 
 future::plan(future::sequential)
 
 methoden <- dplyr::bind_rows(
   dplyr::filter(nm_all, x == 1),
-  dplyr::bind_rows(cmp_list)
+  cmp_all
 )
 
 t_cmp_end <- Sys.time()

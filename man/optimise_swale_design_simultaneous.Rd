@@ -152,9 +152,16 @@ runs from the cheapest feasible design of every storage level
 visited -- capped at the 6 cheapest levels, which only bites for
 the continuous gravel trench (the discrete box has at most a
 handful) -- because the storage axis separates cost valleys that
-single coordinate steps cannot cross. It stops when no parameter
-can be reduced any further: the result is locally optimal on the
-tolerance lattice, whatever the search method delivered.
+single coordinate steps cannot cross. Besides the per-axis down
+steps each round proposes a \emph{boundary slide} (area down with
+\code{mulde_height} at its maximum -- the two-coordinate trade towards
+the cheap end of the feasibility boundary) and a
+\emph{mulde_height floor probe} (at large \code{x} the overflow count
+saturates, so the whole lower height range can be feasible even
+when a +1 counting wobble blocks every single step). All are just
+evaluated candidates -- no monotonicity assumption enters. The
+result is locally optimal on the tolerance lattice, whatever the
+search method delivered.
 }
 
 The discrete infiltration-box levels are mapped onto a continuous

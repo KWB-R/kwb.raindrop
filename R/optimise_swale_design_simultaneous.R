@@ -121,9 +121,16 @@ make_lcg <- function(seed) {
 #'     visited -- capped at the 6 cheapest levels, which only bites for
 #'     the continuous gravel trench (the discrete box has at most a
 #'     handful) -- because the storage axis separates cost valleys that
-#'     single coordinate steps cannot cross. It stops when no parameter
-#'     can be reduced any further: the result is locally optimal on the
-#'     tolerance lattice, whatever the search method delivered.
+#'     single coordinate steps cannot cross. Besides the per-axis down
+#'     steps each round proposes a \emph{boundary slide} (area down with
+#'     `mulde_height` at its maximum -- the two-coordinate trade towards
+#'     the cheap end of the feasibility boundary) and a
+#'     \emph{mulde_height floor probe} (at large `x` the overflow count
+#'     saturates, so the whole lower height range can be feasible even
+#'     when a +1 counting wobble blocks every single step). All are just
+#'     evaluated candidates -- no monotonicity assumption enters. The
+#'     result is locally optimal on the tolerance lattice, whatever the
+#'     search method delivered.
 #' }
 #'
 #' The discrete infiltration-box levels are mapped onto a continuous
@@ -594,6 +601,24 @@ optimise_swale_design_simultaneous <- function(run_fn,
         if (!is.na(h_s_down)) {
           candidates <- c(candidates, list(
             list(area = cur$area, h_m = cur$h_m, h_s = h_s_down)
+          ))
+        }
+        # slide along the feasibility boundary: trade the expensive
+        # lever (area) down against the cheap one (mulde_height) at its
+        # maximum -- a two-coordinate move the axis steps cannot make
+        hm_up <- hm_upper(cur$h_s)
+        if (a_down < cur$area - 1e-9 && hm_up > cur$h_m + 1e-9) {
+          candidates <- c(candidates, list(
+            list(area = a_down, h_m = hm_up, h_s = cur$h_s)
+          ))
+        }
+        # floor probe: at large x the overflow count saturates, so the
+        # whole lower mulde_height range can be feasible even when a +1
+        # counting wobble blocks every single step below the current
+        # value (cached after the first evaluation)
+        if (cur$h_m > height_bounds[1] + 1e-9) {
+          candidates <- c(candidates, list(
+            list(area = cur$area, h_m = height_bounds[1], h_s = cur$h_s)
           ))
         }
         improved <- FALSE

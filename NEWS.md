@@ -47,7 +47,12 @@
     (accelerated 8/4/2/1-tolerance pattern descent from the cheapest
     feasible design of every storage level visited, capped at the 6
     cheapest levels for the continuous gravel trench — the storage axis
-    separates cost valleys that single coordinate steps cannot cross):
+    separates cost valleys that single coordinate steps cannot cross;
+    each round also proposes a *boundary slide* — area down with
+    `mulde_height` at its maximum, the two-coordinate trade towards the
+    cheap end of the feasibility boundary — and a `mulde_height` *floor
+    probe* that jumps over +1 counting-wobble bands, both plain
+    evaluated candidates without any monotonicity assumption):
     `"nelder_mead"` (default; deterministic multistart via
     `stats::optim()` — prior warm start, previous-target optimum, one
     anchor start per storage level, space-filling points; every start

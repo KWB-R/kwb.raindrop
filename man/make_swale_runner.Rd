@@ -12,6 +12,7 @@ make_swale_runner(
   storage_types = default_storage_types(),
   event_separation_hours = 4,
   scenario_prefix = "o",
+  cleanup = TRUE,
   debug = FALSE
 )
 }
@@ -41,6 +42,15 @@ see \code{\link[=default_storage_types]{default_storage_types()}}.}
 \item{scenario_prefix}{Prefix for generated scenario names (default
 \code{"o"} -> \code{o00001}, \code{o00002}, ... -- distinct from the grid runs
 \code{s00001} ...).}
+
+\item{cleanup}{Delete each scenario's copied input file and output
+directory right after the thinned one-row result has been read
+(default \code{TRUE}). The optimisers only need that row; without the
+cleanup an optimisation run (hundreds of engine runs per task, each
+with its own copy of \code{base.h5} plus all output HDF5s) fills the
+temp drive and the engine aborts with HDF5 \code{errno = 28} ("No space
+left on device"). Set \code{FALSE} to keep all scenario files for
+debugging. Files of a \emph{failed} run are always kept.}
 
 \item{debug}{Passed on to the engine/reader helpers.}
 }

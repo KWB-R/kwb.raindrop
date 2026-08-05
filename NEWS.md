@@ -71,6 +71,12 @@
     rain + ET0 series in mm/h incl. the Growth/Shading end-time fix).
     Returns the thinned one-row optimisation result augmented with
     `overflow_volume_m3` (= `sum_overflows` [mm] × `mulde_area` / 1000).
+    Deletes each scenario's input copy and output directory right after
+    that row has been read (`cleanup = TRUE`, the default; failed runs
+    keep their files) — without this, long searches (hundreds of engine
+    runs per task, each with its own `base.h5` copy plus output HDF5s)
+    fill the temp drive and the engine dies with HDF5 `errno = 28`
+    ("No space left on device").
   - `stack_levels()`, `sickerbox_level_presets()`,
     `default_storage_spec()`, `default_storage_types()` — storage-layer
     search spaces: achievable stack heights from module heights (incl.

@@ -45,6 +45,14 @@ psi_s_mm <- function(kf_mmh) {
 #' @param scenario_prefix Prefix for generated scenario names (default
 #'   `"o"` -> `o00001`, `o00002`, ... -- distinct from the grid runs
 #'   `s00001` ...).
+#' @param cleanup Delete each scenario's copied input file and output
+#'   directory right after the thinned one-row result has been read
+#'   (default `TRUE`). The optimisers only need that row; without the
+#'   cleanup an optimisation run (hundreds of engine runs per task, each
+#'   with its own copy of `base.h5` plus all output HDF5s) fills the
+#'   temp drive and the engine aborts with HDF5 `errno = 28` ("No space
+#'   left on device"). Set `FALSE` to keep all scenario files for
+#'   debugging. Files of a *failed* run are always kept.
 #' @param debug Passed on to the engine/reader helpers.
 #'
 #' @return `function(params)` where `params` is a named list (or one-row
@@ -65,6 +73,7 @@ make_swale_runner <- function(path_list,
                               storage_types = default_storage_types(),
                               event_separation_hours = 4,
                               scenario_prefix = "o",
+                              cleanup = TRUE,
                               debug = FALSE) {
 
   counter <- 0L
@@ -174,6 +183,15 @@ make_swale_runner <- function(path_list,
       event_separation_hours = event_separation_hours,
       canonical_variables    = default_canonical_wb_variables()
     )
+
+    # the thinned row is all the optimiser needs -- drop the scenario's
+    # input copy and output directory so long searches (hundreds of
+    # engine runs) do not fill the temp drive. Reached only on success:
+    # a failed run errors above and keeps its files for debugging.
+    if (isTRUE(cleanup)) {
+      try(fs::file_delete(paths$path_target_input), silent = TRUE)
+      try(fs::dir_delete(paths$dir_target_output), silent = TRUE)
+    }
 
     dplyr::bind_cols(
       tibble::as_tibble(params[required]),

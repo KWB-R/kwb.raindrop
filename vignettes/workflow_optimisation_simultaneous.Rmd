@@ -80,6 +80,15 @@ Einzeltask des Nelder-Mead-Sweeps ~1.5–2.5 h dauern; Eisenstadt (~2 s je
 Lauf) bleibt bei Minuten. Der Methodenvergleich am Ende rechnet deshalb
 nur eine Zelle (x = 1) je Standort und Speichertyp.
 
+**Plattenplatz:** Jeder Engine-Lauf legt ein eigenes Szenario an (Kopie
+der `base.h5` plus Output-HDF5s). `make_swale_runner()` löscht diese
+Dateien standardmäßig direkt nach dem Einlesen der dünnen Ergebniszeile
+(`cleanup = TRUE`) — ohne dieses Aufräumen füllen mehrere hundert Läufe
+je Task das Temp-Laufwerk und die Engine bricht mit `No space left on
+device` ab. Vor einem Neustart nach einem solchen Abbruch die
+`raindrop_sim_*`-Verzeichnisse unter `tempdir()` bzw.
+`%LOCALAPPDATA%\Temp` (`Rtmp*`) löschen.
+
 ```{r availability_note, echo = FALSE, results = 'asis', eval = !can_run}
 cat(sprintf(paste0(
   "> **Hinweis:** Die Rechen-Chunks wurden übersprungen. Prüfungen: ",

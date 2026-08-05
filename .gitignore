@@ -23,3 +23,4 @@ vignettes/monotonicity_analysis/
 # Deploy-Ordner der Vergleichs-Praesentation Optimierer vs. Brute-Force
 # (handgeschriebenes index.html, liegt auch als claude.ai-Artefakt vor)
 vignettes/optimiser_vs_bruteforce/
+tests/testthat/testthat-problems.rds

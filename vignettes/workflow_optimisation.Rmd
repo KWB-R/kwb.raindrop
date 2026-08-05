@@ -180,15 +180,16 @@ knitr::kable(tibble::tibble(
 
 Die Kostensätze sind die Defaults nach Leimgruber (2026-03-27,
 `default_cost_rates()`); einzelne Sätze lassen sich hier überschreiben —
-gerechnet wird zunächst mit den Defaults. **Achtung bei stark
-veränderten Sätzen:** Die Suchreihenfolge der Bisektion (Fläche zuerst,
-Tiefe zuletzt, Speicher nur im Notfall) kodiert die Kostenhierarchie
-der *Default*-Sätze; `cost_rates` bepreist hier nur die gefundenen
-Designs, lenkt aber nicht die Suche. Wer z. B. den Speicher deutlich
-verbilligt oder den Aushub verteuert, verschiebt das Optimum in Ecken,
-die diese Reihenfolge nie besucht — für Kosten-Sensitivitätsanalysen
-die Vignette `workflow_optimisation_simultaneous` verwenden (dort
-stecken die Sätze in der Zielfunktion):
+gerechnet wird zunächst mit den Defaults. Die Suchreihenfolge der
+Bisektion wird dabei **aus den Sätzen hergeleitet** (Spezifikkosten-Proxy:
+€ je mm Speicherkapazität, Kapazitätsmodell V ≈ Fläche × (Tiefe +
+Porosität × Speicher); die Porosität liefert `default_storage_spec()`):
+Die Muldentiefe zu maximieren ist unter diesem Kostenmodell für *jeden*
+Satz optimal, die Start-Speicherstufe wählt der Proxy — kleinste Stufe
+bei den Default-Sätzen, hohe Stufe z. B. bei billigem Speichermaterial.
+Der Proxy ist eine Näherung erster Ordnung (kapazitäts-additive Hebel);
+die annahmefreie Gegenprobe — und das Mittel der Wahl bei nichtlinearen
+Hebeln — bleibt die Vignette `workflow_optimisation_simultaneous`:
 
 ```{r cost_rates, eval = can_run}
 cost_rates <- default_cost_rates()

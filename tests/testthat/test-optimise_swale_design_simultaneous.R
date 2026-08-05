@@ -220,13 +220,13 @@ test_that("Ergebnis traegt die Attribute evaluations und n_runs_total", {
   expect_identical(attr(out, "n_runs_total"), nrow(ev))
 })
 
-test_that("simultane Suche folgt veraenderten Kostensaetzen, Bisektion nicht", {
-  # Die Bisektions-Reihenfolge (Flaeche zuerst, Speicher nur im
-  # Notfall) kodiert die Default-Kostenhierarchie; cost_rates bepreist
-  # dort nur nachtraeglich. Bei sehr billigem Speichermaterial liegt
-  # das Optimum bei hoher Speicherstufe + kleiner Flaeche -- eine Ecke,
-  # die die Bisektion nie besucht, die simultane Suche (cost_rates in
-  # der Zielfunktion) aber findet.
+test_that("beide Optimierer folgen veraenderten Kostensaetzen", {
+  # Bei sehr billigem Speichermaterial liegt das Optimum bei hoher
+  # Speicherstufe + kleiner Flaeche. Die simultane Suche traegt die
+  # cost_rates in der Zielfunktion; die Bisektion leitet ihre
+  # Start-Speicherstufe seit dem Spezifikkosten-Proxy ebenfalls aus den
+  # Saetzen ab (statt stur bei der kleinsten Stufe zu starten) -- beide
+  # muessen die billige Ecke finden und eng beieinander liegen.
   run <- sim_run_factory(demand = 3.6e5)
   cheap_box <- default_cost_rates()
   cheap_box$infiltration_box_eur_per_m3 <- 5
@@ -242,8 +242,22 @@ test_that("simultane Suche folgt veraenderten Kostensaetzen, Bisektion nicht", {
                                             verbose = FALSE)
   expect_identical(bis$status, "ok")
   expect_identical(sim$status, "ok")
-  expect_gt(sim$storage_height, bis$storage_height)
-  expect_lt(sim$cost_total, bis$cost_total * 0.95)
+  expect_identical(bis$storage_height, 1200)
+  expect_identical(sim$storage_height, 1200)
+  expect_lt(abs(sim$cost_total - bis$cost_total), 0.05 * bis$cost_total)
+
+  # ohne porosity-Eintrag: Legacy-Reihenfolge (kleinste Stufe zuerst)
+  spec_legacy <- spec
+  spec_legacy$infiltration_box$porosity <- NULL
+  leg <- optimise_swale_design(run, x_targets = 0, fixed = sim_fixed,
+                               storage_spec = spec_legacy,
+                               cost_rates = cheap_box, verbose = FALSE)
+  expect_identical(leg$storage_height, 300)
+
+  # unter Default-Saetzen waehlt der Proxy weiterhin die kleinste Stufe
+  def <- optimise_swale_design(run, x_targets = 0, fixed = sim_fixed,
+                               storage_spec = spec, verbose = FALSE)
+  expect_identical(def$storage_height, 300)
 })
 
 test_that("alle Methoden funktionieren mit Ein-Typ-storage_spec", {

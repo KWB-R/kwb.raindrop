@@ -20,10 +20,24 @@
     5 112 validation comparisons). An optional `split_jitter` randomises
     the bisection split point — a Monte-Carlo of the search path
     (repeated runs with different seeds must agree within `tol`).
-  - `optimise_swale_design()` — coordinate descent in cost order: shrink
-    `mulde_area` (the expensive lever) first, then `mulde_height` (the
-    cheap one); the storage layer starts at its smallest level and is
-    escalated only when the area is stuck at its upper bound. One shared
+  - `optimise_swale_design()` — coordinate descent whose **search order
+    is derived from `cost_rates`** via a specific-cost proxy (EUR per
+    mm of storage capacity, capacity model V ≈ area × (mulde_height +
+    porosity × storage_height); porosity from `default_storage_spec()`):
+    maximising `mulde_height` first is provably optimal for any rates
+    under this cost model, and the starting storage level is the
+    cheapest level per mm of capacity — the smallest under the default
+    rates, a high level when e.g. the storage material is cheap (with
+    box material at 5 EUR/m³ this finds the 63 m²/1200 mm corner for
+    12.7k EUR in 15 runs, where the fixed legacy order returned 155 m²/
+    300 mm for 20.8k EUR; regression-tested against the simultaneous
+    optimiser). Specs without a `porosity` entry keep the legacy order;
+    the proxy assumes capacity-additive levers, so parameters with
+    nonlinear hydraulic effects remain the domain of
+    `optimise_swale_design_simultaneous()`. Within a cell the descent
+    then runs: minimal feasible `mulde_area` at maximal `mulde_height`
+    on the chosen storage level, storage escalated only when the area
+    is stuck at its upper bound, `mulde_height` shrunk last. One shared
     evaluation cache spans all `x_targets` and both storage types (a run
     classifies itself for every target at once), warm-start brackets are
     derived from prior brute-force results (CSV schema of the

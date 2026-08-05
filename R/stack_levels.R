@@ -66,23 +66,33 @@ sickerbox_level_presets <- function(max_height = 2600) {
 #' `coupling_factor` (default 3, approximating the usable-porosity ratio
 #' 0.95 / 0.3).
 #'
+#' Each entry also carries the **usable porosity** of the storage layer
+#' (box 0.95, trench 0.3, matching [default_storage_types()]). The
+#' bisection optimiser uses it to *derive* its search order from the
+#' cost rates (cost per mm of storage capacity); without a `porosity`
+#' entry it falls back to the default-rate hierarchy (smallest storage
+#' level first).
+#'
 #' @param levels Numeric vector of infiltration-box stack heights in mm.
 #' @param coupling_factor Factor between gravel-trench bounds and the box
 #'   level range.
 #' @param gravel_tol Bisection tolerance for the continuous gravel-trench
 #'   height in mm.
 #'
-#' @return Named list with entries `infiltration_box` (with `levels`) and
-#'   `gravel_trench` (with `bounds` and `tol`).
+#' @return Named list with entries `infiltration_box` (with `levels` and
+#'   `porosity`) and `gravel_trench` (with `bounds`, `tol` and
+#'   `porosity`).
 #'
 #' @export
 default_storage_spec <- function(levels = sickerbox_level_presets()$brute_force,
                                  coupling_factor = 3,
                                  gravel_tol = 25) {
   list(
-    infiltration_box = list(levels = sort(unique(levels))),
+    infiltration_box = list(levels = sort(unique(levels)),
+                            porosity = 0.95),
     gravel_trench    = list(bounds = coupling_factor * range(levels),
-                            tol    = gravel_tol)
+                            tol    = gravel_tol,
+                            porosity = 0.3)
   )
 }
 

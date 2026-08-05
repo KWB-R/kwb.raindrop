@@ -471,18 +471,16 @@ ggplot(methoden[methoden$status == "ok", ],
 - **Wenn die simultane Suche systematisch günstiger ist**, gibt es zwei
   mögliche Ursachen: (a) die Monotonie-Annahme der Bisektion ist
   verletzt (echter Modell-Alarm → `monotonicity_analysis` prüfen), oder
-  (b) die **Kostenhierarchie**, die in der Bisektions-*Reihenfolge*
-  steckt (Fläche teuerster Hebel → zuerst schrumpfen; Tiefe billigster
-  → zuletzt; Speicher nur im Notfall eskalieren), passt nicht mehr zu
-  den gewählten `cost_rates`. Die Reihenfolge ist für die
-  Default-Sätze richtig (je mm Kapazität und m²: Tiefe ~0.07 €,
-  Box-Speicher ~0.44 €, Fläche zahlt alle Terme zugleich), aber z. B.
-  bei sehr billigem Speichermaterial wandert das Optimum zu "hoher
-  Speicher + kleine Fläche" — eine Ecke, die die Bisektion nie besucht.
-  Die simultane Suche trägt die `cost_rates` in ihrer Zielfunktion und
-  folgt jeder Hierarchie automatisch: **für
-  Kosten-Sensitivitätsanalysen ist sie das primäre Verfahren**, nicht
-  die Gegenprobe.
+  (b) der **Spezifikkosten-Proxy**, aus dem die Bisektion ihre
+  Suchreihenfolge herleitet (€ je mm Speicherkapazität, Kapazitätsmodell
+  V ≈ Fläche × (Tiefe + Porosität × Speicher)), greift zu kurz — etwa
+  weil ein Hebel nicht kapazitäts-additiv wirkt (z. B. eine variable
+  Filterdurchlässigkeit, die die Hydraulik nichtlinear verändert) oder
+  das Kapazitätsmodell die Standort-Hydraulik schlecht beschreibt. Die
+  simultane Suche trägt die `cost_rates` direkt in ihrer Zielfunktion
+  und braucht weder Proxy noch Kapazitätsmodell: Sie ist die
+  annahmefreie Instanz und **das primäre Verfahren, sobald Parameter
+  ohne saubere Grenzkosten-je-Kapazität ins Spiel kommen**.
 - **`monotonicity_warning = TRUE`** heißt hier: Unter den Evaluationen
   der Zelle liegt ein *strikt größeres* Design mit mehr Überläufen
   *und* mehr Überlaufvolumen — echte Nicht-Monotonie; dann verdient die

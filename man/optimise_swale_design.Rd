@@ -84,18 +84,22 @@ engine run is cached, so the sweep over all \code{x_targets} and both storage
 types shares evaluations.
 }
 \details{
-\strong{The search order hard-codes a cost hierarchy} (per mm of storage
-capacity and m2 of swale, at the default rates: \code{mulde_height} costs
-only excavation ~0.07 EUR, box storage ~0.44 EUR, and \code{mulde_area}
-pays all four cost components at once). It picks the corner of the
-feasibility boundary that is optimal \emph{for rates in the neighbourhood
-of \code{\link[=default_cost_rates]{default_cost_rates()}}} -- \code{cost_rates} only prices the found
-designs afterwards, it does not steer the search. For strongly
-different rates (e.g. cheap storage material, expensive excavation)
-the cost-optimal corner moves and this optimiser will systematically
-miss it; use \code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}} -- which carries
-\code{cost_rates} inside its objective -- as the primary method for cost
-sensitivity studies.
+\strong{The search order is derived from \code{cost_rates}} via a
+specific-cost proxy (EUR per mm of storage capacity, capacity model
+\code{V ~ area * (mulde_height + porosity * storage_height)}; the layer
+porosity comes from \code{storage_spec}, see \code{\link[=default_storage_spec]{default_storage_spec()}}):
+maximising \code{mulde_height} first is optimal for \emph{any} rates under
+this cost model (it costs only excavation, while area pays every
+component), and the starting storage level is chosen as the
+cheapest level per mm of capacity -- the smallest level under the
+default rates, a high level when e.g. the storage material is cheap.
+Without a \code{porosity} entry in \code{storage_spec} the legacy order
+(smallest level first) is used. The proxy is a first-order
+heuristic: it assumes capacity-additive levers and cannot rank
+parameters with nonlinear hydraulic effects (e.g. a variable filter
+conductivity) -- for those, and as the assumption-free cross-check,
+use \code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}}, which carries
+\code{cost_rates} directly inside its objective.
 }
 \seealso{
 \code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}} (alternative: all

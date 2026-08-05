@@ -14,15 +14,20 @@ prior_start_design <- function(prior, type, x, filter_height, cost_rates) {
   kf_max <- suppressWarnings(
     max(prior$filter_hydraulicconductivity, na.rm = TRUE)
   )
-  d <- prior[prior$storage_type == type &
-               prior$filter_hydraulicconductivity == kf_max &
-               !is.na(prior$n_overflows) & prior$n_overflows <= x, ,
-             drop = FALSE]
+  keep <- !is.na(prior$storage_type) & prior$storage_type == type &
+    !is.na(prior$filter_hydraulicconductivity) &
+    prior$filter_hydraulicconductivity == kf_max &
+    !is.na(prior$n_overflows) & prior$n_overflows <= x
+  d <- prior[keep, , drop = FALSE]
   if (nrow(d) == 0) return(NULL)
   if (!"filter_height" %in% names(d)) d$filter_height <- filter_height
   d <- compute_costs(d, cost_rates = cost_rates)
-  d[which.min(d$cost_total),
-    c("mulde_area", "mulde_height", "storage_height"), drop = FALSE]
+  best_i <- which.min(d$cost_total)   # integer(0) if all costs are NA
+  if (length(best_i) == 0) return(NULL)
+  out <- d[best_i, c("mulde_area", "mulde_height", "storage_height"),
+           drop = FALSE]
+  if (anyNA(out)) return(NULL)
+  out
 }
 
 #' Radical-inverse (van der Corput) sequence element
@@ -112,11 +117,13 @@ make_lcg <- function(seed) {
 #'     `max_evals` budget (unused runs roll over).
 #'   \item \strong{Lattice polish}: an accelerated pattern descent
 #'     (steps of 8/4/2/1 tolerances downwards, cheaper by construction)
-#'     runs from the cheapest feasible design of *every storage level
-#'     visited* -- the storage axis separates cost valleys that single
-#'     coordinate steps cannot cross -- until no parameter can be reduced
-#'     any further: the result is locally optimal on the tolerance
-#'     lattice, whatever the search method delivered.
+#'     runs from the cheapest feasible design of every storage level
+#'     visited -- capped at the 6 cheapest levels, which only bites for
+#'     the continuous gravel trench (the discrete box has at most a
+#'     handful) -- because the storage axis separates cost valleys that
+#'     single coordinate steps cannot cross. It stops when no parameter
+#'     can be reduced any further: the result is locally optimal on the
+#'     tolerance lattice, whatever the search method delivered.
 #' }
 #'
 #' The discrete infiltration-box levels are mapped onto a continuous
@@ -366,7 +373,9 @@ optimise_swale_design_simultaneous <- function(run_fn,
       if (!is.null(max_total_depth)) {
         gb[2] <- min(gb[2], max_total_depth - filter_height - height_bounds[1])
       }
-      if (gb[2] <= gb[1]) return(infeasible_row())
+      # gb[2] == gb[1] is a degenerate but valid axis (exactly one
+      # admissible storage height), only gb[2] < gb[1] is infeasible
+      if (gb[2] < gb[1]) return(infeasible_row())
       s_tol <- if (is.null(spec$tol)) 25 else spec$tol
       hs_max <- gb[2]
     }
@@ -396,8 +405,10 @@ optimise_swale_design_simultaneous <- function(run_fn,
       u3 <- if (discrete) {
         i <- which.min(abs(levels_all - h_s))
         (i - 0.5) / length(levels_all)
-      } else {
+      } else if (gb[2] > gb[1]) {
         (h_s - gb[1]) / (gb[2] - gb[1])
+      } else {
+        0   # degenerate axis: exactly one admissible storage height
       }
       up <- hm_upper(h_s)
       u2 <- if (up > height_bounds[1]) {
@@ -499,21 +510,24 @@ optimise_swale_design_simultaneous <- function(run_fn,
         if (i <= length(starts_all)) starts_all[[i]] else halton_point(i)
       })
       fit <- vapply(pop, objective, numeric(1))
-      pick_other <- function(i) {
-        repeat {
+      # i, r1, r2, r3 pairwise distinct, as DE/rand/1/bin requires
+      pick_distinct <- function(i) {
+        chosen <- integer(0)
+        while (length(chosen) < 3) {
           r <- 1L + as.integer(floor(rng() * n_pop))
-          if (r != i && r <= n_pop) return(r)
+          if (r != i && r <= n_pop && !(r %in% chosen)) {
+            chosen <- c(chosen, r)
+          }
         }
+        chosen
       }
       gen <- 0
       while (!budget_hit() && gen < 60) {
         gen <- gen + 1
         for (i in seq_len(n_pop)) {
           if (budget_hit()) break
-          r1 <- pick_other(i)
-          r2 <- pick_other(i)
-          r3 <- pick_other(i)
-          mutant <- pop[[r1]] + 0.7 * (pop[[r2]] - pop[[r3]])
+          r <- pick_distinct(i)
+          mutant <- pop[[r[1]]] + 0.7 * (pop[[r[2]]] - pop[[r[3]]])
           trial <- pop[[i]]
           j_rand <- 1L + as.integer(floor(rng() * 3))
           for (j in 1:3) {
@@ -667,9 +681,13 @@ optimise_swale_design_simultaneous <- function(run_fn,
   evaluations <- dplyr::bind_rows(
     lapply(ls(cache), function(k) tibble::as_tibble(get(k, envir = cache)))
   )
-  attr(out, "evaluations") <- dplyr::arrange(
-    evaluations, .data$storage_type, .data$mulde_area
-  )
+  if (nrow(evaluations) > 0) {
+    # empty when every cell is analytically infeasible (no engine run)
+    evaluations <- dplyr::arrange(
+      evaluations, .data$storage_type, .data$mulde_area
+    )
+  }
+  attr(out, "evaluations") <- evaluations
   attr(out, "n_runs_total") <- runs_executed
   out
 }

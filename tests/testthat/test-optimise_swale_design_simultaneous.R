@@ -145,6 +145,94 @@ test_that("max_total_depth wirkt als analytische Nebenbedingung", {
                   <= 1200 + 1e-9))
 })
 
+test_that("leerer Suchraum (Tiefe verbietet alles) liefert Zeilen statt Fehler", {
+  # max_total_depth = 500 laesst mit filter_height 300 und Muldentiefe
+  # >= 100 keine einzige Speicherhoehe zu -> kein Engine-Lauf, aber ein
+  # regulaeres Ergebnis (kein Absturz beim Zusammenbau der Attribute)
+  run <- sim_run_factory(demand = 3.6e5)
+  for (f in list(optimise_swale_design, optimise_swale_design_simultaneous)) {
+    out <- f(run, x_targets = 0:1, fixed = sim_fixed,
+             max_total_depth = 500, verbose = FALSE)
+    expect_true(all(out$status == "infeasible_within_bounds"))
+    expect_identical(attr(out, "n_runs_total"), 0L)
+    expect_identical(nrow(attr(out, "evaluations")), 0L)
+  }
+})
+
+test_that("degenerierte Rigol-Achse (genau eine zulaessige Hoehe) ist loesbar", {
+  # max_total_depth = 1300: gb[2] wird auf gb[1] = 900 gedrueckt --
+  # genau ein zulaessiger Speicherwert bleibt, die Zelle ist loesbar
+  run <- sim_run_factory(demand = 3.6e5)
+  out <- optimise_swale_design_simultaneous(
+    run, x_targets = 5, fixed = sim_fixed,
+    storage_spec = default_storage_spec()["gravel_trench"],
+    max_total_depth = 1300, verbose = FALSE
+  )
+  expect_identical(out$status, "ok")
+  expect_identical(out$storage_height, 900)
+  expect_identical(out$mulde_height, 100)
+})
+
+test_that("NA-Zeilen im Prior stuerzen den Warmstart nicht ab", {
+  run <- sim_run_factory(demand = 3.6e5)
+  prior <- data.frame(
+    mulde_area = c(150, NA), mulde_height = c(300, NA),
+    storage_type = c("infiltration_box", NA),
+    storage_height = c(300, NA),
+    filter_hydraulicconductivity = c(360, NA),
+    n_overflows = c(0, NA)
+  )
+  out <- optimise_swale_design_simultaneous(
+    run, x_targets = 0, fixed = sim_fixed,
+    storage_spec = default_storage_spec()["infiltration_box"],
+    prior_results = prior, verbose = FALSE
+  )
+  expect_identical(out$status, "ok")
+})
+
+test_that("max_evals begrenzt die Suchphase messbar", {
+  run <- sim_run_factory(demand = 3.6e5)
+  small <- optimise_swale_design_simultaneous(run, x_targets = 1,
+                                              fixed = sim_fixed,
+                                              max_evals = 15,
+                                              verbose = FALSE)
+  large <- optimise_swale_design_simultaneous(run, x_targets = 1,
+                                              fixed = sim_fixed,
+                                              max_evals = 200,
+                                              verbose = FALSE)
+  expect_lt(attr(small, "n_runs_total"), attr(large, "n_runs_total"))
+  # das Optimum leidet nicht wesentlich unter dem kleinen Budget
+  expect_true(all(small$cost_total <= large$cost_total * 1.10))
+})
+
+test_that("Ergebnis traegt die Attribute evaluations und n_runs_total", {
+  run <- sim_run_factory(demand = 3.6e5)
+  out <- optimise_swale_design_simultaneous(
+    run, x_targets = 1, fixed = sim_fixed,
+    storage_spec = default_storage_spec()["infiltration_box"],
+    verbose = FALSE
+  )
+  ev <- attr(out, "evaluations")
+  expect_s3_class(ev, "tbl_df")
+  expect_gt(nrow(ev), 0)
+  expect_true(all(c("storage_type", "mulde_area", "mulde_height",
+                    "storage_height", "n_overflows") %in% names(ev)))
+  expect_identical(attr(out, "n_runs_total"), nrow(ev))
+})
+
+test_that("alle Methoden funktionieren mit Ein-Typ-storage_spec", {
+  run <- sim_run_factory(demand = 3.6e5)
+  for (m in c("nelder_mead", "diff_evolution", "halton_search")) {
+    out <- optimise_swale_design_simultaneous(
+      run, x_targets = 1, fixed = sim_fixed,
+      storage_spec = default_storage_spec()["infiltration_box"],
+      method = m, verbose = FALSE
+    )
+    expect_identical(out$status, "ok")
+    expect_identical(out$method, m)
+  }
+})
+
 test_that("alle Suchverfahren treffen das Brute-Force-Optimum", {
   run <- sim_run_factory(demand = 3.6e5)
   # NM ist am praezisesten, DE nah dran, Halton ist die naive Baseline
@@ -191,6 +279,10 @@ test_that("Differential Evolution ist deterministisch und laesst Rs RNG in Ruhe"
                                             method = "diff_evolution",
                                             seed = 99, verbose = FALSE)
   expect_equal(de3$cost_total, de1$cost_total, tolerance = 0.05)
+  # Kanarienvogel gegen ein ignoriertes seed-Argument: die besuchten
+  # Designs (Suchpfade) muessen sich unterscheiden, auch wenn die
+  # Optima uebereinstimmen duerfen
+  expect_false(identical(attr(de3, "evaluations"), attr(de1, "evaluations")))
 })
 
 test_that("verschiedene Start-Konfigurationen treffen dasselbe Optimum", {

@@ -45,7 +45,8 @@
     tolerance snapping (the shared cache absorbs repeats across all
     `x_targets`) and a final **multi-valley lattice polish**
     (accelerated 8/4/2/1-tolerance pattern descent from the cheapest
-    feasible design of every storage level visited — the storage axis
+    feasible design of every storage level visited, capped at the 6
+    cheapest levels for the continuous gravel trench — the storage axis
     separates cost valleys that single coordinate steps cannot cross):
     `"nelder_mead"` (default; deterministic multistart via
     `stats::optim()` — prior warm start, previous-target optimum, one
@@ -63,16 +64,6 @@
     (typically 60–120 instead of ~15) but serves as an independent
     cross-check that coordinate descent did not miss a cheaper corner
     of the design space.
-
-* New conditional vignette `workflow_optimisation_simultaneous` — the
-  simultaneous counterpart of `workflow_optimisation` (which stays
-  bisection-only and now points here): runs the Nelder-Mead sweep for
-  all three sites in parallel (site × storage type), compares the
-  optima cell by cell against the bisection CSV export when present
-  (`delta_pct` table), and benchmarks the three search methods
-  (Nelder-Mead / differential evolution / Halton baseline) on the same
-  x = 1 cell across all sites and storage types — 12 parallel tasks —
-  to show what the structured searches contribute over naive sampling.
   - `make_swale_runner()` — package-level refactoring of the `run_one()`
     function previously duplicated across the three case-study
     vignettes: one closure factory covering both variants (Eisenstadt:
@@ -121,6 +112,16 @@
   is hydraulically coupled to the found area (x = 1; the full pool of
   3 sites × 2 storage types × 10 repetitions runs as 60 parallel tasks,
   one full re-optimisation each).
+
+* New conditional vignette `workflow_optimisation_simultaneous` — the
+  simultaneous counterpart of `workflow_optimisation` (which stays
+  bisection-only and now points here): runs the Nelder-Mead sweep for
+  all three sites in parallel (site × storage type), compares the
+  optima cell by cell against the bisection CSV export when present
+  (`delta_pct` table), and benchmarks the three search methods
+  (Nelder-Mead / differential evolution / Halton baseline) on the same
+  x = 1 cell across all sites and storage types — 12 parallel tasks —
+  to show what the structured searches contribute over naive sampling.
 
 * New exported helper `read_site_timeseries()` — the rain/ET0 time-series
   preparation previously duplicated in the Wien and Bad Aussee vignettes

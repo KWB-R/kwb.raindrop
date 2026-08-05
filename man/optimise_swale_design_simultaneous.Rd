@@ -148,11 +148,13 @@ optimiser. Every start receives an equal slice of the remaining
 \code{max_evals} budget (unused runs roll over).
 \item \strong{Lattice polish}: an accelerated pattern descent
 (steps of 8/4/2/1 tolerances downwards, cheaper by construction)
-runs from the cheapest feasible design of \emph{every storage level
-visited} -- the storage axis separates cost valleys that single
-coordinate steps cannot cross -- until no parameter can be reduced
-any further: the result is locally optimal on the tolerance
-lattice, whatever the search method delivered.
+runs from the cheapest feasible design of every storage level
+visited -- capped at the 6 cheapest levels, which only bites for
+the continuous gravel trench (the discrete box has at most a
+handful) -- because the storage axis separates cost valleys that
+single coordinate steps cannot cross. It stops when no parameter
+can be reduced any further: the result is locally optimal on the
+tolerance lattice, whatever the search method delivered.
 }
 
 The discrete infiltration-box levels are mapped onto a continuous

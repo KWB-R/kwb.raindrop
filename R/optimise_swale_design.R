@@ -196,7 +196,9 @@ optimise_swale_design <- function(run_fn,
       if (!is.null(max_total_depth)) {
         gb[2] <- min(gb[2], max_total_depth - filter_height - height_bounds[1])
       }
-      if (gb[2] <= gb[1]) return(infeasible_row())
+      # gb[2] == gb[1] is a degenerate but valid axis (exactly one
+      # admissible storage height), only gb[2] < gb[1] is infeasible
+      if (gb[2] < gb[1]) return(infeasible_row())
       gravel_tol <- if (is.null(spec$tol)) 25 else spec$tol
       h_s <- gb[1]
     }
@@ -283,9 +285,13 @@ optimise_swale_design <- function(run_fn,
   evaluations <- dplyr::bind_rows(
     lapply(ls(cache), function(k) tibble::as_tibble(get(k, envir = cache)))
   )
-  attr(out, "evaluations") <- dplyr::arrange(
-    evaluations, .data$storage_type, .data$mulde_area
-  )
+  if (nrow(evaluations) > 0) {
+    # empty when every cell is analytically infeasible (no engine run)
+    evaluations <- dplyr::arrange(
+      evaluations, .data$storage_type, .data$mulde_area
+    )
+  }
+  attr(out, "evaluations") <- evaluations
   attr(out, "n_runs_total") <- runs_executed
   out
 }

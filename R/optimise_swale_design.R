@@ -65,7 +65,14 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #' @param x_targets Integer vector of overflow targets (feasible :<=>
 #'   `n_overflows <= x`), default `0:5`.
 #' @param area_bounds,area_tol Search range (m2) and resolution for
-#'   `mulde_area`.
+#'   `mulde_area`. The found area sits up to one `area_tol` above the
+#'   exact feasibility boundary (worst-case cost overshoot roughly
+#'   `area_tol` x specific cost per m2, i.e. a few percent at the
+#'   default 2 m2); thanks to the bisection, every *halving* of
+#'   `area_tol` costs only one additional engine run per area search --
+#'   the cheapest precision lever of this optimiser. It also shrinks
+#'   the tolerance-artefact part of the final `mulde_height` trim (the
+#'   values just below the height maximum at low `x_targets`).
 #' @param height_bounds,height_tol Search range (mm) and resolution for
 #'   `mulde_height`.
 #' @param storage_spec Storage search space per type, see

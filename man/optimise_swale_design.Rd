@@ -32,7 +32,14 @@ everything in \code{fixed}.}
 \code{n_overflows <= x}), default \code{0:5}.}
 
 \item{area_bounds, area_tol}{Search range (m2) and resolution for
-\code{mulde_area}.}
+\code{mulde_area}. The found area sits up to one \code{area_tol} above the
+exact feasibility boundary (worst-case cost overshoot roughly
+\code{area_tol} x specific cost per m2, i.e. a few percent at the
+default 2 m2); thanks to the bisection, every \emph{halving} of
+\code{area_tol} costs only one additional engine run per area search --
+the cheapest precision lever of this optimiser. It also shrinks
+the tolerance-artefact part of the final \code{mulde_height} trim (the
+values just below the height maximum at low \code{x_targets}).}
 
 \item{height_bounds, height_tol}{Search range (mm) and resolution for
 \code{mulde_height}.}

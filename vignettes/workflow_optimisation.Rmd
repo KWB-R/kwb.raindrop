@@ -147,7 +147,10 @@ stehen sie explizit, damit sie sichtbar und anpassbar sind:
 
 ```{r search_space, eval = can_run}
 area_bounds   <- c(25, 200)   # Muldenflaeche [m2], stufenlos
-area_tol      <- 2            # Aufloesung der Flaechensuche [m2]
+area_tol      <- 2            # Aufloesung der Flaechensuche [m2];
+                              # jede Halbierung kostet nur 1 Lauf je
+                              # Flaechensuche und halbiert den
+                              # toleranzbedingten Kostenueberschuss
 height_bounds <- c(100, 300)  # Muldentiefe [mm], stufenlos
 height_tol    <- 10           # Aufloesung der Tiefensuche [mm]
 storage_spec  <- default_storage_spec()

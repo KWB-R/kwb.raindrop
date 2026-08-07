@@ -1,4 +1,4 @@
-# kwb.raindrop (development version)
+# kwb.raindrop 0.1.0 (2026-08-07)
 
 ## New features
 
@@ -20,10 +20,24 @@
     5 112 validation comparisons). An optional `split_jitter` randomises
     the bisection split point — a Monte-Carlo of the search path
     (repeated runs with different seeds must agree within `tol`).
-  - `optimise_swale_design()` — coordinate descent in cost order: shrink
-    `mulde_area` (the expensive lever) first, then `mulde_height` (the
-    cheap one); the storage layer starts at its smallest level and is
-    escalated only when the area is stuck at its upper bound. One shared
+  - `optimise_swale_design()` — coordinate descent whose **search order
+    is derived from `cost_rates`** via a specific-cost proxy (EUR per
+    mm of storage capacity, capacity model V ≈ area × (mulde_height +
+    porosity × storage_height); porosity from `default_storage_spec()`):
+    maximising `mulde_height` first is provably optimal for any rates
+    under this cost model, and the starting storage level is the
+    cheapest level per mm of capacity — the smallest under the default
+    rates, a high level when e.g. the storage material is cheap (with
+    box material at 5 EUR/m³ this finds the 63 m²/1200 mm corner for
+    12.7k EUR in 15 runs, where the fixed legacy order returned 155 m²/
+    300 mm for 20.8k EUR; regression-tested against the simultaneous
+    optimiser). Specs without a `porosity` entry keep the legacy order;
+    the proxy assumes capacity-additive levers, so parameters with
+    nonlinear hydraulic effects remain the domain of
+    `optimise_swale_design_simultaneous()`. Within a cell the descent
+    then runs: minimal feasible `mulde_area` at maximal `mulde_height`
+    on the chosen storage level, storage escalated only when the area
+    is stuck at its upper bound, `mulde_height` shrunk last. One shared
     evaluation cache spans all `x_targets` and both storage types (a run
     classifies itself for every target at once), warm-start brackets are
     derived from prior brute-force results (CSV schema of the
@@ -32,6 +46,43 @@
     simulation runs, and "infeasible within bounds" is a regular result
     status, not an error. Costs are attached via `compute_costs()`; all
     evaluated designs ship as attribute `"evaluations"`.
+  - `optimise_swale_design_simultaneous()` — alternative optimiser that
+    searches **all design parameters at once** (`mulde_area`,
+    `mulde_height`, `storage_height`) instead of per-parameter
+    bisection: infeasible designs are not excluded but penalised (any
+    infeasible design is worse than any feasible one; excess overflow
+    events grade the penalty and steer the search back towards the
+    feasibility boundary, where the optimum lives), so the search can
+    trade the parameters against each other in a single step and does
+    not rely on the per-parameter monotonicity the bisection exploits.
+    Three search `method`s share this penalised objective, the
+    tolerance snapping (the shared cache absorbs repeats across all
+    `x_targets`) and a final **multi-valley lattice polish**
+    (accelerated 8/4/2/1-tolerance pattern descent from the cheapest
+    feasible design of every storage level visited, capped at the 6
+    cheapest levels for the continuous gravel trench — the storage axis
+    separates cost valleys that single coordinate steps cannot cross;
+    each round also proposes a *boundary slide* — area down with
+    `mulde_height` at its maximum, the two-coordinate trade towards the
+    cheap end of the feasibility boundary — and a `mulde_height` *floor
+    probe* that jumps over +1 counting-wobble bands, both plain
+    evaluated candidates without any monotonicity assumption):
+    `"nelder_mead"` (default; deterministic multistart via
+    `stats::optim()` — prior warm start, previous-target optimum, one
+    anchor start per storage level, space-filling points; every start
+    gets an equal slice of the `max_evals` run budget),
+    `"diff_evolution"` (compact DE/rand/1/bin for comparison;
+    deterministic via an internal Park-Miller generator seeded with
+    `seed` — R's global RNG stays untouched) and `"halton_search"`
+    (quasi-random space-filling baseline). Same interface and result
+    schema as `optimise_swale_design()` (incl. `max_total_depth`, warm
+    start and the `"evaluations"` attribute) plus a `method` column; a
+    pairwise dominance check per cell (a strictly larger design with
+    more overflows *and* more overflow volume) replaces the bisection's
+    volume referee. Needs considerably more engine runs per cell
+    (typically 60–120 instead of ~15) but serves as an independent
+    cross-check that coordinate descent did not miss a cheaper corner
+    of the design space.
   - `make_swale_runner()` — package-level refactoring of the `run_one()`
     function previously duplicated across the three case-study
     vignettes: one closure factory covering both variants (Eisenstadt:
@@ -39,6 +90,22 @@
     rain + ET0 series in mm/h incl. the Growth/Shading end-time fix).
     Returns the thinned one-row optimisation result augmented with
     `overflow_volume_m3` (= `sum_overflows` [mm] × `mulde_area` / 1000).
+    **Behaviour note — files are deleted by default:** with
+    `cleanup = TRUE` (the default) each scenario's input copy *and its
+    output HDF5s* (`Mulde_Rigole.h5`, `Dach.h5`, `Fehlerprotokoll.h5`,
+    …) are removed right after the one-row result has been read — only
+    the returned tibble survives a run. Pass `cleanup = FALSE` if you
+    need the raw scenario files (failed runs always keep theirs for
+    debugging). Rationale: without the cleanup, long searches (hundreds
+    of engine runs per task, each with its own `base.h5` copy plus
+    output HDF5s) fill the temp drive and the engine dies with HDF5
+    `errno = 28` ("No space left on device"). Prepares a **site master file** once
+    (base.h5 + calculation settings + ET/rain series) and writes only
+    the ~15 small parameter datasets per run instead of reading and
+    rewriting *every* dataset each time — that full HDF5 round trip
+    (plus process spawn and virus-scanner latency on new files) was the
+    dominant per-run cost of the optimisation searches, several times
+    the ~2 s engine time of the Eisenstadt model.
   - `stack_levels()`, `sickerbox_level_presets()`,
     `default_storage_spec()`, `default_storage_types()` — storage-layer
     search spaces: achievable stack heights from module heights (incl.
@@ -80,6 +147,20 @@
   is hydraulically coupled to the found area (x = 1; the full pool of
   3 sites × 2 storage types × 10 repetitions runs as 60 parallel tasks,
   one full re-optimisation each).
+
+* New conditional vignette `workflow_optimisation_simultaneous` — the
+  simultaneous counterpart of `workflow_optimisation` (which stays
+  bisection-only and now points here): runs the Nelder-Mead sweep for
+  all three sites in parallel (site × storage type), compares the
+  optima cell by cell against the bisection CSV export when present
+  (`delta_pct` table), and benchmarks the three search methods
+  (Nelder-Mead / differential evolution / Halton baseline) on the same
+  x = 1 cell across all sites and storage types — 12 parallel tasks —
+  to show what the structured searches contribute over naive sampling.
+  Both compute chunks report live progress across the worker boundary
+  (one \pkg{progressr} tick per engine run — a multi-hour sweep no
+  longer looks frozen), the site list has a quick-test switch
+  (Eisenstadt only) and `max_evals` is exposed as the runtime lever.
 
 * New exported helper `read_site_timeseries()` — the rain/ET0 time-series
   preparation previously duplicated in the Wien and Bad Aussee vignettes

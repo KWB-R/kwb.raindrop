@@ -32,7 +32,14 @@ everything in \code{fixed}.}
 \code{n_overflows <= x}), default \code{0:5}.}
 
 \item{area_bounds, area_tol}{Search range (m2) and resolution for
-\code{mulde_area}.}
+\code{mulde_area}. The found area sits up to one \code{area_tol} above the
+exact feasibility boundary (worst-case cost overshoot roughly
+\code{area_tol} x specific cost per m2, i.e. a few percent at the
+default 2 m2); thanks to the bisection, every \emph{halving} of
+\code{area_tol} costs only one additional engine run per area search --
+the cheapest precision lever of this optimiser. It also shrinks
+the tolerance-artefact part of the final \code{mulde_height} trim (the
+values just below the height maximum at low \code{x_targets}).}
 
 \item{height_bounds, height_tol}{Search range (mm) and resolution for
 \code{mulde_height}.}
@@ -83,7 +90,27 @@ cost-free and dominant, see the \code{monotonicity_analysis} vignette). Every
 engine run is cached, so the sweep over all \code{x_targets} and both storage
 types shares evaluations.
 }
+\details{
+\strong{The search order is derived from \code{cost_rates}} via a
+specific-cost proxy (EUR per mm of storage capacity, capacity model
+\code{V ~ area * (mulde_height + porosity * storage_height)}; the layer
+porosity comes from \code{storage_spec}, see \code{\link[=default_storage_spec]{default_storage_spec()}}):
+maximising \code{mulde_height} first is optimal for \emph{any} rates under
+this cost model (it costs only excavation, while area pays every
+component), and the starting storage level is chosen as the
+cheapest level per mm of capacity -- the smallest level under the
+default rates, a high level when e.g. the storage material is cheap.
+Without a \code{porosity} entry in \code{storage_spec} the legacy order
+(smallest level first) is used. The proxy is a first-order
+heuristic: it assumes capacity-additive levers and cannot rank
+parameters with nonlinear hydraulic effects (e.g. a variable filter
+conductivity) -- for those, and as the assumption-free cross-check,
+use \code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}}, which carries
+\code{cost_rates} directly inside its objective.
+}
 \seealso{
-\code{\link[=find_min_feasible]{find_min_feasible()}}, \code{\link[=make_swale_runner]{make_swale_runner()}},
-\code{\link[=default_storage_spec]{default_storage_spec()}}
+\code{\link[=optimise_swale_design_simultaneous]{optimise_swale_design_simultaneous()}} (alternative: all
+parameters at once via penalised Nelder-Mead, as an independent
+cross-check of the coordinate descent), \code{\link[=find_min_feasible]{find_min_feasible()}},
+\code{\link[=make_swale_runner]{make_swale_runner()}}, \code{\link[=default_storage_spec]{default_storage_spec()}}
 }

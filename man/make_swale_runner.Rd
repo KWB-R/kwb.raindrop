@@ -12,6 +12,7 @@ make_swale_runner(
   storage_types = default_storage_types(),
   event_separation_hours = 4,
   scenario_prefix = "o",
+  cleanup = TRUE,
   debug = FALSE
 )
 }
@@ -25,9 +26,13 @@ make_swale_runner(
 \item{timestep_hours}{Engine time step in hours (default 0.1).}
 
 \item{timeseries_rain}{Optional data.frame \code{time}/\code{value} (mm/h) written
-to \verb{//Kurven/Regen}; when given, \verb{//Kurven/Growth_1} and
-\verb{//Kurven/Shading_1} end times are extended to the rain series end and
-\code{rain_factor} is ignored.}
+to \verb{//Kurven/Regen} (the dataset must exist in \code{base.h5}); when
+given, the \verb{//Kurven/Growth_1} and \verb{//Kurven/Shading_1} end times
+are extended to the rain series end (skipped for templates without
+these curves) and \code{rain_factor} is ignored. Without
+\code{timeseries_rain}, a per-run \code{rain_factor != 1} requires
+\verb{//Kurven/Regen} to exist as a time series in \code{base.h5} -- a clear
+error is thrown otherwise.}
 
 \item{timeseries_et}{Optional data.frame \code{time}/\code{value} (mm/h) written
 to \verb{//Kurven/ET0}.}
@@ -41,6 +46,15 @@ see \code{\link[=default_storage_types]{default_storage_types()}}.}
 \item{scenario_prefix}{Prefix for generated scenario names (default
 \code{"o"} -> \code{o00001}, \code{o00002}, ... -- distinct from the grid runs
 \code{s00001} ...).}
+
+\item{cleanup}{Delete each scenario's copied input file and output
+directory right after the thinned one-row result has been read
+(default \code{TRUE}). The optimisers only need that row; without the
+cleanup an optimisation run (hundreds of engine runs per task, each
+with its own copy of \code{base.h5} plus all output HDF5s) fills the
+temp drive and the engine aborts with HDF5 \code{errno = 28} ("No space
+left on device"). Set \code{FALSE} to keep all scenario files for
+debugging. Files of a \emph{failed} run are always kept.}
 
 \item{debug}{Passed on to the engine/reader helpers.}
 }
@@ -68,6 +82,15 @@ rain curve shipped in \code{base.h5} by \code{rain_factor} (leave
 \code{timeseries_rain} = \code{NULL}), Wien and Bad Aussee replace the rain and
 ET0 curves entirely (\code{timeseries_rain} / \code{timeseries_et}, values in
 mm/h as written by the vignettes).
+
+On the first call the runner prepares a \strong{site master file} once:
+\code{base.h5} plus everything identical for every run (calculation
+settings, ET/rain time series). Each run then copies the master and
+writes only its ~15 small parameter datasets. Compared to the
+previous full read/rewrite of \emph{all} datasets per run this removes
+the dominant per-run overhead of the optimisation searches
+(hundreds of runs; for Wien / Bad Aussee it skips rewriting the
+15-year rain series on every single engine run).
 }
 \seealso{
 \code{\link[=optimise_swale_design]{optimise_swale_design()}}, \code{\link[=find_min_feasible]{find_min_feasible()}}

@@ -45,7 +45,11 @@ Speicher nur erhöhen, wenn die Fläche am Anschlag klemmt. Voraussetzung
 ist die in der Vignette `monotonicity_analysis` belegte Monotonie
 ("größer = nie mehr Überläufe"); die dort abgeleiteten Absicherungen
 (Rand-Guard, Volumen-Schiedsrichter) sind in `find_min_feasible()`
-eingebaut.
+eingebaut. Eine unabhängige **Gegenprobe ohne Monotonie-Annahme** —
+simultane Optimierung aller Parameter, plus weitere Suchverfahren zum
+Vergleich — führt die separate Vignette
+`workflow_optimisation_simultaneous` durch; sie liest die hier
+exportierte CSV als Vergleichsbasis.
 
 Die Filterdurchlässigkeit wird fest auf das Maximum gesetzt (kostenfrei
 dominant: gleiche Verdunstung, nie mehr Überläufe), Fläche und
@@ -57,7 +61,10 @@ Box-Bereich.
 **Laufzeit:** Ein Engine-Lauf dauert ~2 s (Eisenstadt, 1 Jahr) bzw.
 ~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 6 Tasks
 (Standort × Speichertyp) laufen parallel; die Gesamtdauer entspricht
-dem längsten Einzeltask — ca. 15–20 Minuten.
+dem längsten Einzeltask — ca. 15–20 Minuten. `make_swale_runner()`
+löscht die Szenario-Dateien jedes Laufs standardmäßig direkt nach dem
+Einlesen (`cleanup = TRUE`), damit lange Suchen das Temp-Laufwerk nicht
+füllen.
 
 ```{r availability_note, echo = FALSE, results = 'asis', eval = !can_run}
 cat(sprintf(paste0(
@@ -140,7 +147,10 @@ stehen sie explizit, damit sie sichtbar und anpassbar sind:
 
 ```{r search_space, eval = can_run}
 area_bounds   <- c(25, 200)   # Muldenflaeche [m2], stufenlos
-area_tol      <- 2            # Aufloesung der Flaechensuche [m2]
+area_tol      <- 2            # Aufloesung der Flaechensuche [m2];
+                              # jede Halbierung kostet nur 1 Lauf je
+                              # Flaechensuche und halbiert den
+                              # toleranzbedingten Kostenueberschuss
 height_bounds <- c(100, 300)  # Muldentiefe [mm], stufenlos
 height_tol    <- 10           # Aufloesung der Tiefensuche [mm]
 storage_spec  <- default_storage_spec()
@@ -173,7 +183,16 @@ knitr::kable(tibble::tibble(
 
 Die Kostensätze sind die Defaults nach Leimgruber (2026-03-27,
 `default_cost_rates()`); einzelne Sätze lassen sich hier überschreiben —
-gerechnet wird zunächst mit den Defaults:
+gerechnet wird zunächst mit den Defaults. Die Suchreihenfolge der
+Bisektion wird dabei **aus den Sätzen hergeleitet** (Spezifikkosten-Proxy:
+€ je mm Speicherkapazität, Kapazitätsmodell V ≈ Fläche × (Tiefe +
+Porosität × Speicher); die Porosität liefert `default_storage_spec()`):
+Die Muldentiefe zu maximieren ist unter diesem Kostenmodell für *jeden*
+Satz optimal, die Start-Speicherstufe wählt der Proxy — kleinste Stufe
+bei den Default-Sätzen, hohe Stufe z. B. bei billigem Speichermaterial.
+Der Proxy ist eine Näherung erster Ordnung (kapazitäts-additive Hebel);
+die annahmefreie Gegenprobe — und das Mittel der Wahl bei nichtlinearen
+Hebeln — bleibt die Vignette `workflow_optimisation_simultaneous`:
 
 ```{r cost_rates, eval = can_run}
 cost_rates <- default_cost_rates()

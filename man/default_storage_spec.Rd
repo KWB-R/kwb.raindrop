@@ -20,8 +20,9 @@ level range.}
 height in mm.}
 }
 \value{
-Named list with entries \code{infiltration_box} (with \code{levels}) and
-\code{gravel_trench} (with \code{bounds} and \code{tol}).
+Named list with entries \code{infiltration_box} (with \code{levels} and
+\code{porosity}) and \code{gravel_trench} (with \code{bounds}, \code{tol} and
+\code{porosity}).
 }
 \description{
 Storage-layer search space per storage type: the infiltration box uses
@@ -29,4 +30,12 @@ discrete stack levels (default: the brute-force grid levels), the gravel
 trench is continuous with bounds coupled to the box level range by
 \code{coupling_factor} (default 3, approximating the usable-porosity ratio
 0.95 / 0.3).
+}
+\details{
+Each entry also carries the \strong{usable porosity} of the storage layer
+(box 0.95, trench 0.3, matching \code{\link[=default_storage_types]{default_storage_types()}}). The
+bisection optimiser uses it to \emph{derive} its search order from the
+cost rates (cost per mm of storage capacity); without a \code{porosity}
+entry it falls back to the default-rate hierarchy (smallest storage
+level first).
 }

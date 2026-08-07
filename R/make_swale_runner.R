@@ -26,6 +26,15 @@ psi_s_mm <- function(kf_mmh) {
 #' ET0 curves entirely (`timeseries_rain` / `timeseries_et`, values in
 #' mm/h as written by the vignettes).
 #'
+#' On the first call the runner prepares a **site master file** once:
+#' `base.h5` plus everything identical for every run (calculation
+#' settings, ET/rain time series). Each run then copies the master and
+#' writes only its ~15 small parameter datasets. Compared to the
+#' previous full read/rewrite of *all* datasets per run this removes
+#' the dominant per-run overhead of the optimisation searches
+#' (hundreds of runs; for Wien / Bad Aussee it skips rewriting the
+#' 15-year rain series on every single engine run).
+#'
 #' @param path_list Path definition list as used by the workflow vignettes
 #'   (resolvable with `kwb.utils::resolve()`, must contain `path_base`,
 #'   `path_exe`, `dir_input`, `dir_output`, `dir_target_output`,
@@ -33,9 +42,13 @@ psi_s_mm <- function(kf_mmh) {
 #'   `path_results_hdf5_flaeche`, `file_target`).
 #' @param timestep_hours Engine time step in hours (default 0.1).
 #' @param timeseries_rain Optional data.frame `time`/`value` (mm/h) written
-#'   to `//Kurven/Regen`; when given, `//Kurven/Growth_1` and
-#'   `//Kurven/Shading_1` end times are extended to the rain series end and
-#'   `rain_factor` is ignored.
+#'   to `//Kurven/Regen` (the dataset must exist in `base.h5`); when
+#'   given, the `//Kurven/Growth_1` and `//Kurven/Shading_1` end times
+#'   are extended to the rain series end (skipped for templates without
+#'   these curves) and `rain_factor` is ignored. Without
+#'   `timeseries_rain`, a per-run `rain_factor != 1` requires
+#'   `//Kurven/Regen` to exist as a time series in `base.h5` -- a clear
+#'   error is thrown otherwise.
 #' @param timeseries_et Optional data.frame `time`/`value` (mm/h) written
 #'   to `//Kurven/ET0`.
 #' @param storage_types Soil presets of the storage layer per storage type,
@@ -45,6 +58,14 @@ psi_s_mm <- function(kf_mmh) {
 #' @param scenario_prefix Prefix for generated scenario names (default
 #'   `"o"` -> `o00001`, `o00002`, ... -- distinct from the grid runs
 #'   `s00001` ...).
+#' @param cleanup Delete each scenario's copied input file and output
+#'   directory right after the thinned one-row result has been read
+#'   (default `TRUE`). The optimisers only need that row; without the
+#'   cleanup an optimisation run (hundreds of engine runs per task, each
+#'   with its own copy of `base.h5` plus all output HDF5s) fills the
+#'   temp drive and the engine aborts with HDF5 `errno = 28` ("No space
+#'   left on device"). Set `FALSE` to keep all scenario files for
+#'   debugging. Files of a *failed* run are always kept.
 #' @param debug Passed on to the engine/reader helpers.
 #'
 #' @return `function(params)` where `params` is a named list (or one-row
@@ -65,9 +86,72 @@ make_swale_runner <- function(path_list,
                               storage_types = default_storage_types(),
                               event_separation_hours = 4,
                               scenario_prefix = "o",
+                              cleanup = TRUE,
                               debug = FALSE) {
 
   counter <- 0L
+  master_path <- NULL
+  template_rain <- NULL
+
+  # One-time site master: base.h5 plus everything that is identical for
+  # every run (calculation settings, ET/rain time series). Each run then
+  # copies the master and writes only its ~15 small parameter datasets --
+  # the full read/write cycle of all datasets (incl. multi-year curves)
+  # per engine run dominated the runtime of the optimisation searches.
+  prepare_master <- function(paths) {
+    mp <- file.path(paths$dir_input,
+                    sprintf("%s_master.h5", scenario_prefix))
+    fs::dir_create(paths$dir_input, recurse = TRUE)
+    fs::file_copy(path = paths$path_base, new_path = mp, overwrite = TRUE)
+
+    h5m <- hdf5r::H5File$new(mp, mode = "a")
+    on.exit(try(h5m$close_all(), silent = TRUE), add = TRUE)
+
+    static_vals <- list(
+      `//Berechnungsparameter/Zeitschritt_Infiltration` = timestep_hours,
+      `//Berechnungsparameter/Zeitschritt_ET` = timestep_hours,
+      `//Berechnungsparameter/Zeitschritt_Verschaltungen` = timestep_hours,
+      `//Berechnungsparameter/R-Plots` = 0,
+      `//Berechnungsparameter/Ausgabemodus` = "Optimierung",
+      `//Berechnungsparameter/Evapotranspiration_aktiv` = 1,
+      `//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` = 1,
+      `//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` = 1,
+      `//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` = 1
+    )
+    if (!is.null(timeseries_et)) {
+      static_vals$`//Kurven/ET0` <- timeseries_et
+    }
+    # base.h5 templates differ in which curves they ship -- only touch
+    # datasets that actually exist (missing Growth/Shading just skips
+    # the end-time fix; a missing rain curve only matters if a run
+    # later asks for rain_factor != 1, which then errors clearly)
+    existing <- list_h5_datasets(h5m)$path
+    if (!is.null(timeseries_rain)) {
+      if (!"//Kurven/Regen" %in% existing) {
+        stop("make_swale_runner(): base.h5 has no dataset //Kurven/Regen ",
+             "to replace with timeseries_rain: ", paths$path_base)
+      }
+      static_vals$`//Kurven/Regen` <- timeseries_rain
+      for (curve in c("//Kurven/Growth_1", "//Kurven/Shading_1")) {
+        if (!curve %in% existing) next
+        cv <- h5_read_values(h5m, paths = curve)[[curve]]
+        if (is.data.frame(cv) && length(cv$time) >= 2) {
+          cv$time[2] <- max(timeseries_rain$time)
+          static_vals[[curve]] <- cv
+        }
+      }
+    } else if ("//Kurven/Regen" %in% existing) {
+      # kept for per-run rain_factor scaling (Eisenstadt variant)
+      template_rain <<- h5_read_values(
+        h5m, paths = "//Kurven/Regen"
+      )[["//Kurven/Regen"]]
+    }
+
+    h5_write_values(h5m, static_vals, resize = TRUE,
+                    scalar_strategy = "error", verbose = FALSE)
+    h5m$close_all()
+    master_path <<- mp
+  }
 
   function(params) {
     params <- as.list(params)
@@ -92,11 +176,13 @@ make_swale_runner <- function(path_list,
     s_name <- sprintf("%s%05d", scenario_prefix, counter)
     paths <- kwb.utils::resolve(path_list, dir_target = s_name)
 
+    if (is.null(master_path)) prepare_master(paths)
+
     fs::dir_create(paths$dir_input, recurse = TRUE)
     fs::dir_create(paths$dir_output, recurse = TRUE)
     fs::dir_create(paths$dir_target_output, recurse = TRUE)
 
-    fs::file_copy(path = paths$path_base,
+    fs::file_copy(path = master_path,
                   new_path = paths$path_target_input,
                   overwrite = TRUE)
 
@@ -107,49 +193,36 @@ make_swale_runner <- function(path_list,
       normalizePath(fs::path_abs(paths$dir_target_output)), "\\"
     )
 
-    vals <- h5_read_values(h5)
-
-    vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
-    vals$`//Berechnungsparameter/Zeitschritt_Infiltration` <- timestep_hours
-    vals$`//Berechnungsparameter/Zeitschritt_ET` <- timestep_hours
-    vals$`//Berechnungsparameter/Zeitschritt_Verschaltungen` <- timestep_hours
-    vals$`//Berechnungsparameter/R-Plots` <- 0
-    vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung"
-    vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
-
-    vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
-    vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- params$connected_area
-
-    vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
-    vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- 1
-    vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- params$mulde_area
-    vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- params$mulde_height
-    vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <-
-      c(0.3, st$Startwerte_theta_ActualSoilMoisture)
-    vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <-
-      c(params$filter_height, params$storage_height)
-    vals$`//Bodenarten/Speicher/thetaWP_MoistureAtWiltingPoint`  <- st$thetaWP_MoistureAtWiltingPoint
-    vals$`//Bodenarten/Speicher/thetaFC_MoistureAtFieldCapacity` <- st$thetaFC_MoistureAtFieldCapacity
-    vals$`//Bodenarten/Speicher/thetaS_MoistureAtSaturation`     <- st$thetaS_MoistureAtSaturation
-    vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <-
-      params$bottom_hydraulicconductivity
-    vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- lai
-
-    vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <-
-      params$filter_hydraulicconductivity
-    vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <-
-      psi_s_mm(params$filter_hydraulicconductivity)
-
-    if (!is.null(timeseries_et)) {
-      vals$`//Kurven/ET0` <- timeseries_et
-    }
-    if (!is.null(timeseries_rain)) {
-      vals$`//Kurven/Regen` <- timeseries_rain
-      vals$`//Kurven/Growth_1`$time[2]  <- max(timeseries_rain$time)
-      vals$`//Kurven/Shading_1`$time[2] <- max(timeseries_rain$time)
-    } else if (is.data.frame(vals[["//Kurven/Regen"]])) {
-      vals[["//Kurven/Regen"]]$value <-
-        vals[["//Kurven/Regen"]]$value * rain_factor
+    vals <- list(
+      `//Berechnungsparameter/Ergebnispfad` = new_path,
+      `//Massnahmenelemente/Dach/Allgemein/Flaeche` = params$connected_area,
+      `//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` = params$mulde_area,
+      `//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` = params$mulde_height,
+      `//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` =
+        c(0.3, st$Startwerte_theta_ActualSoilMoisture),
+      `//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` =
+        c(params$filter_height, params$storage_height),
+      `//Bodenarten/Speicher/thetaWP_MoistureAtWiltingPoint`  = st$thetaWP_MoistureAtWiltingPoint,
+      `//Bodenarten/Speicher/thetaFC_MoistureAtFieldCapacity` = st$thetaFC_MoistureAtFieldCapacity,
+      `//Bodenarten/Speicher/thetaS_MoistureAtSaturation`     = st$thetaS_MoistureAtSaturation,
+      `//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` =
+        params$bottom_hydraulicconductivity,
+      `//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` = lai,
+      `//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` =
+        params$filter_hydraulicconductivity,
+      `//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` =
+        psi_s_mm(params$filter_hydraulicconductivity)
+    )
+    # rain_factor is documented to be ignored when own rain series are
+    # written (timeseries_rain); it scales the base.h5 curve otherwise
+    if (is.null(timeseries_rain) && rain_factor != 1) {
+      if (!is.data.frame(template_rain)) {
+        stop("make_swale_runner(): rain_factor != 1 requires base.h5 to ",
+             "contain //Kurven/Regen as a time series (time/value)")
+      }
+      scaled <- template_rain
+      scaled$value <- scaled$value * rain_factor
+      vals$`//Kurven/Regen` <- scaled
     }
 
     h5_write_values(h5, vals, resize = TRUE,
@@ -174,6 +247,15 @@ make_swale_runner <- function(path_list,
       event_separation_hours = event_separation_hours,
       canonical_variables    = default_canonical_wb_variables()
     )
+
+    # the thinned row is all the optimiser needs -- drop the scenario's
+    # input copy and output directory so long searches (hundreds of
+    # engine runs) do not fill the temp drive. Reached only on success:
+    # a failed run errors above and keeps its files for debugging.
+    if (isTRUE(cleanup)) {
+      try(fs::file_delete(paths$path_target_input), silent = TRUE)
+      try(fs::dir_delete(paths$dir_target_output), silent = TRUE)
+    }
 
     dplyr::bind_cols(
       tibble::as_tibble(params[required]),

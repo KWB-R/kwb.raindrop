@@ -40,6 +40,23 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #' engine run is cached, so the sweep over all `x_targets` and both storage
 #' types shares evaluations.
 #'
+#' **The search order is derived from `cost_rates`** via a
+#' specific-cost proxy (EUR per mm of storage capacity, capacity model
+#' `V ~ area * (mulde_height + porosity * storage_height)`; the layer
+#' porosity comes from `storage_spec`, see [default_storage_spec()]):
+#' maximising `mulde_height` first is optimal for *any* rates under
+#' this cost model (it costs only excavation, while area pays every
+#' component), and the starting storage level is chosen as the
+#' cheapest level per mm of capacity -- the smallest level under the
+#' default rates, a high level when e.g. the storage material is cheap.
+#' Without a `porosity` entry in `storage_spec` the legacy order
+#' (smallest level first) is used. The proxy is a first-order
+#' heuristic: it assumes capacity-additive levers and cannot rank
+#' parameters with nonlinear hydraulic effects (e.g. a variable filter
+#' conductivity) -- for those, and as the assumption-free cross-check,
+#' use [optimise_swale_design_simultaneous()], which carries
+#' `cost_rates` directly inside its objective.
+#'
 #' @param run_fn `function(params)` running one scenario and returning at
 #'   least `n_overflows` plus `sum_overflows` (mm) or `overflow_volume_m3`;
 #'   typically created with [make_swale_runner()]. `params` is a named list
@@ -48,7 +65,14 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #' @param x_targets Integer vector of overflow targets (feasible :<=>
 #'   `n_overflows <= x`), default `0:5`.
 #' @param area_bounds,area_tol Search range (m2) and resolution for
-#'   `mulde_area`.
+#'   `mulde_area`. The found area sits up to one `area_tol` above the
+#'   exact feasibility boundary (worst-case cost overshoot roughly
+#'   `area_tol` x specific cost per m2, i.e. a few percent at the
+#'   default 2 m2); thanks to the bisection, every *halving* of
+#'   `area_tol` costs only one additional engine run per area search --
+#'   the cheapest precision lever of this optimiser. It also shrinks
+#'   the tolerance-artefact part of the final `mulde_height` trim (the
+#'   values just below the height maximum at low `x_targets`).
 #' @param height_bounds,height_tol Search range (mm) and resolution for
 #'   `mulde_height`.
 #' @param storage_spec Storage search space per type, see
@@ -79,8 +103,10 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #'   runs spent on this cell). All evaluated designs are attached as
 #'   attribute `"evaluations"`.
 #'
-#' @seealso [find_min_feasible()], [make_swale_runner()],
-#'   [default_storage_spec()]
+#' @seealso [optimise_swale_design_simultaneous()] (alternative: all
+#'   parameters at once via penalised Nelder-Mead, as an independent
+#'   cross-check of the coordinate descent), [find_min_feasible()],
+#'   [make_swale_runner()], [default_storage_spec()]
 #' @export
 optimise_swale_design <- function(run_fn,
                                   x_targets = 0:5,
@@ -184,19 +210,51 @@ optimise_swale_design <- function(run_fn,
       n_runs_new = runs_executed - runs_before
     )
 
+    # start storage level: derived from the cost rates when the spec
+    # carries the layer porosity -- the cheapest level per mm of storage
+    # capacity (capacity model V ~ area * (h_m + porosity * h_s), all
+    # cost terms ~ area, so the area cancels out of the comparison).
+    # Under the default rates this picks the smallest level (storage is
+    # the expensive lever); under e.g. cheap storage material it starts
+    # high where coordinate descent would otherwise never look. Without
+    # a porosity entry: legacy order (smallest level first).
+    choose_start_hs <- function(candidates) {
+      p <- spec$porosity
+      storage_rate <- switch(
+        type,
+        infiltration_box = cost_rates$infiltration_box_eur_per_m3,
+        gravel_trench    = cost_rates$gravel_trench_eur_per_m3
+      )
+      if (is.null(p) || is.null(storage_rate)) return(min(candidates))
+      sc <- vapply(candidates, function(s) {
+        hm <- hm_upper(s)
+        if (hm < height_bounds[1]) return(Inf)
+        f <- cost_rates$excavation_eur_per_m3 *
+               (hm + filter_height + s) / 1000 +
+             cost_rates$profiling_eur_per_m2 +
+             cost_rates$filter_eur_per_m3 * filter_height / 1000 +
+             storage_rate * s / 1000
+        f / (hm + p * s)
+      }, numeric(1))
+      candidates[which.min(sc)]
+    }
+
     if (discrete) {
       levels_all <- sort(spec$levels)
       levels_all <- levels_all[hm_upper(levels_all) >= height_bounds[1]]
       if (length(levels_all) == 0) return(infeasible_row())
-      h_s <- levels_all[1]
+      h_s <- choose_start_hs(levels_all)
     } else {
       gb <- spec$bounds
       if (!is.null(max_total_depth)) {
         gb[2] <- min(gb[2], max_total_depth - filter_height - height_bounds[1])
       }
-      if (gb[2] <= gb[1]) return(infeasible_row())
+      # gb[2] == gb[1] is a degenerate but valid axis (exactly one
+      # admissible storage height), only gb[2] < gb[1] is infeasible
+      if (gb[2] < gb[1]) return(infeasible_row())
       gravel_tol <- if (is.null(spec$tol)) 25 else spec$tol
-      h_s <- gb[1]
+      # linear-fractional in h_s -> the proxy optimum is at an endpoint
+      h_s <- choose_start_hs(c(gb[1], gb[2]))
     }
 
     a_star <- NA_real_
@@ -281,9 +339,13 @@ optimise_swale_design <- function(run_fn,
   evaluations <- dplyr::bind_rows(
     lapply(ls(cache), function(k) tibble::as_tibble(get(k, envir = cache)))
   )
-  attr(out, "evaluations") <- dplyr::arrange(
-    evaluations, .data$storage_type, .data$mulde_area
-  )
+  if (nrow(evaluations) > 0) {
+    # empty when every cell is analytically infeasible (no engine run)
+    evaluations <- dplyr::arrange(
+      evaluations, .data$storage_type, .data$mulde_area
+    )
+  }
+  attr(out, "evaluations") <- evaluations
   attr(out, "n_runs_total") <- runs_executed
   out
 }

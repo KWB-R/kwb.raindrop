@@ -19,6 +19,23 @@ template:
     primary: '#007aff'
     border-radius: 0.5rem
     btn-border-radius: 0.25rem
+# Die Ergebnis-Seiten (Brute-Force-Linkhub, Monotonie-Analyse, Vergleich
+# Optimierer vs. Brute-Force) sind kein Teil der pkgdown-Site: Sie werden
+# vollstaendig auf raindrop.kompetenz-wasser.io gepflegt und deployt und
+# hier nur extern verlinkt.
+navbar:
+  structure:
+    left: [intro, reference, articles, ergebnisse, tutorials, news]
+  components:
+    ergebnisse:
+      text: Ergebnisse
+      menu:
+      - text: Brute-Force
+        href: https://raindrop.kompetenz-wasser.io/brute-force/
+      - text: Monotonie-Analyse
+        href: https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/
+      - text: Optimierer vs. Brute-Force
+        href: https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/
 development:
   mode: auto
 

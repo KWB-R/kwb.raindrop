@@ -1,6 +1,6 @@
 # Changelog
 
-## kwb.raindrop 0.1.0 (2026-08-07)
+## [kwb.raindrop 0.1.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0) 2026-08-07
 
 ### New features
 

@@ -16,7 +16,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/KWB-R/kwb.raindrop/blob/dev/inst/CITATION)
+[`inst/CITATION`](https://github.com/KWB-R/kwb.raindrop/blob/main/inst/CITATION)
 
 Rustler M (2026). *kwb.raindrop: R Package for Optimisation Simulations
 for Rainwater Management*. R package version 0.1.0,

@@ -373,7 +373,7 @@
   <https://raindrop.kompetenz-wasser.io> and their result files never
   exist on GitHub Actions, so the pkgdown-built copies were link-dead
   shells. The complete rendered pages live on that server; the pkgdown
-  navbar instead gains an "Ergebnisse" menu linking them (brute force,
+  navbar instead gains a "More results" menu linking them (brute force,
   monotonicity analysis, optimiser vs. brute force), and the two
   optimisation vignettes link the monotonicity analysis there too.
 

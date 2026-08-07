@@ -7,8 +7,10 @@ bisection over one parameter): shrink the expensive lever first
 starts at its smallest level and is only escalated when the area is
 stuck at its upper bound. The filter conductivity is expected to be
 fixed at the maximum via `fixed` (it is cost-free and dominant, see the
-`monotonicity_analysis` vignette). Every engine run is cached, so the
-sweep over all `x_targets` and both storage types shares evaluations.
+monotonicity analysis,
+<https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/>).
+Every engine run is cached, so the sweep over all `x_targets` and both
+storage types shares evaluations.
 
 ## Usage
 

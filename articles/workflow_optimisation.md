@@ -9,9 +9,10 @@ x = 0…5 — pro Speichertyp (Sickerbox / Schotterrigol) — mit
 statt eines Brute-Force-Rasters. Das Verfahren ist reine Bisektion
 (“Zahlenraten”): Fläche schrumpfen, dann Muldentiefe, Speicher nur
 erhöhen, wenn die Fläche am Anschlag klemmt. Voraussetzung ist die in
-der Vignette `monotonicity_analysis` belegte Monotonie (“größer = nie
-mehr Überläufe”); die dort abgeleiteten Absicherungen (Rand-Guard,
-Volumen-Schiedsrichter) sind in
+der
+[Monotonie-Analyse](https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/)
+belegte Monotonie (“größer = nie mehr Überläufe”); die dort abgeleiteten
+Absicherungen (Rand-Guard, Volumen-Schiedsrichter) sind in
 [`find_min_feasible()`](https://kwb-r.github.io/kwb.raindrop/reference/find_min_feasible.md)
 eingebaut. Eine unabhängige **Gegenprobe ohne Monotonie-Annahme** —
 simultane Optimierung aller Parameter, plus weitere Suchverfahren zum

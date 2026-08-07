@@ -25,16 +25,16 @@ template:
 # hier nur extern verlinkt.
 navbar:
   structure:
-    left: [intro, reference, articles, ergebnisse, tutorials, news]
+    left: [intro, reference, articles, results, tutorials, news]
   components:
-    ergebnisse:
-      text: Ergebnisse
+    results:
+      text: More results
       menu:
-      - text: Brute-Force
+      - text: Brute force
         href: https://raindrop.kompetenz-wasser.io/brute-force/
-      - text: Monotonie-Analyse
+      - text: Monotonicity analysis
         href: https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/
-      - text: Optimierer vs. Brute-Force
+      - text: Optimiser vs. brute force
         href: https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/
 development:
   mode: auto

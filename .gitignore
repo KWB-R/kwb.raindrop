@@ -5,3 +5,22 @@
 docs
 inst/doc
 .positai
+
+# Von den Vignetten erzeugte Ergebnisdateien (Workflows: simulation_results_*;
+# monotonicity_analysis.Rmd: mono_*). Reproduzierbar durch erneutes Rendern
+# -> nicht einchecken. HTML- und R-Dateien unter vignettes/ ignoriert
+# bereits vignettes/.gitignore (*.html, *.R).
+vignettes/*.csv
+vignettes/*.pdf
+vignettes/figure/
+Rplots.pdf
+
+# Deploy-Ordner der Monotonie-Analyse: komplett unversioniert. Achtung:
+# Das betrifft auch den handgeschriebenen Ergebnisbericht index.html
+# (liegt lokal, als claude.ai-Artefakt und deployt auf dem Server).
+vignettes/monotonicity_analysis/
+
+# Deploy-Ordner der Vergleichs-Praesentation Optimierer vs. Brute-Force
+# (handgeschriebenes index.html, liegt auch als claude.ai-Artefakt vor)
+vignettes/optimiser_vs_bruteforce/
+tests/testthat/testthat-problems.rds

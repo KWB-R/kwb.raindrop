@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: "kwb.raindrop: R Package for Optimisation Simulations for Rainwater Management"
+version: 0.1.0
+date-released: "2026-08-07"
+license: MIT
+repository-code: "https://github.com/KWB-R/kwb.raindrop"
+url: "https://kwb-r.github.io/kwb.raindrop"
+authors:
+  - family-names: Rustler
+    given-names: Michael
+    orcid: "https://orcid.org/0000-0003-0647-7726"
+    affiliation: "Kompetenzzentrum Wasser Berlin gGmbH (KWB)"
+keywords:
+  - blue-green infrastructure
+  - sponge city
+  - stormwater management
+  - long-term simulation
+  - cost optimisation
+  - infiltration swale
+  - R package
+abstract: >-
+  R interface and control unit for the RAINDROP hydrodynamic planning
+  tool: long-term simulation of blue-green infrastructure (swale-trench
+  elements) driven by real climate series, plus two cost optimisers
+  that find the cost-minimal design per allowed overflow frequency - a
+  deterministic bisection-based coordinate descent whose search order
+  is derived from the construction cost rates, and an
+  assumption-free simultaneous search (penalised Nelder-Mead,
+  differential evolution and Halton sampling) as cross-check. The
+  proprietary calculation engine ("Regenwasserbewirtschaftung",
+  (c) Tandler.com GmbH) is not part of this package; it is downloaded
+  on demand from the companion repository kwb.raindrop.binaries.
+  Developed within the project RAINDROP (Rainwater Drainage
+  Optimization, GZ C300428), funded by the Austrian Federal Ministry
+  of Agriculture, Forestry, Regions and Water Management.

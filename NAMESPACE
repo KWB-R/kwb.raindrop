@@ -7,7 +7,10 @@ export(cost_rates_caption)
 export(default_canonical_wb_variables)
 export(default_cost_rates)
 export(default_param_labels)
+export(default_storage_spec)
+export(default_storage_types)
 export(download_engine)
+export(find_min_feasible)
 export(find_single_param_variations)
 export(get_simulation_results_all)
 export(get_simulation_results_optim)
@@ -18,6 +21,9 @@ export(h5_read_values)
 export(h5_validate_write)
 export(h5_write_values)
 export(list_h5_datasets)
+export(make_swale_runner)
+export(optimise_swale_design)
+export(optimise_swale_design_simultaneous)
 export(plot_cost_overflow_boxplot)
 export(plot_cost_vs_evaporation)
 export(plot_cost_vs_overflow_volume)
@@ -31,94 +37,117 @@ export(read_hdf5_connections)
 export(read_hdf5_scalars)
 export(read_hdf5_timeseries)
 export(read_raindrop_errors)
+export(read_site_timeseries)
 export(run_model)
 export(run_scenarios)
-importFrom(dplyr,"%>%")
-importFrom(dplyr,across)
-importFrom(dplyr,all_of)
-importFrom(dplyr,arrange)
-importFrom(dplyr,bind_cols)
-importFrom(dplyr,bind_rows)
-importFrom(dplyr,case_when)
-importFrom(dplyr,coalesce)
-importFrom(dplyr,desc)
-importFrom(dplyr,everything)
-importFrom(dplyr,filter)
-importFrom(dplyr,group_by)
-importFrom(dplyr,if_else)
-importFrom(dplyr,left_join)
-importFrom(dplyr,mutate)
-importFrom(dplyr,n)
-importFrom(dplyr,n_distinct)
-importFrom(dplyr,pull)
-importFrom(dplyr,relocate)
-importFrom(dplyr,select)
-importFrom(dplyr,slice)
-importFrom(dplyr,summarise)
-importFrom(dplyr,transmute)
-importFrom(dplyr,ungroup)
+export(sickerbox_level_presets)
+export(stack_levels)
+importFrom(dplyr,
+  "%>%",
+  across,
+  all_of,
+  arrange,
+  bind_cols,
+  bind_rows,
+  case_when,
+  coalesce,
+  desc,
+  everything,
+  filter,
+  group_by,
+  if_else,
+  left_join,
+  mutate,
+  n,
+  n_distinct,
+  pull,
+  relocate,
+  select,
+  slice,
+  summarise,
+  transmute,
+  ungroup
+)
 importFrom(forcats,fct_reorder)
-importFrom(fs,dir_create)
-importFrom(fs,file_copy)
-importFrom(fs,file_exists)
-importFrom(fs,path_abs)
-importFrom(future,multisession)
-importFrom(future,plan)
-importFrom(future,sequential)
+importFrom(fs,
+  dir_create,
+  file_copy,
+  file_exists,
+  path_abs
+)
+importFrom(future,
+  multisession,
+  plan,
+  sequential
+)
 importFrom(future.apply,future_lapply)
-importFrom(ggplot2,aes)
-importFrom(ggplot2,coord_cartesian)
-importFrom(ggplot2,element_text)
-importFrom(ggplot2,facet_grid)
-importFrom(ggplot2,facet_wrap)
-importFrom(ggplot2,geom_boxplot)
-importFrom(ggplot2,geom_jitter)
-importFrom(ggplot2,geom_line)
-importFrom(ggplot2,geom_point)
-importFrom(ggplot2,geom_text)
-importFrom(ggplot2,geom_violin)
-importFrom(ggplot2,ggplot)
-importFrom(ggplot2,guide_legend)
-importFrom(ggplot2,guides)
-importFrom(ggplot2,labs)
-importFrom(ggplot2,position_identity)
-importFrom(ggplot2,position_jitter)
-importFrom(ggplot2,position_nudge)
-importFrom(ggplot2,scale_alpha_identity)
-importFrom(ggplot2,scale_color_manual)
-importFrom(ggplot2,scale_colour_manual)
-importFrom(ggplot2,scale_fill_manual)
-importFrom(ggplot2,scale_shape_manual)
-importFrom(ggplot2,scale_size)
-importFrom(ggplot2,scale_x_continuous)
-importFrom(ggplot2,scale_x_discrete)
-importFrom(ggplot2,scale_y_continuous)
-importFrom(ggplot2,scale_y_discrete)
-importFrom(ggplot2,theme)
-importFrom(ggplot2,theme_bw)
-importFrom(ggplot2,vars)
+importFrom(ggplot2,
+  aes,
+  coord_cartesian,
+  element_text,
+  facet_grid,
+  facet_wrap,
+  geom_boxplot,
+  geom_jitter,
+  geom_line,
+  geom_point,
+  geom_text,
+  geom_violin,
+  ggplot,
+  guide_legend,
+  guides,
+  labs,
+  position_identity,
+  position_jitter,
+  position_nudge,
+  scale_alpha_identity,
+  scale_color_manual,
+  scale_colour_manual,
+  scale_fill_manual,
+  scale_shape_manual,
+  scale_size,
+  scale_x_continuous,
+  scale_x_discrete,
+  scale_y_continuous,
+  scale_y_discrete,
+  theme,
+  theme_bw,
+  vars
+)
 importFrom(grDevices,colorRampPalette)
 importFrom(hdf5r,H5File)
 importFrom(kwb.event,hsEvents)
-importFrom(kwb.utils,catAndRun)
-importFrom(kwb.utils,resolve)
+importFrom(kwb.utils,
+  catAndRun,
+  resolve
+)
 importFrom(lubridate,as_datetime)
 importFrom(magrittr,"%>%")
 importFrom(parallel,detectCores)
-importFrom(progressr,handler_cli)
-importFrom(progressr,handler_rstudio)
-importFrom(progressr,handler_txtprogressbar)
-importFrom(progressr,handlers)
-importFrom(progressr,progressor)
-importFrom(progressr,with_progress)
-importFrom(purrr,map_chr)
-importFrom(purrr,map_dfr)
+importFrom(progressr,
+  handler_cli,
+  handler_rstudio,
+  handler_txtprogressbar,
+  handlers,
+  progressor,
+  with_progress
+)
+importFrom(purrr,
+  map_chr,
+  map_dfr
+)
 importFrom(rlang,.data)
-importFrom(stats,median)
-importFrom(stats,setNames)
+importFrom(stats,
+  median,
+  setNames
+)
 importFrom(stringr,str_c)
-importFrom(tibble,as_tibble)
-importFrom(tibble,tibble)
-importFrom(tidyr,pivot_longer)
-importFrom(tidyr,pivot_wider)
+importFrom(tibble,
+  as_tibble,
+  tibble
+)
+importFrom(tidyr,
+  pivot_longer,
+  pivot_wider
+)
 importFrom(utils,modifyList)

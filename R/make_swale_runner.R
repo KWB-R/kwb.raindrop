@@ -42,9 +42,13 @@ psi_s_mm <- function(kf_mmh) {
 #'   `path_results_hdf5_flaeche`, `file_target`).
 #' @param timestep_hours Engine time step in hours (default 0.1).
 #' @param timeseries_rain Optional data.frame `time`/`value` (mm/h) written
-#'   to `//Kurven/Regen`; when given, `//Kurven/Growth_1` and
-#'   `//Kurven/Shading_1` end times are extended to the rain series end and
-#'   `rain_factor` is ignored.
+#'   to `//Kurven/Regen` (the dataset must exist in `base.h5`); when
+#'   given, the `//Kurven/Growth_1` and `//Kurven/Shading_1` end times
+#'   are extended to the rain series end (skipped for templates without
+#'   these curves) and `rain_factor` is ignored. Without
+#'   `timeseries_rain`, a per-run `rain_factor != 1` requires
+#'   `//Kurven/Regen` to exist as a time series in `base.h5` -- a clear
+#'   error is thrown otherwise.
 #' @param timeseries_et Optional data.frame `time`/`value` (mm/h) written
 #'   to `//Kurven/ET0`.
 #' @param storage_types Soil presets of the storage layer per storage type,
@@ -117,18 +121,26 @@ make_swale_runner <- function(path_list,
     if (!is.null(timeseries_et)) {
       static_vals$`//Kurven/ET0` <- timeseries_et
     }
+    # base.h5 templates differ in which curves they ship -- only touch
+    # datasets that actually exist (missing Growth/Shading just skips
+    # the end-time fix; a missing rain curve only matters if a run
+    # later asks for rain_factor != 1, which then errors clearly)
+    existing <- list_h5_datasets(h5m)$path
     if (!is.null(timeseries_rain)) {
-      curves <- h5_read_values(
-        h5m, paths = c("//Kurven/Growth_1", "//Kurven/Shading_1")
-      )
-      grow <- curves[["//Kurven/Growth_1"]]
-      shad <- curves[["//Kurven/Shading_1"]]
-      grow$time[2] <- max(timeseries_rain$time)
-      shad$time[2] <- max(timeseries_rain$time)
+      if (!"//Kurven/Regen" %in% existing) {
+        stop("make_swale_runner(): base.h5 has no dataset //Kurven/Regen ",
+             "to replace with timeseries_rain: ", paths$path_base)
+      }
       static_vals$`//Kurven/Regen` <- timeseries_rain
-      static_vals$`//Kurven/Growth_1` <- grow
-      static_vals$`//Kurven/Shading_1` <- shad
-    } else {
+      for (curve in c("//Kurven/Growth_1", "//Kurven/Shading_1")) {
+        if (!curve %in% existing) next
+        cv <- h5_read_values(h5m, paths = curve)[[curve]]
+        if (is.data.frame(cv) && length(cv$time) >= 2) {
+          cv$time[2] <- max(timeseries_rain$time)
+          static_vals[[curve]] <- cv
+        }
+      }
+    } else if ("//Kurven/Regen" %in% existing) {
       # kept for per-run rain_factor scaling (Eisenstadt variant)
       template_rain <<- h5_read_values(
         h5m, paths = "//Kurven/Regen"
@@ -203,8 +215,11 @@ make_swale_runner <- function(path_list,
     )
     # rain_factor is documented to be ignored when own rain series are
     # written (timeseries_rain); it scales the base.h5 curve otherwise
-    if (is.null(timeseries_rain) && rain_factor != 1 &&
-        is.data.frame(template_rain)) {
+    if (is.null(timeseries_rain) && rain_factor != 1) {
+      if (!is.data.frame(template_rain)) {
+        stop("make_swale_runner(): rain_factor != 1 requires base.h5 to ",
+             "contain //Kurven/Regen as a time series (time/value)")
+      }
       scaled <- template_rain
       scaled$value <- scaled$value * rain_factor
       vals$`//Kurven/Regen` <- scaled

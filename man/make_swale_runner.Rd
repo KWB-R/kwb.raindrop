@@ -26,9 +26,13 @@ make_swale_runner(
 \item{timestep_hours}{Engine time step in hours (default 0.1).}
 
 \item{timeseries_rain}{Optional data.frame \code{time}/\code{value} (mm/h) written
-to \verb{//Kurven/Regen}; when given, \verb{//Kurven/Growth_1} and
-\verb{//Kurven/Shading_1} end times are extended to the rain series end and
-\code{rain_factor} is ignored.}
+to \verb{//Kurven/Regen} (the dataset must exist in \code{base.h5}); when
+given, the \verb{//Kurven/Growth_1} and \verb{//Kurven/Shading_1} end times
+are extended to the rain series end (skipped for templates without
+these curves) and \code{rain_factor} is ignored. Without
+\code{timeseries_rain}, a per-run \code{rain_factor != 1} requires
+\verb{//Kurven/Regen} to exist as a time series in \code{base.h5} -- a clear
+error is thrown otherwise.}
 
 \item{timeseries_et}{Optional data.frame \code{time}/\code{value} (mm/h) written
 to \verb{//Kurven/ET0}.}

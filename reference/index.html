@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">kwb.raindrop</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,11 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, ET-diagnostics scenario grid</a></li>
     <li><a class="dropdown-item" href="../articles/index.html">RainDrop Optimierung – Brute Force</a></li>
+    <li><a class="dropdown-item" href="../articles/monotonicity_analysis.html">Monotonie-Check der Optimierungsergebnisse</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_optimisation.html">Workflow Optimierung (Eisenstadt · Wien · Bad Aussee)</a></li>
+    <li><a class="dropdown-item" href="../articles/workflow_optimisation_simultaneous.html">Workflow Optimierung — Simultane Suche (alle Parameter gleichzeitig)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_wien.html">Workflow Wien (2011 - 2025)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -93,10 +96,31 @@
 
         <dt>
 
+          <code><a href="default_storage_spec.html">default_storage_spec()</a></code>
+
+        </dt>
+        <dd>Default storage specification for the swale-design optimiser</dd>
+
+        <dt>
+
+          <code><a href="default_storage_types.html">default_storage_types()</a></code>
+
+        </dt>
+        <dd>Default storage-type soil presets (Speicher layer)</dd>
+
+        <dt>
+
           <code><a href="download_engine.html">download_engine()</a></code>
 
         </dt>
         <dd>Download the Tandler "Regenwasserbewirtschaftung" calculation engine</dd>
+
+        <dt>
+
+          <code><a href="find_min_feasible.html">find_min_feasible()</a></code>
+
+        </dt>
+        <dd>Smallest feasible parameter value via bisection (monotone threshold search)</dd>
 
         <dt>
 
@@ -167,6 +191,27 @@
 
         </dt>
         <dd>List all datasets (recursive)</dd>
+
+        <dt>
+
+          <code><a href="make_swale_runner.html">make_swale_runner()</a></code>
+
+        </dt>
+        <dd>Create a site-specific single-scenario runner for the optimiser</dd>
+
+        <dt>
+
+          <code><a href="optimise_swale_design.html">optimise_swale_design()</a></code>
+
+        </dt>
+        <dd>Find the cost-optimal swale design per overflow target</dd>
+
+        <dt>
+
+          <code><a href="optimise_swale_design_simultaneous.html">optimise_swale_design_simultaneous()</a></code>
+
+        </dt>
+        <dd>Find the cost-optimal swale design by simultaneous parameter search</dd>
 
         <dt>
 
@@ -261,6 +306,13 @@
 
         <dt>
 
+          <code><a href="read_site_timeseries.html">read_site_timeseries()</a></code>
+
+        </dt>
+        <dd>Read and prepare site rain/ET0 time series for the engine (mm/h)</dd>
+
+        <dt>
+
           <code><a href="run_model.html">run_model()</a></code>
 
         </dt>
@@ -272,6 +324,20 @@
 
         </dt>
         <dd>Run scenarios (parallel or sequential) with a user-supplied worker function</dd>
+
+        <dt>
+
+          <code><a href="sickerbox_level_presets.html">sickerbox_level_presets()</a></code>
+
+        </dt>
+        <dd>Sickerbox storage-height presets (brute force default + manufacturers)</dd>
+
+        <dt>
+
+          <code><a href="stack_levels.html">stack_levels()</a></code>
+
+        </dt>
+        <dd>Achievable storage-layer stack heights from module heights</dd>
       </dl></div>
   </main></div>
 

@@ -40,8 +40,15 @@ remotes::install_github("KWB-R/kwb.raindrop")
   : Default unit-cost rates for infiltration-swale installations
 - [`default_param_labels()`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md)
   : German / English labels for optimisation parameter-grid columns
+- [`default_storage_spec()`](https://kwb-r.github.io/kwb.raindrop/reference/default_storage_spec.md)
+  : Default storage specification for the swale-design optimiser
+- [`default_storage_types()`](https://kwb-r.github.io/kwb.raindrop/reference/default_storage_types.md)
+  : Default storage-type soil presets (Speicher layer)
 - [`download_engine()`](https://kwb-r.github.io/kwb.raindrop/reference/download_engine.md)
   : Download the Tandler "Regenwasserbewirtschaftung" calculation engine
+- [`find_min_feasible()`](https://kwb-r.github.io/kwb.raindrop/reference/find_min_feasible.md)
+  : Smallest feasible parameter value via bisection (monotone threshold
+  search)
 - [`find_single_param_variations()`](https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.md)
   : Find scenarios that differ from a reference in exactly one parameter
 - [`get_simulation_results_all()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.md)
@@ -64,6 +71,12 @@ remotes::install_github("KWB-R/kwb.raindrop")
   your hdf5r build)
 - [`list_h5_datasets()`](https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.md)
   : List all datasets (recursive)
+- [`make_swale_runner()`](https://kwb-r.github.io/kwb.raindrop/reference/make_swale_runner.md)
+  : Create a site-specific single-scenario runner for the optimiser
+- [`optimise_swale_design()`](https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design.md)
+  : Find the cost-optimal swale design per overflow target
+- [`optimise_swale_design_simultaneous()`](https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design_simultaneous.md)
+  : Find the cost-optimal swale design by simultaneous parameter search
 - [`plotly_add_caption()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_add_caption.md)
   : Add a caption annotation to a ggplotly object
 - [`plotly_split_legend()`](https://kwb-r.github.io/kwb.raindrop/reference/plotly_split_legend.md)
@@ -95,11 +108,18 @@ remotes::install_github("KWB-R/kwb.raindrop")
   : Read HDF5 time series datasets from a group (supports deeperLayers)
 - [`read_raindrop_errors()`](https://kwb-r.github.io/kwb.raindrop/reference/read_raindrop_errors.md)
   : Read RAINDROP error logs into a nested tibble
+- [`read_site_timeseries()`](https://kwb-r.github.io/kwb.raindrop/reference/read_site_timeseries.md)
+  : Read and prepare site rain/ET0 time series for the engine (mm/h)
 - [`run_model()`](https://kwb-r.github.io/kwb.raindrop/reference/run_model.md)
   : Run an rainwater management model executable with an input file
 - [`run_scenarios()`](https://kwb-r.github.io/kwb.raindrop/reference/run_scenarios.md)
   : Run scenarios (parallel or sequential) with a user-supplied worker
   function
+- [`sickerbox_level_presets()`](https://kwb-r.github.io/kwb.raindrop/reference/sickerbox_level_presets.md)
+  : Sickerbox storage-height presets (brute force default +
+  manufacturers)
+- [`stack_levels()`](https://kwb-r.github.io/kwb.raindrop/reference/stack_levels.md)
+  : Achievable storage-layer stack heights from module heights
 
 # RainDrop Optimierung – Brute Force
 

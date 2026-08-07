@@ -2,8 +2,11 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/404.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/index.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/monotonicity_analysis.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_optimisation.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_optimisation_simultaneous.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_wien.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/authors.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/index.html</loc></url>
@@ -16,7 +19,10 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_storage_spec.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_storage_types.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/download_engine.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/find_min_feasible.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.html</loc></url>
@@ -28,6 +34,9 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_write_values.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/make_swale_runner.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design_simultaneous.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/pipe.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plotly_add_caption.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/plotly_split_legend.html</loc></url>
@@ -42,7 +51,10 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_scalars.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_raindrop_errors.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_site_timeseries.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/run_model.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/run_scenarios.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/sickerbox_level_presets.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/stack_levels.html</loc></url>
 </urlset>
 

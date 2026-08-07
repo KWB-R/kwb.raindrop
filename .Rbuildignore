@@ -9,5 +9,9 @@
 ^index\.md$
 ^README\.md$
 ^vignettes/index\.Rmd$
+^vignettes/monotonicity_analysis$
+^vignettes/optimiser_vs_bruteforce$
 ^\.positai$
 ^\.claude$
+^CITATION\.cff$
+^\.zenodo\.json$

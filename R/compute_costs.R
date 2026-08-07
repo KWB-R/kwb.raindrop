@@ -27,6 +27,58 @@ default_cost_rates <- function() {
   )
 }
 
+#' Caption line naming the unit-cost rates behind the cost plots
+#'
+#' Formats the unit-cost rates (EUR per m2 / m3, see [default_cost_rates()])
+#' as a single-line caption for the cost plots, so every figure names the
+#' rates its EUR values were computed with. Used as the default `caption` of
+#' [plot_cost_vs_overflow_volume()], [plot_cost_vs_evaporation()] and
+#' [plot_cost_overflow_boxplot()] (rendered by ggplot at the bottom of the
+#' PDFs) and passed to [plotly_add_caption()] for the interactive HTMLs
+#' (`plotly::ggplotly()` drops ggplot captions).
+#'
+#' If the costs were computed with non-default rates, pass the same
+#' `cost_rates` list here so the caption matches the numbers.
+#'
+#' @param lang Character. `"de"` or `"en"`.
+#' @param cost_rates `list` of unit costs as returned by
+#'   [default_cost_rates()].
+#'
+#' @return `character(1)`, a single line.
+#'
+#' @examples
+#' cost_rates_caption("de")
+#'
+#' @export
+cost_rates_caption <- function(lang = c("de", "en"),
+                               cost_rates = default_cost_rates()) {
+  lang <- match.arg(lang)
+  f <- function(v) format(v, trim = TRUE, big.mark = " ", scientific = FALSE)
+  switch(
+    lang,
+    de = paste0(
+      "Kostens\u00e4tze (inkl. Einbau): Aushub ",
+      f(cost_rates$excavation_eur_per_m3), " \u20ac/m\u00b3 \u00b7 ",
+      "Profilierung + Begr\u00fcnung ",
+      f(cost_rates$profiling_eur_per_m2), " \u20ac/m\u00b2 \u00b7 ",
+      "Bodenfilter ", f(cost_rates$filter_eur_per_m3), " \u20ac/m\u00b3 \u00b7 ",
+      "Sickerbox ",
+      f(cost_rates$infiltration_box_eur_per_m3), " \u20ac/m\u00b3 \u00b7 ",
+      "Schotterrigol ", f(cost_rates$gravel_trench_eur_per_m3), " \u20ac/m\u00b3"
+    ),
+    en = paste0(
+      "Cost rates (incl. installation): excavation ",
+      f(cost_rates$excavation_eur_per_m3), " \u20ac/m\u00b3 \u00b7 ",
+      "profiling + greening ",
+      f(cost_rates$profiling_eur_per_m2), " \u20ac/m\u00b2 \u00b7 ",
+      "soil filter ", f(cost_rates$filter_eur_per_m3), " \u20ac/m\u00b3 \u00b7 ",
+      "infiltration box ",
+      f(cost_rates$infiltration_box_eur_per_m3), " \u20ac/m\u00b3 \u00b7 ",
+      "gravel trench ", f(cost_rates$gravel_trench_eur_per_m3), " \u20ac/m\u00b3"
+    )
+  )
+}
+
 #' Compute construction costs for an infiltration-swale parameter grid
 #'
 #' Given a parameter grid that drives the simulation, attach a per-scenario

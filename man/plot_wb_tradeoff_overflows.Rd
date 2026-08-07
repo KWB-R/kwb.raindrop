@@ -90,5 +90,13 @@ The plot language can be switched via \code{lang = "de"} or
 tooltip labels unless custom labels are supplied explicitly.
 
 Tooltip text additionally includes all parameters from \code{param_grid} that
-vary across scenarios, excluding \code{scenario_name}.
+vary across scenarios, excluding \code{scenario_name} (translated via
+\code{\link{default_param_labels}}; mixed numeric / character parameters
+such as \code{storage_type} are supported).
+
+If \code{simulation_results_optimisation} carries a \code{storage_type}
+column, the points are additionally \strong{shaped by the storage type} (filled
+square = infiltration box / Sickerbox, filled triangle = gravel trench /
+Schotterrigol, as in the cost plots) and the tooltip names the storage
+type; older single-type result sets plot exactly as before.
 }

@@ -4,7 +4,13 @@
 \alias{get_simulation_results_optim}
 \title{Read Raindrop optimisation simulation results from HDF5}
 \usage{
-get_simulation_results_optim(paths, path_list, simulation_names, debug = TRUE)
+get_simulation_results_optim(
+  paths,
+  path_list,
+  simulation_names,
+  debug = TRUE,
+  lean = FALSE
+)
 }
 \arguments{
 \item{paths}{A list of path definitions. Used for messaging and expected to
@@ -20,6 +26,14 @@ run-specific paths (must yield \code{path_results_hdf5_element},
 (e.g. \code{c("s00001", "s00002")}).}
 
 \item{debug}{print debug messages (default: TRUE)}
+
+\item{lean}{Logical. If \code{TRUE}, read only the fields consumed by
+\code{\link{add_overflow_events_and_waterbalance}} -- \code{element$rates},
+\code{element$water_balance} and \code{connected_area$water_balance} -- and
+leave \code{meta}/\code{states} (both sides) and \code{connected_area$rates}
+as \code{NULL}. This keeps per-run memory and I/O minimal when each run is
+thinned to its optimisation row immediately instead of collecting every
+run's full results first. Defaults to \code{FALSE} (read everything).}
 }
 \value{
 A named list with one entry per \code{simulation_names}. Each entry is

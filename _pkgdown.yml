@@ -4,8 +4,8 @@ authors:
     href: https://www.kompetenz-wasser.de/en/ueber-uns/team/michael-rustler
   RAINDROP:
     href: https://www.kompetenz-wasser.de/en/forschung/projekte/raindrop
-    # html: <img src='https://climate-impetus.eu/wp-content/uploads/2021/12/horizontal.png'
-    #   alt='Project RAINDROP' width='72' />
+    html: <img src='https://www.tandler.com/wp-content/uploads/2024/12/Icon_White.png'
+      alt='Project RAINDROP' width='72' />
   Kompetenzzentrum Wasser Berlin gGmbH (KWB):
     href: http://www.kompetenz-wasser.de
     html: <img src='https://logos.kompetenz-wasser.io/KWB_Logo_M_Blau_RGB.svg'
@@ -19,6 +19,23 @@ template:
     primary: '#007aff'
     border-radius: 0.5rem
     btn-border-radius: 0.25rem
+# Die Ergebnis-Seiten (Brute-Force-Linkhub, Monotonie-Analyse, Vergleich
+# Optimierer vs. Brute-Force) sind kein Teil der pkgdown-Site: Sie werden
+# vollstaendig auf raindrop.kompetenz-wasser.io gepflegt und deployt und
+# hier nur extern verlinkt.
+navbar:
+  structure:
+    left: [intro, reference, articles, results, tutorials, news]
+  components:
+    results:
+      text: More results
+      menu:
+      - text: Brute force
+        href: https://raindrop.kompetenz-wasser.io/brute-force/
+      - text: Monotonicity analysis
+        href: https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/
+      - text: Optimiser vs. brute force
+        href: https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/
 development:
   mode: auto
 

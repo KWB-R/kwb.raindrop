@@ -8,3 +8,9 @@
 ^codecov\.yml$
 ^index\.md$
 ^README\.md$
+^vignettes/monotonicity_analysis$
+^vignettes/optimiser_vs_bruteforce$
+^\.positai$
+^\.claude$
+^CITATION\.cff$
+^\.zenodo\.json$

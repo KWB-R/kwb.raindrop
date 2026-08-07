@@ -1,7 +1,7 @@
 Package: kwb.raindrop
 Title: R Package for Optimisation Simulations for Rainwater Management
     Simulations Performed with Calculation Engine Provided by Tandler
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: c(
     person("Michael", "Rustler", , "michael.rustler@kompetenz-wasser.de", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-0647-7726")),
@@ -41,12 +41,14 @@ Suggests:
     plotly,
     readr,
     rmarkdown,
+    testthat (>= 3.0.0),
     writexl
-VignetteBuilder: 
+VignetteBuilder:
     knitr
+Config/testthat/edition: 3
 Remotes:
     github::kwb-r/kwb.event,
     github::kwb-r/kwb.utils
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+Config/roxygen2/version: 8.1.0

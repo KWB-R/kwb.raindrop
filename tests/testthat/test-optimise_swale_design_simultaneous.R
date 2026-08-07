@@ -169,8 +169,8 @@ test_that("degenerierte Rigol-Achse (genau eine zulaessige Hoehe) ist loesbar", 
     max_total_depth = 1300, verbose = FALSE
   )
   expect_identical(out$status, "ok")
-  expect_identical(out$storage_height, 900)
-  expect_identical(out$mulde_height, 100)
+  expect_equal(out$storage_height, 900, tolerance = 0)
+  expect_equal(out$mulde_height, 100, tolerance = 0)
 })
 
 test_that("NA-Zeilen im Prior stuerzen den Warmstart nicht ab", {
@@ -242,8 +242,8 @@ test_that("beide Optimierer folgen veraenderten Kostensaetzen", {
                                             verbose = FALSE)
   expect_identical(bis$status, "ok")
   expect_identical(sim$status, "ok")
-  expect_identical(bis$storage_height, 1200)
-  expect_identical(sim$storage_height, 1200)
+  expect_equal(bis$storage_height, 1200, tolerance = 0)
+  expect_equal(sim$storage_height, 1200, tolerance = 0)
   expect_lt(abs(sim$cost_total - bis$cost_total), 0.05 * bis$cost_total)
 
   # ohne porosity-Eintrag: Legacy-Reihenfolge (kleinste Stufe zuerst)
@@ -252,12 +252,12 @@ test_that("beide Optimierer folgen veraenderten Kostensaetzen", {
   leg <- optimise_swale_design(run, x_targets = 0, fixed = sim_fixed,
                                storage_spec = spec_legacy,
                                cost_rates = cheap_box, verbose = FALSE)
-  expect_identical(leg$storage_height, 300)
+  expect_equal(leg$storage_height, 300, tolerance = 0)
 
   # unter Default-Saetzen waehlt der Proxy weiterhin die kleinste Stufe
   def <- optimise_swale_design(run, x_targets = 0, fixed = sim_fixed,
                                storage_spec = spec, verbose = FALSE)
-  expect_identical(def$storage_height, 300)
+  expect_equal(def$storage_height, 300, tolerance = 0)
 })
 
 test_that("alle Methoden funktionieren mit Ein-Typ-storage_spec", {
@@ -310,8 +310,8 @@ test_that("Differential Evolution ist deterministisch und laesst Rs RNG in Ruhe"
                                             fixed = sim_fixed,
                                             method = "diff_evolution",
                                             verbose = FALSE)
-  expect_identical(de1$cost_total, de2$cost_total)
-  expect_identical(de1$mulde_area, de2$mulde_area)
+  expect_equal(de1$cost_total, de2$cost_total, tolerance = 0)
+  expect_equal(de1$mulde_area, de2$mulde_area, tolerance = 0)
 
   # anderer Seed = anderer Suchpfad, aber gleiches Optimum (Toleranzen)
   de3 <- optimise_swale_design_simultaneous(run, x_targets = 1,

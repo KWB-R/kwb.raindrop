@@ -90,12 +90,16 @@
     rain + ET0 series in mm/h incl. the Growth/Shading end-time fix).
     Returns the thinned one-row optimisation result augmented with
     `overflow_volume_m3` (= `sum_overflows` [mm] × `mulde_area` / 1000).
-    Deletes each scenario's input copy and output directory right after
-    that row has been read (`cleanup = TRUE`, the default; failed runs
-    keep their files) — without this, long searches (hundreds of engine
-    runs per task, each with its own `base.h5` copy plus output HDF5s)
-    fill the temp drive and the engine dies with HDF5 `errno = 28`
-    ("No space left on device"). Prepares a **site master file** once
+    **Behaviour note — files are deleted by default:** with
+    `cleanup = TRUE` (the default) each scenario's input copy *and its
+    output HDF5s* (`Mulde_Rigole.h5`, `Dach.h5`, `Fehlerprotokoll.h5`,
+    …) are removed right after the one-row result has been read — only
+    the returned tibble survives a run. Pass `cleanup = FALSE` if you
+    need the raw scenario files (failed runs always keep theirs for
+    debugging). Rationale: without the cleanup, long searches (hundreds
+    of engine runs per task, each with its own `base.h5` copy plus
+    output HDF5s) fill the temp drive and the engine dies with HDF5
+    `errno = 28` ("No space left on device"). Prepares a **site master file** once
     (base.h5 + calculation settings + ET/rain series) and writes only
     the ~15 small parameter datasets per run instead of reading and
     rewriting *every* dataset each time — that full HDF5 round trip

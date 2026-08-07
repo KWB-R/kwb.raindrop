@@ -139,7 +139,7 @@ sites <- list(
 # reduziertes Budget (z. B. max_evals <- 50) und, auf Windows deutlich,
 # eine Virenscanner-Ausnahme fuer %LOCALAPPDATA%\Temp (jede Szenario-
 # Datei und jeder Engine-Start wird sonst einzeln gescannt):
-# sites <- sites["Eisenstadt_2005"]
+sites <- sites["Eisenstadt_2005"]
 
 fixed <- list(connected_area = 1000,
               filter_height = 300,

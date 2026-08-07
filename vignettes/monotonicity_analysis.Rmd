@@ -94,7 +94,7 @@ sie ablegen — nur die Links zeigen auf die Deploy-Orte.)
 ```{r report_link, echo = FALSE, results = 'asis', eval = !is_ghactions}
 cat(paste0(
   "Der zusammenfassende, allgemeinverständliche Ergebnisbericht (Artefakt, ",
-  "Titel: „Monotonie-Analyse RAINDROP“) liegt als [index.html](index.html) ",
+  "Titel: „Monotonie-Analyse RainDrop“) liegt als [index.html](index.html) ",
   "direkt neben dieser Seite — als Verzeichnis-Startseite von ",
   "`…/optimisation/monotonicity_analysis/`. Nicht zu verwechseln mit dem ",
   "„Brute-Force“-Linkhub: Dessen Quelle `index.Rmd` liegt in `vignettes/`, ",

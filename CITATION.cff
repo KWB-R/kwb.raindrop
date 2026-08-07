@@ -3,6 +3,7 @@ message: "If you use this software, please cite it using the metadata below."
 type: software
 title: "kwb.raindrop: R Package for Optimisation Simulations for Rainwater Management"
 version: 0.1.0
+doi: "10.5281/zenodo.21839223"
 date-released: "2026-08-07"
 license: MIT
 repository-code: "https://github.com/KWB-R/kwb.raindrop"
@@ -21,7 +22,7 @@ keywords:
   - infiltration swale
   - R package
 abstract: >-
-  R interface and control unit for the RAINDROP hydrodynamic planning
+  R interface and control unit for the RainDrop hydrodynamic planning
   tool: long-term simulation of blue-green infrastructure (swale-trench
   elements) driven by real climate series, plus two cost optimisers
   that find the cost-minimal design per allowed overflow frequency - a
@@ -32,6 +33,6 @@ abstract: >-
   proprietary calculation engine ("Regenwasserbewirtschaftung",
   (c) Tandler.com GmbH) is not part of this package; it is downloaded
   on demand from the companion repository kwb.raindrop.binaries.
-  Developed within the project RAINDROP (Rainwater Drainage
+  Developed within the project RainDrop (Rainwater Drainage
   Optimization, GZ C300428), funded by the Austrian Federal Ministry
   of Agriculture, Forestry, Regions and Water Management.

@@ -71,7 +71,7 @@ scenario name and the optimisation metrics (\code{n_overflows},
 \description{
 Factors the \code{run_one()} function that was duplicated across the three
 workflow vignettes (Eisenstadt 2005, Wien, Bad Aussee) into one
-package-level closure factory. The returned function runs the RAINDROP
+package-level closure factory. The returned function runs the RainDrop
 engine for one parameter set and returns the thinned one-row
 optimisation result (overflow events + water balance), augmented with
 the input parameters and the overflow volume in m3.

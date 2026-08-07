@@ -3,7 +3,7 @@
 #' Core building block of the swale-design optimiser: finds the smallest
 #' value of one design parameter for which the overflow target is met
 #' (`n_overflows <= x_max`), assuming quasi-monotone feasibility (larger
-#' value = never more overflows; verified for the RAINDROP model in the
+#' value = never more overflows; verified for the RainDrop model in the
 #' `monotonicity_analysis` vignette). Each evaluation halves the search
 #' interval, so `ceiling(log2(range / tol))` evaluations suffice.
 #'

@@ -2,7 +2,7 @@
 % Please edit documentation in R/read_raindrop_errors.R
 \name{read_raindrop_errors}
 \alias{read_raindrop_errors}
-\title{Read RAINDROP error logs into a nested tibble}
+\title{Read RainDrop error logs into a nested tibble}
 \usage{
 read_raindrop_errors(simulation_names, path_list, debug = FALSE)
 }
@@ -28,7 +28,7 @@ A tibble with columns:
 }
 }
 \description{
-Reads the RAINDROP error protocol HDF5 (typically \code{Fehlerprotokoll.h5})
+Reads the RainDrop error protocol HDF5 (typically \code{Fehlerprotokoll.h5})
 for a set of simulation runs and returns a tibble with one row per run and a
 nested tibble column containing all errors found in the file.
 }

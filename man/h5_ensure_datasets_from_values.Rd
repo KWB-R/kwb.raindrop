@@ -20,7 +20,7 @@ h5_ensure_datasets_from_values(
 
 \item{ts_cols}{Character(2). Column names for TS (default time/value).}
 
-\item{ts_layout}{One of "2xN" or "Nx2". For RAINDROP typically "2xN" in HDF5.}
+\item{ts_layout}{One of "2xN" or "Nx2". For RainDrop typically "2xN" in HDF5.}
 
 \item{ts_dtype}{Either an H5T object or a string ("double","integer","logical","float").}
 

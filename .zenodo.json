@@ -1,6 +1,6 @@
 {
   "title": "kwb.raindrop: R Package for Optimisation Simulations for Rainwater Management",
-  "description": "<p>R interface and control unit for the RAINDROP hydrodynamic planning tool: long-term simulation of blue-green infrastructure (swale-trench elements) driven by real climate series, plus two cost optimisers that find the cost-minimal design per allowed overflow frequency &mdash; a deterministic bisection-based coordinate descent whose search order is derived from the construction cost rates, and an assumption-free simultaneous search (penalised Nelder-Mead, differential evolution and Halton sampling) as cross-check.</p><p>The proprietary calculation engine (&quot;Regenwasserbewirtschaftung&quot;, &copy; Tandler.com GmbH) is <em>not</em> part of this archive; it is downloaded on demand from the companion repository <a href=\"https://github.com/KWB-R/kwb.raindrop.binaries\">kwb.raindrop.binaries</a>.</p>",
+  "description": "<p>R interface and control unit for the RainDrop hydrodynamic planning tool: long-term simulation of blue-green infrastructure (swale-trench elements) driven by real climate series, plus two cost optimisers that find the cost-minimal design per allowed overflow frequency &mdash; a deterministic bisection-based coordinate descent whose search order is derived from the construction cost rates, and an assumption-free simultaneous search (penalised Nelder-Mead, differential evolution and Halton sampling) as cross-check.</p><p>The proprietary calculation engine (&quot;Regenwasserbewirtschaftung&quot;, &copy; Tandler.com GmbH) is <em>not</em> part of this archive; it is downloaded on demand from the companion repository <a href=\"https://github.com/KWB-R/kwb.raindrop.binaries\">kwb.raindrop.binaries</a>.</p>",
   "upload_type": "software",
   "access_right": "open",
   "license": "MIT",
@@ -27,5 +27,5 @@
       "scheme": "url"
     }
   ],
-  "notes": "Developed within the project RAINDROP (Rainwater Drainage Optimization, GZ C300428), funded by the Austrian Federal Ministry of Agriculture, Forestry, Regions and Water Management."
+  "notes": "Developed within the project RainDrop (Rainwater Drainage Optimization, GZ C300428), funded by the Austrian Federal Ministry of Agriculture, Forestry, Regions and Water Management."
 }

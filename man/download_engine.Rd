@@ -19,7 +19,7 @@ pinned version.}
 \item{cache_dir}{\code{character(1)}
 Directory where engine binaries are cached. A sub-directory named after
 \code{version} is used so multiple versions can coexist. Defaults to
-\code{\link[tools:R_user_dir]{tools::R_user_dir}}\verb{("kwb.raindrop", "cache")}.}
+\code{\link[tools:userdir]{tools::R_user_dir}}\verb{("kwb.raindrop", "cache")}.}
 
 \item{force}{\code{logical(1)}
 If \code{TRUE}, re-download even if the executable already exists in the

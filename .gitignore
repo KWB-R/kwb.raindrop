@@ -6,10 +6,10 @@ docs
 inst/doc
 .positai
 
-# Von den Vignetten erzeugte Ergebnisdateien (Workflows: simulation_results_*;
-# monotonicity_analysis.Rmd: mono_*). Reproduzierbar durch erneutes Rendern
-# -> nicht einchecken. HTML- und R-Dateien unter vignettes/ ignoriert
-# bereits vignettes/.gitignore (*.html, *.R).
+# Von den Vignetten erzeugte Ergebnisdateien (simulation_results_*).
+# Reproduzierbar durch erneutes Rendern -> nicht einchecken. HTML- und
+# R-Dateien unter vignettes/ ignoriert bereits vignettes/.gitignore
+# (*.html, *.R).
 vignettes/*.csv
 vignettes/*.pdf
 vignettes/figure/

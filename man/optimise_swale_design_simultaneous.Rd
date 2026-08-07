@@ -168,7 +168,9 @@ The discrete infiltration-box levels are mapped onto a continuous
 latent axis (each level owns an equal share of \verb{[0, 1]}), the gravel
 trench is searched continuously. The filter conductivity is expected to
 be fixed at the maximum via \code{fixed} (cost-free and dominant, see the
-\code{monotonicity_analysis} vignette). \code{max_total_depth} is enforced by
+monotonicity analysis,
+\url{https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/}).
+\code{max_total_depth} is enforced by
 construction (the \code{mulde_height} axis is compressed to the remaining
 depth), so no simulation runs are spent on depth-invalid designs.
 

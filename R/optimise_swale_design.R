@@ -36,9 +36,10 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #' (`mulde_height`); the storage layer starts at its smallest level and is
 #' only escalated when the area is stuck at its upper bound. The filter
 #' conductivity is expected to be fixed at the maximum via `fixed` (it is
-#' cost-free and dominant, see the `monotonicity_analysis` vignette). Every
-#' engine run is cached, so the sweep over all `x_targets` and both storage
-#' types shares evaluations.
+#' cost-free and dominant, see the monotonicity analysis,
+#' <https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/>).
+#' Every engine run is cached, so the sweep over all `x_targets` and both
+#' storage types shares evaluations.
 #'
 #' **The search order is derived from `cost_rates`** via a
 #' specific-cost proxy (EUR per mm of storage capacity, capacity model

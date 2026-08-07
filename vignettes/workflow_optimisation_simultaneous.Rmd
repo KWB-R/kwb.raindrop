@@ -39,7 +39,8 @@ t_vignette_start <- Sys.time()
 Die Vignette `workflow_optimisation` findet die günstigste
 Muldenkonfiguration je Überlaufziel per **Bisektion**: Parameter
 nacheinander, gestützt auf die Monotonie je Parameter
-(`monotonicity_analysis`). Diese Vignette ist die **unabhängige
+([Monotonie-Analyse](https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/)).
+Diese Vignette ist die **unabhängige
 Gegenprobe**: `optimise_swale_design_simultaneous()` optimiert **alle
 Parameter gleichzeitig** — Fläche, Muldentiefe und Speicherhöhe in einem
 Zug — und kommt dabei *ohne* die Monotonie-Annahme aus.
@@ -470,7 +471,9 @@ ggplot(methoden[methoden$status == "ok", ],
   nicht des Suchwegs.
 - **Wenn die simultane Suche systematisch günstiger ist**, gibt es zwei
   mögliche Ursachen: (a) die Monotonie-Annahme der Bisektion ist
-  verletzt (echter Modell-Alarm → `monotonicity_analysis` prüfen), oder
+  verletzt (echter Modell-Alarm → die
+  [Monotonie-Analyse](https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/)
+  prüfen), oder
   (b) der **Spezifikkosten-Proxy**, aus dem die Bisektion ihre
   Suchreihenfolge herleitet (€ je mm Speicherkapazität, Kapazitätsmodell
   V ≈ Fläche × (Tiefe + Porosität × Speicher)), greift zu kurz — etwa

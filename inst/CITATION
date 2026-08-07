@@ -1,0 +1,17 @@
+citHeader("To cite kwb.raindrop in publications use:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = paste("kwb.raindrop: R Package for Optimisation Simulations",
+                  "for Rainwater Management"),
+  author  = person("Michael", "Rustler",
+                   comment = c(ORCID = "0000-0003-0647-7726")),
+  year    = "2026",
+  note    = "R package version 0.1.0",
+  url     = "https://github.com/KWB-R/kwb.raindrop"
+)
+
+citFooter(paste(
+  "After the first Zenodo release, please prefer the version DOI",
+  "shown at https://github.com/KWB-R/kwb.raindrop (Cite this repository)."
+))

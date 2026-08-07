@@ -13,3 +13,5 @@
 ^vignettes/optimiser_vs_bruteforce$
 ^\.positai$
 ^\.claude$
+^CITATION\.cff$
+^\.zenodo\.json$

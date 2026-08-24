@@ -8,10 +8,8 @@ bibentry(
                    comment = c(ORCID = "0000-0003-0647-7726")),
   year    = "2026",
   note    = "R package version 0.1.0",
-  url     = "https://github.com/KWB-R/kwb.raindrop"
+  url     = "https://github.com/KWB-R/kwb.raindrop",
+  doi     = "10.5281/zenodo.21839223"
 )
 
-citFooter(paste(
-  "After the first Zenodo release, please prefer the version DOI",
-  "shown at https://github.com/KWB-R/kwb.raindrop (Cite this repository)."
-))
+

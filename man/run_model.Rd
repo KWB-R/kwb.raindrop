@@ -23,7 +23,7 @@ output as a character vector.}
 Forwarded to \code{kwb.utils::catAndRun(dbg = ...)} to enable/disable the
 progress message. Default: \code{TRUE}.}
 
-\item{...}{Additional arguments passed to \code{\link[base:shell]{base::shell()}}, e.g. \code{timeout} on Windows.
+\item{...}{Additional arguments passed to \code{\link[base:system]{base::shell()}}, e.g. \code{timeout} on Windows.
 See \code{?base::shell} for details.}
 }
 \value{
@@ -39,8 +39,8 @@ command output are wrapped with \code{\link[kwb.utils:catAndRun]{kwb.utils::catA
 }
 \details{
 Both \code{path_exe} and \code{path_input} are converted to absolute, normalised
-paths via \code{\link[fs:path_abs]{fs::path_abs()}} and \code{\link[base:normalizePath]{base::normalizePath()}}. The command is
-executed with \code{\link[base:shell]{base::shell()}}, which on Windows invokes the system shell.
+paths via \code{\link[fs:path_math]{fs::path_abs()}} and \code{\link[base:normalizePath]{base::normalizePath()}}. The command is
+executed with \code{\link[base:system]{base::shell()}}, which on Windows invokes the system shell.
 On non-Windows platforms, prefer \code{\link[base:system]{base::system()}} if you need full POSIX semantics.
 }
 \section{Side effects}{
@@ -64,5 +64,5 @@ status <- run_model(exe, input, print_output = TRUE)
 
 }
 \seealso{
-\code{\link[base:shell]{base::shell()}}, \code{\link[fs:path_abs]{fs::path_abs()}}, \code{\link[kwb.utils:catAndRun]{kwb.utils::catAndRun()}}
+\code{\link[base:system]{base::shell()}}, \code{\link[fs:path_math]{fs::path_abs()}}, \code{\link[kwb.utils:catAndRun]{kwb.utils::catAndRun()}}
 }

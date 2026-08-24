@@ -1,4 +1,4 @@
-#' Read Raindrop optimisation simulation results from HDF5
+#' Read RainDrop optimisation simulation results from HDF5
 #'
 #' Reads per-run result files (HDF5) for both the *measure element* and the
 #' *connected area* results and returns a named list (one entry per simulation).

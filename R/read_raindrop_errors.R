@@ -1,6 +1,6 @@
-#' Read RAINDROP error logs into a nested tibble
+#' Read RainDrop error logs into a nested tibble
 #'
-#' Reads the RAINDROP error protocol HDF5 (typically \code{Fehlerprotokoll.h5})
+#' Reads the RainDrop error protocol HDF5 (typically \code{Fehlerprotokoll.h5})
 #' for a set of simulation runs and returns a tibble with one row per run and a
 #' nested tibble column containing all errors found in the file.
 #'

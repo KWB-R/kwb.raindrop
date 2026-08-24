@@ -2,7 +2,7 @@
 % Please edit documentation in R/get_simulation_results_optim_parallel.R
 \name{get_simulation_results_optim_parallel}
 \alias{get_simulation_results_optim_parallel}
-\title{Read Raindrop optimisation simulation results from HDF5
+\title{Read RainDrop optimisation simulation results from HDF5
 (parallel via future.apply + progress)}
 \usage{
 get_simulation_results_optim_parallel(

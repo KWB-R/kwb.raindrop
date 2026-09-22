@@ -2,7 +2,7 @@
 % Please edit documentation in R/get_simulation_results_all.R
 \name{get_simulation_results_all}
 \alias{get_simulation_results_all}
-\title{Read Raindrop optimisation simulation results (all) from HDF5}
+\title{Read RainDrop optimisation simulation results (all) from HDF5}
 \usage{
 get_simulation_results_all(paths, path_list, simulation_names, debug = TRUE)
 }

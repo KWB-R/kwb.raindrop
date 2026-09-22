@@ -137,7 +137,9 @@ make_lcg <- function(seed) {
 #' latent axis (each level owns an equal share of `[0, 1]`), the gravel
 #' trench is searched continuously. The filter conductivity is expected to
 #' be fixed at the maximum via `fixed` (cost-free and dominant, see the
-#' `monotonicity_analysis` vignette). `max_total_depth` is enforced by
+#' monotonicity analysis,
+#' <https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/>).
+#' `max_total_depth` is enforced by
 #' construction (the `mulde_height` axis is compressed to the remaining
 #' depth), so no simulation runs are spent on depth-invalid designs.
 #'

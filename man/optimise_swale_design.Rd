@@ -86,9 +86,10 @@ expensive lever first (\code{mulde_area}), then the cheap one
 (\code{mulde_height}); the storage layer starts at its smallest level and is
 only escalated when the area is stuck at its upper bound. The filter
 conductivity is expected to be fixed at the maximum via \code{fixed} (it is
-cost-free and dominant, see the \code{monotonicity_analysis} vignette). Every
-engine run is cached, so the sweep over all \code{x_targets} and both storage
-types shares evaluations.
+cost-free and dominant, see the monotonicity analysis,
+\url{https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/}).
+Every engine run is cached, so the sweep over all \code{x_targets} and both
+storage types shares evaluations.
 }
 \details{
 \strong{The search order is derived from \code{cost_rates}} via a

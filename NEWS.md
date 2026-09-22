@@ -1,4 +1,4 @@
-# kwb.raindrop 0.1.0 (2026-08-07)
+# [kwb.raindrop 0.1.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0) <small>2026-08-07</small>
 
 ## New features
 
@@ -363,6 +363,19 @@
   "varying parameters" block of both cost-plot tooltips now shows e.g.
   `Muldenfläche [m²]=125` instead of the raw `mulde_area=125`; pass
   `param_labels =` to the plot functions to override.
+
+## Documentation website
+
+* The two deploy-only articles `vignettes/index.Rmd` (brute-force link
+  hub) and `vignettes/monotonicity_analysis.Rmd` are removed from the
+  repository (they remain in the git history). Their relative links only
+  worked in the deploy structure on
+  <https://raindrop.kompetenz-wasser.io> and their result files never
+  exist on GitHub Actions, so the pkgdown-built copies were link-dead
+  shells. The complete rendered pages live on that server; the pkgdown
+  navbar instead gains a "More results" menu linking them (brute force,
+  monotonicity analysis, optimiser vs. brute force), and the two
+  optimisation vignettes link the monotonicity analysis there too.
 
 ## Consistency
 

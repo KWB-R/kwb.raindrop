@@ -4,14 +4,11 @@ type: software
 title: "kwb.raindrop: R Package for Optimisation Simulations for Rainwater Management"
 version: 0.1.0
 date-released: "2026-08-07"
-doi: "10.5281/zenodo.21839223"
-identifiers:
-  - type: doi
-    value: "10.5281/zenodo.21839222"
-    description: "Concept DOI - always resolves to the latest release."
-  - type: doi
-    value: "10.5281/zenodo.21839223"
-    description: "Version DOI of release v0.1.0."
+# Concept DOI: always resolves to the newest release. Do not replace it with a
+# version DOI - Zenodo mints those only after a release has been archived, so
+# the DOI of the release being tagged cannot be known when this file is
+# written. Version DOIs are listed on the Zenodo record this one resolves to.
+doi: "10.5281/zenodo.21839222"
 license: MIT
 repository-code: "https://github.com/KWB-R/kwb.raindrop"
 url: "https://kwb-r.github.io/kwb.raindrop"

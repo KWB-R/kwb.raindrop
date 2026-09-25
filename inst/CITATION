@@ -1,5 +1,9 @@
 citHeader("To cite kwb.raindrop in publications use:")
 
+## The DOI is the concept DOI, which always resolves to the newest release.
+## Do not replace it with a version DOI: Zenodo mints those only after a
+## release has been archived, so the DOI of the release being tagged cannot be
+## known when this file is written.
 bibentry(
   bibtype = "Manual",
   title   = paste("kwb.raindrop: R Package for Optimisation Simulations",
@@ -7,11 +11,12 @@ bibentry(
   author  = person("Michael", "Rustler",
                    comment = c(ORCID = "0000-0003-0647-7726")),
   year    = "2026",
-  note    = "R package version 0.1.0",
-  url     = "https://github.com/KWB-R/kwb.raindrop"
+  note    = paste("R package version", meta$Version),
+  url     = "https://github.com/KWB-R/kwb.raindrop",
+  doi     = "10.5281/zenodo.21839222"
 )
 
 citFooter(paste(
-  "After the first Zenodo release, please prefer the version DOI",
-  "shown at https://github.com/KWB-R/kwb.raindrop (Cite this repository)."
+  "The DOI above resolves to the newest release. To cite the exact version you",
+  "used, take its version DOI from the version list on that Zenodo record."
 ))

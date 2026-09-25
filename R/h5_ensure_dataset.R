@@ -1,7 +1,7 @@
 #' Ensure that an HDF5 dataset exists (create if missing)
 #'
 #' Creates missing groups along the path and then creates the dataset.
-#' Designed for RAINDROP input files where missing scalar parameters can
+#' Designed for RainDrop input files where missing scalar parameters can
 #' crash the model definition reader.
 #'
 #' @param h5 Open \code{hdf5r::H5File} (mode "a" or "r+").
@@ -38,7 +38,7 @@ h5_ensure_dataset <- function(h5, path, value, dtype = NULL, dims = NULL) {
   
   infer_dims <- function(v) {
     if (is.data.frame(v) && ncol(v) == 2L) {
-      # R Nx2 -> HDF5 2xN (RAINDROP style)
+      # R Nx2 -> HDF5 2xN (RainDrop style)
       n <- nrow(v)
       return(c(2L, as.integer(n)))
     }

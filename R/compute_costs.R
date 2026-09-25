@@ -2,7 +2,7 @@
 #'
 #' Returns the default Austrian unit-cost rates used by [`compute_costs()`].
 #' Rates were provided by Johannes Leimgruber (OeStaP) on 2026-03-27 for the
-#' RAINDROP cost-optimisation work.
+#' RainDrop cost-optimisation work.
 #'
 #' @return A named `list` of rates in EUR per m² or m³:
 #'   `excavation_eur_per_m3`, `profiling_eur_per_m2`,

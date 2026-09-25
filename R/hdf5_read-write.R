@@ -237,7 +237,7 @@ h5_read_values <- function(h5,
 #' Write (updated) values back into existing HDF5 datasets (robust for your hdf5r build)
 #'
 #' - Scalars: write with required `args` (args=list() or args=1L fallback).
-#' - 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5 (RAINDROP style),
+#' - 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5 (RainDrop style),
 #'   using explicit hyperslab args=list(1:2, 1:N) to avoid empty selections.
 #' - If TS length changes and dataset maxdims blocks resize, the dataset is deleted via
 #'   parent$link_delete(name) and recreated with dims=2xN (fixed), then written.
@@ -518,7 +518,7 @@ h5_write_values <- function(h5, values,
 #'
 #' Notes:
 #' - 2-column data.frames/tibbles are treated as Nx2 in R and mapped to 2xN in HDF5.
-#' - Many RAINDROP files store time series as HDF5 dims 2xN (appearing as Nx2 in R).
+#' - Many RainDrop files store time series as HDF5 dims 2xN (appearing as Nx2 in R).
 #'
 #' @param h5 An open \code{hdf5r::H5File}.
 #' @param values Named list of values to write (names are HDF5 paths).

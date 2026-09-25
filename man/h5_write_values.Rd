@@ -41,7 +41,7 @@ Invisibly, written paths.
 \description{
 \itemize{
 \item Scalars: write with required \code{args} (args=list() or args=1L fallback).
-\item 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5 (RAINDROP style),
+\item 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5 (RainDrop style),
 using explicit hyperslab args=list(1:2, 1:N) to avoid empty selections.
 \item If TS length changes and dataset maxdims blocks resize, the dataset is deleted via
 parent$link_delete(name) and recreated with dims=2xN (fixed), then written.

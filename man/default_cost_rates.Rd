@@ -15,7 +15,7 @@ A named \code{list} of rates in EUR per m² or m³:
 \description{
 Returns the default Austrian unit-cost rates used by \code{\link[=compute_costs]{compute_costs()}}.
 Rates were provided by Johannes Leimgruber (OeStaP) on 2026-03-27 for the
-RAINDROP cost-optimisation work.
+RainDrop cost-optimisation work.
 }
 \section{Source rates (Leimgruber, 2026-03-27, "Kostenansätze Optimierung")}{
 

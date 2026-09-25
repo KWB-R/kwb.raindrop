@@ -29,6 +29,6 @@ Summarizes for each path:
 Notes:
 \itemize{
 \item 2-column data.frames/tibbles are treated as Nx2 in R and mapped to 2xN in HDF5.
-\item Many RAINDROP files store time series as HDF5 dims 2xN (appearing as Nx2 in R).
+\item Many RainDrop files store time series as HDF5 dims 2xN (appearing as Nx2 in R).
 }
 }

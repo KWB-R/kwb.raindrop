@@ -330,7 +330,7 @@ The XLSX dump bundles, in one file:
   ET0 series fed to every scenario (these are identical across runs).
 * `applied_settings` — long-format diff of every key the package writes
   on top of `base.h5`, per scenario (`scenario × parameter × base_value
-  × scenario_value`). Use this to see at a glance exactly what RAINDROP
+  × scenario_value`). Use this to see at a glance exactly what RainDrop
   is being told to change.
 * `s00001`, `s00002`, ..., `s00012` — full per-scenario H5 dump (the
   same view as `base`, but for each scenario's modified input file).

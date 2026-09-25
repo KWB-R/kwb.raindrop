@@ -3,7 +3,7 @@
 Returns the default Austrian unit-cost rates used by
 [`compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md).
 Rates were provided by Johannes Leimgruber (OeStaP) on 2026-03-27 for
-the RAINDROP cost-optimisation work.
+the RainDrop cost-optimisation work.
 
 ## Usage
 

@@ -42,5 +42,5 @@ Notes:
 - 2-column data.frames/tibbles are treated as Nx2 in R and mapped to 2xN
   in HDF5.
 
-- Many RAINDROP files store time series as HDF5 dims 2xN (appearing as
+- Many RainDrop files store time series as HDF5 dims 2xN (appearing as
   Nx2 in R).

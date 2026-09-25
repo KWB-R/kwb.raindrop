@@ -1,7 +1,7 @@
 # Ensure that an HDF5 dataset exists (create if missing)
 
 Creates missing groups along the path and then creates the dataset.
-Designed for RAINDROP input files where missing scalar parameters can
+Designed for RainDrop input files where missing scalar parameters can
 crash the model definition reader.
 
 ## Usage

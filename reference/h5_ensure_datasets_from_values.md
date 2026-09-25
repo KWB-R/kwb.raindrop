@@ -33,7 +33,7 @@ h5_ensure_datasets_from_values(
 
 - ts_layout:
 
-  One of "2xN" or "Nx2". For RAINDROP typically "2xN" in HDF5.
+  One of "2xN" or "Nx2". For RainDrop typically "2xN" in HDF5.
 
 - ts_dtype:
 

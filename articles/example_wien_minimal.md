@@ -357,7 +357,7 @@ The XLSX dump bundles, in one file:
 - `applied_settings` — long-format diff of every key the package writes
   on top of `base.h5`, per scenario
   (`scenario × parameter × base_value × scenario_value`). Use this to
-  see at a glance exactly what RAINDROP is being told to change.
+  see at a glance exactly what RainDrop is being told to change.
 - `s00001`, `s00002`, …, `s00012` — full per-scenario H5 dump (the same
   view as `base`, but for each scenario’s modified input file).
 
@@ -463,7 +463,7 @@ message("Wrote XLSX (", length(sheets),
         nrow(param_grid), " scenarios) to:\n  ",
         xlsx_path)
 #> Wrote XLSX (15 sheets: base + timeseries_info + applied_settings + 12 scenarios) to:
-#>   C:\Users\RUNNER~1\AppData\Local\Temp\RtmpIlcyPb/raindrop_wien_minimal_params.xlsx
+#>   C:\Users\RUNNER~1\AppData\Local\Temp\RtmpwTAgN9/raindrop_wien_minimal_params.xlsx
 ```
 
 ### Results

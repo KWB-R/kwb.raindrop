@@ -1,4 +1,4 @@
-# Read Raindrop optimisation simulation results from HDF5 (parallel via future.apply + progress)
+# Read RainDrop optimisation simulation results from HDF5 (parallel via future.apply + progress)
 
 Parallel variant of
 [`get_simulation_results_optim()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.md)

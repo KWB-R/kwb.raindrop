@@ -3,7 +3,7 @@
 - Scalars: write with required `args` (args=list() or args=1L fallback).
 
 - 2-col TS (data.frame/tibble): expects Nx2 in R; writes as 2xN in HDF5
-  (RAINDROP style), using explicit hyperslab args=list(1:2, 1:N) to
+  (RainDrop style), using explicit hyperslab args=list(1:2, 1:N) to
   avoid empty selections.
 
 - If TS length changes and dataset maxdims blocks resize, the dataset is

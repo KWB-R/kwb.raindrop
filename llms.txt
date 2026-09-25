@@ -52,11 +52,11 @@ remotes::install_github("KWB-R/kwb.raindrop")
 - [`find_single_param_variations()`](https://kwb-r.github.io/kwb.raindrop/reference/find_single_param_variations.md)
   : Find scenarios that differ from a reference in exactly one parameter
 - [`get_simulation_results_all()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_all.md)
-  : Read Raindrop optimisation simulation results (all) from HDF5
+  : Read RainDrop optimisation simulation results (all) from HDF5
 - [`get_simulation_results_optim()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim.md)
-  : Read Raindrop optimisation simulation results from HDF5
+  : Read RainDrop optimisation simulation results from HDF5
 - [`get_simulation_results_optim_parallel()`](https://kwb-r.github.io/kwb.raindrop/reference/get_simulation_results_optim_parallel.md)
-  : Read Raindrop optimisation simulation results from HDF5 (parallel
+  : Read RainDrop optimisation simulation results from HDF5 (parallel
   via future.apply + progress)
 - [`h5_ensure_dataset()`](https://kwb-r.github.io/kwb.raindrop/reference/h5_ensure_dataset.md)
   : Ensure that an HDF5 dataset exists (create if missing)
@@ -107,7 +107,7 @@ remotes::install_github("KWB-R/kwb.raindrop")
 - [`read_hdf5_timeseries()`](https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.md)
   : Read HDF5 time series datasets from a group (supports deeperLayers)
 - [`read_raindrop_errors()`](https://kwb-r.github.io/kwb.raindrop/reference/read_raindrop_errors.md)
-  : Read RAINDROP error logs into a nested tibble
+  : Read RainDrop error logs into a nested tibble
 - [`read_site_timeseries()`](https://kwb-r.github.io/kwb.raindrop/reference/read_site_timeseries.md)
   : Read and prepare site rain/ET0 time series for the engine (mm/h)
 - [`run_model()`](https://kwb-r.github.io/kwb.raindrop/reference/run_model.md)

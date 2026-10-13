@@ -50,7 +50,7 @@ and settles the points that could not be confirmed remotely
    0 % and ~ 100 % discharge via the Verschaltung (for the
    legacy and the Hoernschemeyer frame alike); green roofs: ET share
    clearly > 0, intensive > extensive.
-2. **Is the growth curve evaluated at all?** — run 1 (2026-10-14)
+2. **Is the growth curve evaluated at all?** — run 1 (2026-10-13)
    delivered identical roof ET for seasonal, flat and a 1.35→0.68
    two-point curve (within 0.1 %-points) although the written inputs
    were verified correct. `ext_growthlow` (`Growth_1` flat at 0.05)
@@ -218,7 +218,7 @@ rain_mm_per_year <- sum(timeseries_rain$value * period) / sim_period_yr
 
 flat_curve <- function(value = 1) data.frame(time = c(0, t_end), value = rep(value, 2))
 seasonal_curve <- kwb.raindrop::make_growth_curve(rain_origin, t_end)
-# Run 1 (2026-10-14) showed seasonal, flat and a 1.35->0.68 probe all land
+# Run 1 (2026-10-13) showed seasonal, flat and a 1.35->0.68 probe all land
 # within 0.1 %-points of each other -- in a supply-limited regime the
 # modulation can compensate in the annual total, so the probes now use
 # extreme values that force a visible water-balance difference whenever
@@ -428,7 +428,7 @@ for (rt in names(urbaneva_reference_et_mm_a)) {
 
 ### Check 2 — is the growth curve evaluated at all?
 
-Run 1 (2026-10-14) wrote verified-correct curves into the engine inputs
+Run 1 (2026-10-13) wrote verified-correct curves into the engine inputs
 (181-point seasonal `Growth_1`, `Growth_Dach` incl. reference, a
 1.35→0.68 probe) and the roof ET still matched the flat reference to
 0.1 %-points. In a supply-limited regime the seasonal factors (annual
@@ -438,7 +438,7 @@ distinguish "curve ignored" from "modulation washed out". The
 caps the growth-modulated ET far below the water supply. Three
 outcomes: no shift at all — the curve is not evaluated (static
 `gfdoy_GrowthFactor` fallback, contradicting the Tandler answer of
-2026-10-08); a small but deterministic shift (run 3, 2026-10-16: roof
+2026-10-08); a small but deterministic shift (run 3, 2026-10-13: roof
 −0.2 pp, swale −0.5 pp) — the curve is read but the growth-modulated
 transpiration is a minor ET component, so the UrbanEVA monthly factors
 cannot shape the result; a collapse — the curve works and transpiration
@@ -446,7 +446,7 @@ matters.
 
 ```{r check_growth_curve, eval = data_available && is_windows}
 # The engine is deterministic, so differences well below 1 %-point are
-# real signal, not noise. Run 3 (2026-10-16) showed the growth factor
+# real signal, not noise. Run 3 (2026-10-13) showed the growth factor
 # 0.05 shifts the roof ET by only ~0.2 pp and the swale ET by ~0.5 pp:
 # the curve IS read, but the growth-modulated component (transpiration)
 # is a tiny share of the total ET. Use both elements as sensors and a
@@ -556,7 +556,7 @@ if (isTRUE(curve_active) && !anyNA(c(et_step, mulde_step))) {
 
 # ET-component deep-dive: the "Zusaetzliche Variablen Evapotranspiration"
 # group of Dach.h5 is not written in Ausgabemodus "Optimierung" (checked
-# empty on the 2026-10-15 run); the ext_komplett scenario runs the same
+# empty on the 2026-10-13 run); the ext_komplett scenario runs the same
 # extensive roof with Ausgabemodus "komplett", which should include it.
 read_roof_et <- function(scenario) {
   p <- kwb.utils::resolve(path_list, dir_target = scenario)
@@ -584,7 +584,7 @@ if (is.null(et_components)) {
 } else {
   message("[INFO] ET components available: ",
           paste(unique(et_components$variable), collapse = ", "))
-  # Run 4 (2026-10-17) showed the group holds potential rates and state
+  # Run 4 (2026-10-13) showed the group holds potential rates and state
   # variables, not the actual component fluxes of Gl. 15. Integrate only
   # the mm/h rates; state-like variables must not be summed over time.
   rate_vars <- c("ESp_es_PotentialSoilEvaporation",

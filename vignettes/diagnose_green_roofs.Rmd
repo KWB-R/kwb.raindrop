@@ -435,28 +435,52 @@ Run 1 (2026-10-14) wrote verified-correct curves into the engine inputs
 mean 1.0) can compensate in the annual total, so that result cannot
 distinguish "curve ignored" from "modulation washed out". The
 `ext_growthlow` probe forces the distinction: `Growth_1` flat at 0.05
-caps the growth-modulated ET far below the water supply — if the curve
-is evaluated, the annual roof ET must collapse; if it stays at the
-flat-1.0 level, the engine is using the static `gfdoy_GrowthFactor`
-after all (contradicting the Tandler answer of 2026-10-08) and the
-UrbanEVA monthly factors cannot take effect.
+caps the growth-modulated ET far below the water supply. Three
+outcomes: no shift at all — the curve is not evaluated (static
+`gfdoy_GrowthFactor` fallback, contradicting the Tandler answer of
+2026-10-08); a small but deterministic shift (run 3, 2026-10-16: roof
+−0.2 pp, swale −0.5 pp) — the curve is read but the growth-modulated
+transpiration is a minor ET component, so the UrbanEVA monthly factors
+cannot shape the result; a collapse — the curve works and transpiration
+matters.
 
 ```{r check_growth_curve, eval = data_available && is_windows}
-et_flat <- g("ext_flat", "dach_et")
-et_low  <- g("ext_growthlow", "dach_et")
+# The engine is deterministic, so differences well below 1 %-point are
+# real signal, not noise. Run 3 (2026-10-16) showed the growth factor
+# 0.05 shifts the roof ET by only ~0.2 pp and the swale ET by ~0.5 pp:
+# the curve IS read, but the growth-modulated component (transpiration)
+# is a tiny share of the total ET. Use both elements as sensors and a
+# deterministic threshold.
+et_flat    <- g("ext_flat", "dach_et")
+et_low     <- g("ext_growthlow", "dach_et")
+mulde_flat <- g("ext_flat", "mulde_et")
+mulde_low  <- g("ext_growthlow", "mulde_et")
 message(sprintf(
-  "[INFO] roof ET share: Growth flat 1.0 = %.1f %% | Growth flat 0.05 = %.1f %%",
-  et_flat, et_low))
+  "[INFO] Growth flat 1.0 vs flat 0.05: roof ET %.2f -> %.2f %% | swale ET %.2f -> %.2f %%",
+  et_flat, et_low, mulde_flat, mulde_low))
 
-curve_active <- if (anyNA(c(et_flat, et_low))) NA else (et_flat - et_low) > 5
+d_dach  <- et_flat - et_low
+d_mulde <- mulde_flat - mulde_low
+curve_active <- if (anyNA(c(d_dach, d_mulde))) NA else
+  (abs(d_dach) > 0.05 || abs(d_mulde) > 0.05)
+
 if (is.na(curve_active)) {
   verdict(NA, "growth-curve check inconclusive (missing results)")
-} else if (curve_active) {
-  verdict(TRUE, "the growth curve is evaluated (extreme-low curve collapses the roof ET)")
-} else {
+} else if (!curve_active) {
   verdict(FALSE, paste(
     "the growth curve has NO effect in this build -- the engine appears",
     "to use the static gfdoy value; escalate to tandler.com"))
+} else if (d_dach < 5) {
+  verdict(TRUE, sprintf(
+    paste("the growth curve IS evaluated (deterministic shift: roof %.2f,",
+          "swale %.2f pp), BUT even factor 0.05 barely moves the total --",
+          "the growth-modulated transpiration is a minor ET component;",
+          "the UrbanEVA monthly factors cannot shape the result. See the",
+          "ET-component decomposition (ext_komplett) and raise with",
+          "tandler.com/Daniel why transpiration contributes so little"),
+    d_dach, d_mulde))
+} else {
+  verdict(TRUE, "the growth curve is evaluated (extreme-low curve collapses the roof ET)")
 }
 ```
 
@@ -464,24 +488,30 @@ if (is.na(curve_active)) {
 
 `ext_namedcurve` points only the roof at a new curve
 `//Kurven/Growth_Dach` (flat 0.05) while `Growth_1` stays flat 1.0.
-Decidable only if check 2 shows the curve is evaluated at all: roof ET
-near `ext_growthlow` means the named curve map is read; near `ext_flat`
-means a silent fallback.
+Decidable only if check 2 shows the curve is evaluated at all. The
+fingerprint of a working named-curve map is: roof ET equals
+`ext_growthlow` while the swale ET stays at the `ext_flat` level.
 
 ```{r check_named_curve, eval = data_available && is_windows}
-et_named <- g("ext_namedcurve", "dach_et")
+et_named    <- g("ext_namedcurve", "dach_et")
+mulde_named <- g("ext_namedcurve", "mulde_et")
 message(sprintf(
-  "[INFO] roof ET share: namedcurve(0.05) = %.1f %% | growthlow ref = %.1f %% | flat ref = %.1f %%",
-  et_named, et_low, et_flat))
+  "[INFO] namedcurve(0.05): roof ET %.2f %% (growthlow ref %.2f, flat ref %.2f) | swale ET %.2f %% (flat ref %.2f)",
+  et_named, et_low, et_flat, mulde_named, mulde_flat))
 
-if (isTRUE(curve_active) && !is.na(et_named)) {
-  named_works <- abs(et_named - et_low) < abs(et_named - et_flat)
+if (isTRUE(curve_active) && !anyNA(c(et_named, mulde_named))) {
+  roof_follows_curve <- abs(et_named - et_low) < abs(et_named - et_flat)
+  swale_stays_flat   <- abs(mulde_named - mulde_flat) < abs(mulde_named - mulde_low)
+  named_works <- roof_follows_curve && swale_stays_flat
   verdict(named_works, sprintf(
-    "Growth_Dach %s by this engine build",
-    ifelse(named_works, "is read (named curve map works)",
-           "is NOT read (silent fallback)")))
+    "Growth_Dach %s by this engine build%s",
+    ifelse(named_works, "is read and applies to the roof only (named curve map works)",
+           "is NOT read as intended"),
+    ifelse(named_works, "", sprintf(
+      " (roof follows curve: %s, swale stays flat: %s)",
+      roof_follows_curve, swale_stays_flat))))
 } else {
-  verdict(NA, "named-curve check inconclusive (requires check 2 = PASS and a result for ext_namedcurve)")
+  verdict(NA, "named-curve check inconclusive (requires check 2 = curve evaluated and results for ext_namedcurve)")
 }
 ```
 
@@ -489,37 +519,39 @@ if (isTRUE(curve_active) && !is.na(et_named)) {
 
 The `ext_stepprobe` curve has two support points: 1.0 at hour 0 and
 0.01 at the series end. Under **step** interpolation the factor stays
-1.0 for the whole run, so the roof ET matches `ext_flat`; under
-**linear** interpolation it decays towards zero (mean ~0.5), so the
-annual total drops well below it. Decidable only if check 2 shows the
-curve is evaluated.
+1.0 for the whole run, so roof and swale ET match `ext_flat` exactly;
+under **linear** interpolation the factor averages ~0.5, which must
+show roughly half the (small but deterministic) `ext_growthlow` shift.
+Decidable only if check 2 shows the curve is evaluated.
 
 ```{r check_interpolation, eval = data_available && is_windows}
-et_step <- g("ext_stepprobe", "dach_et")
+et_step    <- g("ext_stepprobe", "dach_et")
+mulde_step <- g("ext_stepprobe", "mulde_et")
 message(sprintf(
-  "[INFO] roof ET share: stepprobe = %.1f %% | flat ref = %.1f %% | growthlow ref = %.1f %%",
-  et_step, et_flat, et_low))
+  "[INFO] stepprobe: roof ET %.2f %% (flat ref %.2f, growthlow ref %.2f) | swale ET %.2f %% (flat ref %.2f, growthlow ref %.2f)",
+  et_step, et_flat, et_low, mulde_step, mulde_flat, mulde_low))
 
-if (isTRUE(curve_active) && !is.na(et_step)) {
-  drop_pp <- et_flat - et_step
-  if (drop_pp < 2.5) {
+if (isTRUE(curve_active) && !anyNA(c(et_step, mulde_step))) {
+  # Distance to the flat fingerprint vs. to the halfway (linear) point,
+  # summed over both sensors.
+  dist_flat <- abs(et_step - et_flat) + abs(mulde_step - mulde_flat)
+  dist_lin  <- abs(et_step - (et_flat + et_low) / 2) +
+    abs(mulde_step - (mulde_flat + mulde_low) / 2)
+  if (dist_flat < dist_lin) {
     verdict(TRUE, sprintf(
       paste("interpolation is STEP (value holds to the next support point;",
-            "stepprobe within %.1f %%-points of flat) --",
+            "distance to flat fingerprint %.3f vs linear %.3f) --",
             "make_growth_curve()'s month-start support points are correct"),
-      drop_pp))
-  } else if (drop_pp > 5) {
-    verdict(FALSE, sprintf(
-      paste("interpolation looks LINEAR (stepprobe %.1f %%-points below",
-            "flat) -- switch make_growth_curve() to month-midpoint support points"),
-      drop_pp))
+      dist_flat, dist_lin))
   } else {
-    verdict(NA, sprintf(
-      "interpolation inconclusive (stepprobe %.1f %%-points below flat, between the step/linear thresholds)",
-      drop_pp))
+    verdict(FALSE, sprintf(
+      paste("interpolation looks LINEAR (distance to linear fingerprint %.3f",
+            "vs flat %.3f) -- switch make_growth_curve() to month-midpoint",
+            "support points"),
+      dist_lin, dist_flat))
   }
 } else {
-  verdict(NA, "interpolation check inconclusive (requires check 2 = PASS and a result for ext_stepprobe)")
+  verdict(NA, "interpolation check inconclusive (requires check 2 = curve evaluated and results for ext_stepprobe)")
 }
 
 # ET-component deep-dive: the "Zusaetzliche Variablen Evapotranspiration"
@@ -679,10 +711,14 @@ message("Wrote XLSX (", length(sheets), " sheets) to:\n  ", xlsx_path)
 
 ### What the verdicts decide
 
-* Check 2 **FAIL** → the growth curve is dead in this build: the
-  seasonal UrbanEVA factors cannot take effect at all — escalate to
-  tandler.com (contradicts their answer 5 of 2026-10-08) before any
-  production roof-type run.
+* Check 2 **FAIL** → the growth curve is dead in this build — escalate
+  to tandler.com (contradicts their answer 5 of 2026-10-08) before any
+  production roof-type run. **PASS with the "minor component" note**
+  (the run-3 outcome) → the curve mechanics work, but the seasonal
+  UrbanEVA factors barely influence the totals; the real question
+  becomes why transpiration contributes so little to the ~80 % roof
+  ET — take the ext_komplett ET-component decomposition to
+  tandler.com/Daniel together with the UrbanEVA reference values.
 * Check 3 **PASS** → the production scenarios may give the roof its own
   curve (`Growth_Dach`) and e.g. keep the swale on separate grass
   factors, should Daniel supply any. **FAIL** → both elements share

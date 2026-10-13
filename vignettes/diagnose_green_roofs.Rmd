@@ -42,26 +42,31 @@ The recipe itself lives in `roof_type_values()`, the monthly growth
 factors in `default_growth_factors()` / `make_growth_curve()`; the
 production workflows apply exactly the same functions.
 
-This vignette runs a **seven-scenario grid** that validates the recipe
-and settles the three points that could not be confirmed remotely
+This vignette runs an **eight-scenario grid** that validates the recipe
+and settles the points that could not be confirmed remotely
 (engine runs on Windows only):
 
 1. **Recipe plausibility** — conventional roof: ET share ~
    0 % and ~ 100 % discharge via the Verschaltung (for the
    legacy and the Hoernschemeyer frame alike); green roofs: ET share
    clearly > 0, intensive > extensive.
-2. **Named extra curves** — tandler.com confirmed the curve set is an
+2. **Is the growth curve evaluated at all?** — run 1 (2026-10-14)
+   delivered identical roof ET for seasonal, flat and a 1.35→0.68
+   two-point curve (within 0.1 %-points) although the written inputs
+   were verified correct. `ext_growthlow` (`Growth_1` flat at 0.05)
+   separates "curve ignored" from "supply limitation compensates the
+   modulation": if the curve is read, the roof ET must collapse.
+3. **Named extra curves** — tandler.com confirmed the curve set is an
    extensible named map, but could not say whether *our engine build*
    already supports it. Scenario `ext_namedcurve` writes a new
-   `//Kurven/Growth_Dach` and points only the roof at it.
-3. **Step interpolation** — the time axis (hours since simulation
+   `//Kurven/Growth_Dach` (flat 0.05) and points only the roof at it.
+4. **Step interpolation** — the time axis (hours since simulation
    start) is verified; the step semantics ("value holds until the next
-   support point") are checked empirically with a two-point descending
-   curve (`ext_stepprobe`): under step interpolation the roof's
-   ET0-normalised ET shows no multi-year trend, under linear
-   interpolation it declines by roughly half over the 15 years.
+   support point") are checked with a two-point curve 1.0 → 0.01
+   (`ext_stepprobe`): under step interpolation the roof ET stays at the
+   flat level, under linear interpolation it drops well below it.
 
-A fourth observation rides along: in the May sweep the Dach water
+A fifth observation rides along: in the May sweep the Dach water
 balance lacked `WB_Evapotranspiration` exactly in the combination
 `Hoernschemeyer_aktiv = 1` + `Infiltration_aktiv = 0`; tandler.com sees
 no engine-side mechanism for that. With infiltration now active the
@@ -86,11 +91,13 @@ param_grid <- tibble::tribble(
   "int",            "intensive",    1L,              "seasonal",
   "intensive green roof, shared seasonal Growth_1 (roof + swale)",
   "ext_flat",       "extensive",    1L,              "flat",
-  "extensive green roof without seasonal modulation (isolates the curve effect; reference for check 2)",
+  "extensive green roof without seasonal modulation (reference for checks 2-4)",
+  "ext_growthlow",  "extensive",    1L,              "growthlow",
+  "check 2: Growth_1 flat at 0.05 -- if the curve is evaluated at all, roof ET must collapse",
   "ext_namedcurve", "extensive",    1L,              "namedcurve",
-  "check 2: new named curve Growth_Dach for the roof, Growth_1 stays flat",
+  "check 3: new named curve Growth_Dach flat at 0.05 for the roof, Growth_1 stays flat 1.0",
   "ext_stepprobe",  "extensive",    1L,              "stepprobe",
-  "check 3: two-point descending Growth_1 (1.35 at start, 0.68 at end)"
+  "check 4: two-point Growth_1 (1.0 at start, 0.01 at end) -- step keeps ET at the flat level, linear halves it"
 ) |>
   dplyr::mutate(
     connected_area               = 1000,
@@ -105,8 +112,8 @@ param_grid <- tibble::tribble(
 
 DT::datatable(
   param_grid,
-  options = list(pageLength = 7, autoWidth = TRUE),
-  caption = "Seven scenarios: three roof types plus the curve diagnostics."
+  options = list(pageLength = 8, autoWidth = TRUE),
+  caption = "Eight scenarios: three roof types plus the growth-curve diagnostics."
 )
 ```
 
@@ -207,7 +214,12 @@ rain_mm_per_year <- sum(timeseries_rain$value * period) / sim_period_yr
 
 flat_curve <- function(value = 1) data.frame(time = c(0, t_end), value = rep(value, 2))
 seasonal_curve <- kwb.raindrop::make_growth_curve(rain_origin, t_end)
-stepprobe_curve <- data.frame(time = c(0, t_end), value = c(1.35, 0.68))
+# Run 1 (2026-10-14) showed seasonal, flat and a 1.35->0.68 probe all land
+# within 0.1 %-points of each other -- in a supply-limited regime the
+# modulation can compensate in the annual total, so the probes now use
+# extreme values that force a visible water-balance difference whenever
+# the curve is evaluated at all.
+stepprobe_curve <- data.frame(time = c(0, t_end), value = c(1, 0.01))
 ```
 
 ### Run the seven scenarios
@@ -272,13 +284,15 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
     param_grid_tmp$growth,
     flat       = flat_curve(),
     seasonal   = seasonal_curve,
+    growthlow  = flat_curve(0.05),
     namedcurve = flat_curve(),     # swale stays unmodulated ...
     stepprobe  = stepprobe_curve
   )
   if (param_grid_tmp$growth == "namedcurve") {
-    # ... and only the roof points at a NEW named curve. Whether our
-    # engine build reads it is exactly what this scenario tests.
-    vals$`//Kurven/Growth_Dach` <- seasonal_curve
+    # ... and only the roof points at a NEW named curve with an extreme
+    # value: if the build reads the named map, the roof ET collapses like
+    # in ext_growthlow; if it silently falls back, it stays at ext_flat.
+    vals$`//Kurven/Growth_Dach` <- flat_curve(0.05)
     vals$`//Massnahmenelemente/Dach/Parameter_Evapotranspiration/Kurve_gfdoy` <- "Growth_Dach"
   }
 
@@ -405,26 +419,108 @@ for (rt in names(urbaneva_reference_et_mm_a)) {
 }
 ```
 
-### Check 2 — does our engine build read a new named curve?
+### Check 2 — is the growth curve evaluated at all?
 
-`ext_namedcurve` modulates the roof via `//Kurven/Growth_Dach` while
-`Growth_1` stays flat. The monthly ET series are read from the
-`Zusaetzliche Variablen Evapotranspiration` group of `Dach.h5` (the
-`Raten` group does not contain them). The discriminator is the
-**summer/winter contrast** of the ET0-normalised monthly roof ET: the seasonal factors
-(Jun–Aug 1.35 vs Dez–Feb 0.68) roughly double it relative to a flat
-curve, which separates the two references far more robustly than the
-annual total (the factors average exactly 1.0 over the year, so annual
-ET barely distinguishes them). If the build honours the named curve
-map, the contrast lands near `ext`; if it silently falls back, near
-`ext_flat`.
+Run 1 (2026-10-14) wrote verified-correct curves into the engine inputs
+(181-point seasonal `Growth_1`, `Growth_Dach` incl. reference, a
+1.35→0.68 probe) and the roof ET still matched the flat reference to
+0.1 %-points. In a supply-limited regime the seasonal factors (annual
+mean 1.0) can compensate in the annual total, so that result cannot
+distinguish "curve ignored" from "modulation washed out". The
+`ext_growthlow` probe forces the distinction: `Growth_1` flat at 0.05
+caps the growth-modulated ET far below the water supply — if the curve
+is evaluated, the annual roof ET must collapse; if it stays at the
+flat-1.0 level, the engine is using the static `gfdoy_GrowthFactor`
+after all (contradicting the Tandler answer of 2026-10-08) and the
+UrbanEVA monthly factors cannot take effect.
+
+```{r check_growth_curve, eval = data_available && is_windows}
+et_flat <- g("ext_flat", "dach_et")
+et_low  <- g("ext_growthlow", "dach_et")
+message(sprintf(
+  "[INFO] roof ET share: Growth flat 1.0 = %.1f %% | Growth flat 0.05 = %.1f %%",
+  et_flat, et_low))
+
+curve_active <- if (anyNA(c(et_flat, et_low))) NA else (et_flat - et_low) > 5
+if (is.na(curve_active)) {
+  verdict(NA, "growth-curve check inconclusive (missing results)")
+} else if (curve_active) {
+  verdict(TRUE, "the growth curve is evaluated (extreme-low curve collapses the roof ET)")
+} else {
+  verdict(FALSE, paste(
+    "the growth curve has NO effect in this build -- the engine appears",
+    "to use the static gfdoy value; escalate to tandler.com"))
+}
+```
+
+### Check 3 — does the engine read a new named curve?
+
+`ext_namedcurve` points only the roof at a new curve
+`//Kurven/Growth_Dach` (flat 0.05) while `Growth_1` stays flat 1.0.
+Decidable only if check 2 shows the curve is evaluated at all: roof ET
+near `ext_growthlow` means the named curve map is read; near `ext_flat`
+means a silent fallback.
 
 ```{r check_named_curve, eval = data_available && is_windows}
-# ET-rate helpers shared by checks 2 and 3 ----------------------------
-# The ET time series are NOT in the "Raten" group (= $rates in the optim
-# results): the engine writes them to the separate group "Zusaetzliche
-# Variablen Evapotranspiration" of Dach.h5 (the ET components of Gl. 15).
-# Read that group directly per scenario.
+et_named <- g("ext_namedcurve", "dach_et")
+message(sprintf(
+  "[INFO] roof ET share: namedcurve(0.05) = %.1f %% | growthlow ref = %.1f %% | flat ref = %.1f %%",
+  et_named, et_low, et_flat))
+
+if (isTRUE(curve_active) && !is.na(et_named)) {
+  named_works <- abs(et_named - et_low) < abs(et_named - et_flat)
+  verdict(named_works, sprintf(
+    "Growth_Dach %s by this engine build",
+    ifelse(named_works, "is read (named curve map works)",
+           "is NOT read (silent fallback)")))
+} else {
+  verdict(NA, "named-curve check inconclusive (requires check 2 = PASS and a result for ext_namedcurve)")
+}
+```
+
+### Check 4 — step vs. linear curve interpolation
+
+The `ext_stepprobe` curve has two support points: 1.0 at hour 0 and
+0.01 at the series end. Under **step** interpolation the factor stays
+1.0 for the whole run, so the roof ET matches `ext_flat`; under
+**linear** interpolation it decays towards zero (mean ~0.5), so the
+annual total drops well below it. Decidable only if check 2 shows the
+curve is evaluated.
+
+```{r check_interpolation, eval = data_available && is_windows}
+et_step <- g("ext_stepprobe", "dach_et")
+message(sprintf(
+  "[INFO] roof ET share: stepprobe = %.1f %% | flat ref = %.1f %% | growthlow ref = %.1f %%",
+  et_step, et_flat, et_low))
+
+if (isTRUE(curve_active) && !is.na(et_step)) {
+  drop_pp <- et_flat - et_step
+  if (drop_pp < 2.5) {
+    verdict(TRUE, sprintf(
+      paste("interpolation is STEP (value holds to the next support point;",
+            "stepprobe within %.1f %%-points of flat) --",
+            "make_growth_curve()'s month-start support points are correct"),
+      drop_pp))
+  } else if (drop_pp > 5) {
+    verdict(FALSE, sprintf(
+      paste("interpolation looks LINEAR (stepprobe %.1f %%-points below",
+            "flat) -- switch make_growth_curve() to month-midpoint support points"),
+      drop_pp))
+  } else {
+    verdict(NA, sprintf(
+      "interpolation inconclusive (stepprobe %.1f %%-points below flat, between the step/linear thresholds)",
+      drop_pp))
+  }
+} else {
+  verdict(NA, "interpolation check inconclusive (requires check 2 = PASS and a result for ext_stepprobe)")
+}
+
+# Optional monthly deep-dive: the "Zusaetzliche Variablen
+# Evapotranspiration" group of Dach.h5 would allow a monthly ET-component
+# analysis, but the engine does not write it in Ausgabemodus
+# "Optimierung" (checked empty on the 2026-10-15 run). If monthly ET
+# components are ever needed, ask tandler.com which Ausgabemodus
+# enables the group.
 read_roof_et <- function(scenario) {
   p <- kwb.utils::resolve(path_list, dir_target = scenario)
   if (!file.exists(p$path_results_hdf5_flaeche)) return(NULL)
@@ -435,79 +531,19 @@ read_roof_et <- function(scenario) {
   if (is.null(grp)) return(NULL)
   out <- kwb.raindrop::read_hdf5_timeseries(grp)
   if (nrow(out) == 0L) return(NULL)
-  message(scenario, ": ET variables found: ",
-          paste(unique(out$variable), collapse = ", "))
   out
 }
-
-et0_step_h <- c(diff(timeseries_et$time), mean(diff(timeseries_et$time)))
-monthly_et0 <- timeseries_et |>
-  dplyr::mutate(month = lubridate::month(et_origin + lubridate::dhours(.data$time)),
-                mm = .data$value * et0_step_h) |>
-  dplyr::group_by(.data$month) |>
-  dplyr::summarise(et0_mm = sum(.data$mm), .groups = "drop")
-
-# Sum of all ET components per month, ET0-normalised (across all years)
-monthly_modulation <- function(scenario) {
-  et <- read_roof_et(scenario)
-  if (is.null(et)) return(NULL)
-  et |>
-    dplyr::group_by(.data$variable) |>
-    dplyr::arrange(.data$time, .by_group = TRUE) |>
-    dplyr::mutate(step_h = c(diff(.data$time), mean(diff(.data$time)))) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(month = lubridate::month(rain_origin + lubridate::dhours(.data$time)),
-                  mm = .data$value * .data$step_h) |>
-    dplyr::group_by(.data$month) |>
-    dplyr::summarise(roof_mm = sum(.data$mm), .groups = "drop") |>
-    dplyr::inner_join(monthly_et0, by = "month") |>
-    dplyr::mutate(modulation = .data$roof_mm / .data$et0_mm)
-}
-
-sw_contrast <- function(mod) {
-  if (is.null(mod)) return(NA_real_)
-  mean(mod$modulation[mod$month %in% c(6, 7, 8)]) /
-    mean(mod$modulation[mod$month %in% c(12, 1, 2)])
-}
-
-c_named    <- sw_contrast(monthly_modulation("ext_namedcurve"))
-c_seasonal <- sw_contrast(monthly_modulation("ext"))
-c_flat     <- sw_contrast(monthly_modulation("ext_flat"))
-message(sprintf(
-  "summer/winter ET contrast: namedcurve %.2f | seasonal ref %.2f | flat ref %.2f",
-  c_named, c_seasonal, c_flat))
-
-if (anyNA(c(c_named, c_seasonal, c_flat))) {
-  verdict(NA, "named-curve check inconclusive: missing roof ET rates for at least one scenario")
-} else if (abs(c_seasonal - c_flat) < 0.1) {
-  verdict(NA, paste(
-    "named-curve check inconclusive: seasonal and flat references barely",
-    "differ -- inspect monthly_modulation() output directly"))
+et_components <- read_roof_et("ext")
+if (is.null(et_components)) {
+  message("[INFO] no ET-component time series in Dach.h5 (expected in Ausgabemodus 'Optimierung')")
 } else {
-  named_works <- abs(c_named - c_seasonal) < abs(c_named - c_flat)
-  verdict(named_works, sprintf(
-    "Growth_Dach %s by this engine build",
-    ifelse(named_works, "is read", "is NOT read (silent fallback)")))
-}
-
-# Month-by-month view: identical ext / ext_flat columns mean the growth
-# curve has no effect at all in this build (escalate to tandler.com);
-# clearly different winter/summer values with a similar annual total mean
-# water limitation compresses the seasonal effect.
-mod_ext <- monthly_modulation("ext")
-mod_flat <- monthly_modulation("ext_flat")
-if (!is.null(mod_ext) && !is.null(mod_flat)) {
-  print(dplyr::full_join(
-    dplyr::select(mod_ext, "month", ext = "modulation"),
-    dplyr::select(mod_flat, "month", ext_flat = "modulation"),
-    by = "month"
-  ), n = 12)
+  message("[INFO] ET components available: ",
+          paste(unique(et_components$variable), collapse = ", "))
 }
 
 # Engine error logs: totals per scenario plus a breakdown by error
-# category -- the green-roof runs log noticeably more entries than the
-# sealed roof, and an unknown curve name may be reported here rather
-# than acted on silently.
+# category (run 1: only benign "Hinweis" numerics entries, no complaint
+# about the unknown curve name).
 err <- suppressWarnings(kwb.raindrop::read_raindrop_errors(
   simulation_names = param_grid$scenario_name,
   path_list = path_list
@@ -534,57 +570,7 @@ DT::datatable(
 )
 ```
 
-### Check 3 — step vs. linear curve interpolation
-
-The `ext_stepprobe` curve has only two support points: 1.35 at hour 0
-and 0.68 at the series end. Under **step** interpolation the factor is
-1.35 for the entire 15 years (no trend in the ET0-normalised roof ET);
-under **linear** interpolation it decays to half, so the normalised
-roof ET of the last years is roughly half that of the first years.
-
-```{r check_interpolation, eval = data_available && is_windows}
-et_long <- read_roof_et("ext_stepprobe")
-
-if (is.null(et_long)) {
-  verdict(NA, paste(
-    "interpolation check inconclusive: no ET series found in Dach.h5",
-    "(group 'Zusaetzliche Variablen Evapotranspiration')"
-  ))
-} else {
-  annual_roof_et <- et_long |>
-    dplyr::group_by(.data$variable) |>
-    dplyr::arrange(.data$time, .by_group = TRUE) |>
-    dplyr::mutate(step_h = c(diff(.data$time), mean(diff(.data$time)))) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(year = lubridate::year(rain_origin + lubridate::dhours(.data$time)),
-                  mm = .data$value * .data$step_h) |>
-    dplyr::group_by(.data$year) |>
-    dplyr::summarise(roof_et_mm = sum(.data$mm), .groups = "drop")
-
-  annual_et0 <- timeseries_et |>
-    dplyr::mutate(year = lubridate::year(et_origin + lubridate::dhours(.data$time)),
-                  mm = .data$value * et0_step_h) |>
-    dplyr::group_by(.data$year) |>
-    dplyr::summarise(et0_mm = sum(.data$mm), .groups = "drop")
-
-  norm <- dplyr::inner_join(annual_roof_et, annual_et0, by = "year") |>
-    dplyr::mutate(modulation = .data$roof_et_mm / .data$et0_mm)
-  # Drop the (usually partial) first and last calendar years
-  norm_full <- norm[c(-1, -nrow(norm)), ]
-  print(norm)
-
-  n3 <- min(3L, floor(nrow(norm_full) / 2))
-  ratio <- mean(utils::tail(norm_full$modulation, n3)) /
-    mean(utils::head(norm_full$modulation, n3))
-  verdict(ratio > 0.8, sprintf(
-    paste("interpolation looks like %s (last/first years' ET0-normalised roof ET = %.2f;",
-          "step ~1.0, linear ~0.5; heuristic -- water limitation adds noise)"),
-    ifelse(ratio > 0.8, "STEP (value holds to next support point)", "LINEAR"), ratio
-  ))
-}
-```
-
-### Check 4 — Dach `WB_Evapotranspiration` present?
+### Check 5 — Dach `WB_Evapotranspiration` present?
 
 ```{r check_wb_variable, eval = data_available && is_windows}
 has_wb_et <- vapply(param_grid$scenario_name, function(s) {
@@ -668,12 +654,16 @@ message("Wrote XLSX (", length(sheets), " sheets) to:\n  ", xlsx_path)
 
 ### What the verdicts decide
 
-* Check 2 **PASS** → the production scenarios may give the roof its own
+* Check 2 **FAIL** → the growth curve is dead in this build: the
+  seasonal UrbanEVA factors cannot take effect at all — escalate to
+  tandler.com (contradicts their answer 5 of 2026-10-08) before any
+  production roof-type run.
+* Check 3 **PASS** → the production scenarios may give the roof its own
   curve (`Growth_Dach`) and e.g. keep the swale on separate grass
   factors, should Daniel supply any. **FAIL** → both elements share
   `Growth_1` (the current default design: swale vegetation is
   seasonally similar anyway).
-* Check 3 **STEP** → monthly support points at month *starts* (what
+* Check 4 **STEP** → monthly support points at month *starts* (what
   `make_growth_curve()` writes) are correct. **LINEAR** → switch the
   support points to month midpoints.
 * Check 1 failures stop the roof-type comparison until resolved with

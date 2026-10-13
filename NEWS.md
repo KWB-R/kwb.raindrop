@@ -1,3 +1,44 @@
+# kwb.raindrop (development version)
+
+## New features
+
+* **Green-roof scenario layer** for the three-roof-type comparison
+  (conventional / extensive / intensive roof feeding the swale) that
+  validates the Mulden-Rigolen optimisation results:
+  - `roof_type_values()` — the `base.h5` overrides per roof type.
+    `"conventional"` keeps the sealed status-quo roof untouched; the
+    two green roofs apply the SWMM-UrbanEVA parameterisation derived
+    by Daniel Wicke (v2, 2026-10-13: extensive 80 mm substrate,
+    KC 0.94, LAI 3.9; intensive 200 mm, KC 1.05, LAI 5.0; LAI values
+    swapped relative to v1 after Tandler review) plus the two switches
+    the engine needs for a roof that actually evaporates:
+    `Infiltration_aktiv = 1` and `Endversickerungsrate = 0`. The
+    substrate soil is deliberately identical for both green roofs,
+    consistent with the KWB KEYS parameterisation (`KWB-R/keys.lid`).
+  - `default_growth_factors()` / `make_growth_curve()` — the monthly
+    SWMM-UrbanEVA growth factors (annual mean exactly 1.00) expanded
+    into the engine's curve layout: hours since simulation start, one
+    support point per month boundary, step semantics.
+  - New vignette `diagnose_green_roofs` — a seven-scenario grid that
+    validates the recipe on the Wien model and settles empirically
+    what could not be confirmed remotely: does this engine build read
+    additional named curves (`Growth_Dach`), does it interpolate
+    curves stepwise or linearly, and is the roof's
+    `WB_Evapotranspiration` written in the Hoernschemeyer path once
+    infiltration is active.
+
+  Engine behaviour underpinning the recipe was confirmed by
+  tandler.com (mails 2026-10-08/09): per-element `Infiltration_aktiv`
+  controls pond-to-substrate infiltration (the status-quo roof's ET is
+  exactly 0 because water never reaches the substrate, interception is
+  off (`SL = 0`) and the start moisture sits below the wilting point);
+  `Endversickerungsrate` is the separate exfiltration to the ground;
+  `Hoernschemeyer_aktiv` exists only globally; referenced curves
+  replace the static `gfdoy`/`KSdoy` values completely;
+  `ET0ref_GrasReferenzverdunstung` is inert when a `//Kurven/ET0`
+  series is present; the roof-side Verschaltung taps the surface pond
+  (`von_Layer = 0`).
+
 # [kwb.raindrop 0.1.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0) <small>2026-08-07</small>
 
 ## New features

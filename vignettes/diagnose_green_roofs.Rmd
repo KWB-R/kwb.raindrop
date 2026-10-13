@@ -1,0 +1,604 @@
+---
+title: "Green-roof diagnostics: three roof types (Wien)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Green-roof diagnostics: three roof types (Wien)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, eval = TRUE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+
+path_base <- system.file("extdata/models/wien/base.h5", package = "kwb.raindrop")
+data_available <- nzchar(path_base) && file.exists(path_base)
+is_windows <- Sys.info()[["sysname"]] == "Windows"
+```
+
+After the swale-trench (Mulden-Rigolen) optimisation, the results are
+to be validated against three roof variants feeding the swale:
+**conventional roof** (the status quo), **extensive green roof** and
+**intensive green roof**. The green-roof parameterisation was derived
+by Daniel Wicke (KWB) from SWMM-UrbanEVA (Hoernschemeyer et al.),
+v2 of 2026-10-13, and the engine behaviour was clarified with
+tandler.com (mails of 2026-10-08 and 2026-10-09):
+
+* The per-element switch `Infiltration_aktiv` controls whether pond
+  water enters the element's soil layers at all; the green roofs need
+  `1` (the status-quo roof has `0`, which is one of two independent
+  reasons its ET is exactly 0 despite `Evapotranspiration_aktiv = 1`).
+* `Endversickerungsrate` is the separate exfiltration into the ground
+  below; a roof is sealed, so the green roofs set it to `0` (the
+  base.h5 value of 36 mm/h would silently drain the substrate out of
+  the balance once infiltration is active).
+* `Hoernschemeyer_aktiv` exists only globally and gates the seasonal
+  Growth/Shading modulation; referenced curves replace the static
+  `gfdoy`/`KSdoy` values completely.
+* The roof-side Verschaltung taps the surface pond (`von_Layer = 0`),
+  so substrate water leaves a green roof only via evapotranspiration;
+  surplus ponds and drains to the swale.
+
+The recipe itself lives in `roof_type_values()`, the monthly growth
+factors in `default_growth_factors()` / `make_growth_curve()`; the
+production workflows apply exactly the same functions.
+
+This vignette runs a **seven-scenario grid** that validates the recipe
+and settles the three points that could not be confirmed remotely
+(engine runs on Windows only):
+
+1. **Recipe plausibility** — conventional roof: ET share ~
+   0 % and ~ 100 % discharge via the Verschaltung (for the
+   legacy and the Hoernschemeyer frame alike); green roofs: ET share
+   clearly > 0, intensive > extensive.
+2. **Named extra curves** — tandler.com confirmed the curve set is an
+   extensible named map, but could not say whether *our engine build*
+   already supports it. Scenario `ext_namedcurve` writes a new
+   `//Kurven/Growth_Dach` and points only the roof at it.
+3. **Step interpolation** — the time axis (hours since simulation
+   start) is verified; the step semantics ("value holds until the next
+   support point") are checked empirically with a two-point descending
+   curve (`ext_stepprobe`): under step interpolation the roof's
+   ET0-normalised ET shows no multi-year trend, under linear
+   interpolation it declines by roughly half over the 15 years.
+
+A fourth observation rides along: in the May sweep the Dach water
+balance lacked `WB_Evapotranspiration` exactly in the combination
+`Hoernschemeyer_aktiv = 1` + `Infiltration_aktiv = 0`; tandler.com sees
+no engine-side mechanism for that. With infiltration now active the
+variable should be present everywhere — the results table shows it.
+
+### Scenario grid
+
+Geometry is fixed at Daniel's reference design (as in
+`example_wien_minimal`); `keineVerdunstungBeiRegen` stays `0` on
+tandler.com's recommendation (evaporation does occur during rain, and
+the effect is small).
+
+```{r scenario_grid, eval = data_available}
+param_grid <- tibble::tribble(
+  ~scenario_name,   ~roof_type,     ~hoernschemeyer, ~growth,      ~purpose,
+  "conv_legacy",    "conventional", 0L,              "flat",
+  "status-quo anchor (legacy ET path, bit-compatible with published runs)",
+  "conv",           "conventional", 1L,              "seasonal",
+  "conventional roof in the new comparison frame (swale gets seasonal curve)",
+  "ext",            "extensive",    1L,              "seasonal",
+  "extensive green roof, shared seasonal Growth_1 (roof + swale)",
+  "int",            "intensive",    1L,              "seasonal",
+  "intensive green roof, shared seasonal Growth_1 (roof + swale)",
+  "ext_flat",       "extensive",    1L,              "flat",
+  "extensive green roof without seasonal modulation (isolates the curve effect; reference for check 2)",
+  "ext_namedcurve", "extensive",    1L,              "namedcurve",
+  "check 2: new named curve Growth_Dach for the roof, Growth_1 stays flat",
+  "ext_stepprobe",  "extensive",    1L,              "stepprobe",
+  "check 3: two-point descending Growth_1 (1.35 at start, 0.68 at end)"
+) |>
+  dplyr::mutate(
+    connected_area               = 1000,
+    mulde_area                   = 75,
+    mulde_height                 = 200,
+    filter_hydraulicconductivity = 36,
+    filter_height                = 300,
+    storage_height               = 500,
+    bottom_hydraulicconductivity = 12,
+    rain_factor                  = 1
+  )
+
+DT::datatable(
+  param_grid,
+  options = list(pageLength = 7, autoWidth = TRUE),
+  caption = "Seven scenarios: three roof types plus the curve diagnostics."
+)
+```
+
+### Input data
+
+```{r prepare_timeseries, eval = data_available}
+path_list <- list(
+  modelname = "Wien",
+  root_path = file.path(tempdir(), "raindrop_green_roofs"),
+  dir_input  = "<root_path>/models/<modelname>/input",
+  dir_output = "<root_path>/models/<modelname>/output",
+  dir_target_output = "<dir_output>/<dir_target>",
+  file_errors_hdf5 = "Fehlerprotokoll.h5",
+  file_results_hdf5_element = "Mulde_Rigole.h5",
+  file_results_hdf5_flaeche = "Dach.h5",
+  file_results_hdf5_verschaltungen = "<dir_target>_Verschaltungen.h5",
+  file_results_txt = "Mulde_Rigole_RAINDROP.txt",
+  file_results_txt_multilayer = "Mulde_Rigole_RAINDROP_multi_layer.txt",
+  file_target = "<dir_target>.h5",
+  path_base = system.file("extdata/models/wien/base.h5", package = "kwb.raindrop"),
+  path_exe  = if (is_windows) kwb.raindrop::download_engine() else NA_character_,
+  path_et   = system.file("extdata/models/wien/et.csv", package = "kwb.raindrop"),
+  path_rain = system.file("extdata/models/wien/rain.csv.gz", package = "kwb.raindrop"),
+  path_errors_hdf5 = "<dir_target_output>/<file_errors_hdf5>",
+  path_results_hdf5_element = "<dir_target_output>/<file_results_hdf5_element>",
+  path_results_hdf5_flaeche = "<dir_target_output>/<file_results_hdf5_flaeche>",
+  path_results_hdf5_verschaltungen = "<dir_target_output>/<file_results_hdf5_verschaltungen>",
+  path_results_txt = "<dir_target_output>/<file_results_txt>",
+  path_results_txt_multilayer = "<dir_target_output>/<file_results_txt_multilayer>",
+  path_target_input = "<dir_input>/<file_target>"
+)
+
+psi_s_mm <- function(kf_mmh) (3.237 * (kf_mmh / 25.4)^(-0.328)) * 25.4
+
+paths <- kwb.utils::resolve(path_list)
+
+timeseries_et_raw <- readr::read_delim(paths$path_et, delim = ";", col_types = "cd") |>
+  dplyr::mutate(date = lubridate::dmy(date))
+
+# The ET0 series has its own hour-0 origin (its first date); with the
+# shipped data it coincides with rain_origin, but the calendar mapping in
+# the checks below must not silently assume that.
+et_origin <- lubridate::as_datetime(min(timeseries_et_raw$date))
+
+timeseries_et <- timeseries_et_raw |>
+  dplyr::mutate(time = as.integer(difftime(date, min(date), units = "hours"))) |>
+  dplyr::select(-date) |>
+  dplyr::filter(!is.na(value)) |>
+  dplyr::relocate(time, .before = value)
+timeseries_et$time[nrow(timeseries_et)] <- ceiling(timeseries_et$time[nrow(timeseries_et)])
+
+timeseries_rain_raw <- readr::read_csv(paths$path_rain, show_col_types = FALSE) |>
+  dplyr::rename(datetime = time, value = rr)
+
+# Calendar timestamp of simulation hour 0: needed to place the monthly
+# growth-curve support points on the engine's hour axis. Taken BEFORE the
+# NA filter so the axis matches the published pipeline (which computes the
+# hour axis over the unfiltered series) even if leading values are NA.
+rain_origin <- min(timeseries_rain_raw$datetime)
+if (abs(as.double(difftime(rain_origin, et_origin, units = "hours"))) > 0) {
+  message("NOTE: rain and ET0 series start at different timestamps (",
+          rain_origin, " vs ", et_origin, ") -- calendar mappings use each series' own origin.")
+}
+
+timeseries_rain <- timeseries_rain_raw |>
+  dplyr::filter(!is.na(value)) |>
+  dplyr::mutate(time = as.double(difftime(datetime, rain_origin, units = "secs")) / 3600) |>
+  dplyr::select(-datetime, -station) |>
+  dplyr::relocate(time, .before = value)
+timeseries_rain$time[nrow(timeseries_rain)] <- ceiling(timeseries_rain$time[nrow(timeseries_rain)])
+
+# Align ET / rain end-times to the longer of the two
+if (max(timeseries_rain$time) > max(timeseries_et$time)) {
+  timeseries_et <- dplyr::bind_rows(
+    timeseries_et,
+    tibble::tibble(time = max(timeseries_rain$time),
+                   value = timeseries_et$value[nrow(timeseries_et)])
+  )
+}
+if (max(timeseries_et$time) > max(timeseries_rain$time)) {
+  timeseries_rain <- dplyr::bind_rows(
+    timeseries_rain,
+    tibble::tibble(time = max(timeseries_et$time),
+                   value = timeseries_rain$value[nrow(timeseries_rain)])
+  )
+}
+
+# Convert rain from mm to mm/h (per 10-min interval), ET0 from mm/day to
+# mm/h -- the engine reads both curves as rates on the hour axis.
+period <- c(diff(timeseries_rain$time), mean(diff(timeseries_rain$time)))
+timeseries_rain$value <- timeseries_rain$value / period
+period_et <- c(diff(timeseries_et$time), mean(diff(timeseries_et$time)))
+timeseries_et$value <- timeseries_et$value / period_et
+
+t_end <- max(timeseries_rain$time)
+sim_period_yr <- (t_end - min(timeseries_rain$time)) / (24 * 365.25)
+rain_mm_per_year <- sum(timeseries_rain$value * period) / sim_period_yr
+
+flat_curve <- function(value = 1) data.frame(time = c(0, t_end), value = rep(value, 2))
+seasonal_curve <- kwb.raindrop::make_growth_curve(rain_origin, t_end)
+stepprobe_curve <- data.frame(time = c(0, t_end), value = c(1.35, 0.68))
+```
+
+### Run the seven scenarios
+
+```{r run_model, eval = data_available && is_windows}
+run_one <- function(i, timestep_hours, debug = FALSE, ...) {
+  param_grid_tmp <- param_grid[i, ]
+  paths <- kwb.utils::resolve(path_list, dir_target = param_grid_tmp$scenario_name)
+
+  fs::dir_create(paths$dir_input, recurse = TRUE)
+  fs::dir_create(paths$dir_output, recurse = TRUE)
+  fs::dir_create(paths$dir_target_output, recurse = TRUE)
+
+  fs::file_copy(path = paths$path_base,
+                new_path = paths$path_target_input,
+                overwrite = TRUE)
+
+  h5 <- hdf5r::H5File$new(paths$path_target_input, mode = "a")
+  new_path <- stringr::str_c(normalizePath(fs::path_abs(paths$dir_target_output)), "\\")
+  vals <- kwb.raindrop::h5_read_values(h5)
+
+  vals$`//Berechnungsparameter/Ergebnispfad` <- new_path
+  vals$`//Berechnungsparameter/Zeitschritt_Infiltration` <- timestep_hours
+  vals$`//Berechnungsparameter/Zeitschritt_ET` <- timestep_hours
+  vals$`//Berechnungsparameter/Zeitschritt_Verschaltungen` <- timestep_hours
+  vals$`//Berechnungsparameter/R-Plots` <- 0
+  vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung"
+  vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+  # Tandler recommendation (2026-10-08, answer 8): evaporation does occur
+  # during rain; effect is small, keep it active.
+  vals$`//Berechnungsparameter/keineVerdunstungBeiRegen` <- 0
+
+  # Daniel's reference geometry (identical to example_wien_minimal)
+  vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+  vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
+  vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
+  vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Regen-Skalierungsfaktor` <- param_grid_tmp$rain_factor
+  vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Flaeche` <- param_grid_tmp$mulde_area
+  vals$`//Massnahmenelemente/Mulde_Rigole/Eigenschaften_Oberflaeche/Ueberlaufhoehe` <- param_grid_tmp$mulde_height
+  vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Startwerte_theta_ActualSoilMoisture` <- c(0.3, 0)
+  vals$`//Massnahmenelemente/Mulde_Rigole/Bodenschichtung/Schichtdicken` <- c(
+    param_grid_tmp$filter_height, param_grid_tmp$storage_height
+  )
+  vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <-
+    param_grid_tmp$bottom_hydraulicconductivity
+  vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity
+  vals$`//Bodenarten/Bodenfilter/Psi_Saugspannung_CapillarySuction` <-
+    psi_s_mm(param_grid_tmp$filter_hydraulicconductivity)
+
+  # Roof-type recipe (substrate, water path, vegetation + global
+  # Hoernschemeyer frame) -- the same call the production workflows use.
+  vals <- utils::modifyList(vals, kwb.raindrop::roof_type_values(
+    roof_type = param_grid_tmp$roof_type,
+    hoernschemeyer_aktiv = param_grid_tmp$hoernschemeyer
+  ))
+
+  # Curves
+  vals$`//Kurven/ET0` <- timeseries_et
+  vals$`//Kurven/Regen` <- timeseries_rain
+  vals$`//Kurven/Shading_1` <- flat_curve()
+  vals$`//Kurven/Growth_1` <- switch(
+    param_grid_tmp$growth,
+    flat       = flat_curve(),
+    seasonal   = seasonal_curve,
+    namedcurve = flat_curve(),     # swale stays unmodulated ...
+    stepprobe  = stepprobe_curve
+  )
+  if (param_grid_tmp$growth == "namedcurve") {
+    # ... and only the roof points at a NEW named curve. Whether our
+    # engine build reads it is exactly what this scenario tests.
+    vals$`//Kurven/Growth_Dach` <- seasonal_curve
+    vals$`//Massnahmenelemente/Dach/Parameter_Evapotranspiration/Kurve_gfdoy` <- "Growth_Dach"
+  }
+
+  tryCatch({
+    # Creates //Kurven/Growth_Dach (and nothing else: all other datasets
+    # already exist in base.h5) before the value write.
+    kwb.raindrop::h5_ensure_datasets_from_values(h5, vals, strict = FALSE)
+    kwb.raindrop::h5_write_values(h5, vals, resize = TRUE, strict = FALSE,
+                                  scalar_strategy = "first", verbose = FALSE)
+    if (h5$is_valid) h5$close_all()
+    kwb.raindrop::run_model(path_exe = paths$path_exe,
+                            path_input = paths$path_target_input,
+                            debug = debug)
+  }, error = function(e) {
+    if (h5$is_valid) try(h5$close_all(), silent = TRUE)
+    message(sprintf("[%s] run failed: %s",
+                    param_grid_tmp$scenario_name, conditionMessage(e)))
+  })
+  invisible(NULL)
+}
+
+kwb.raindrop::run_scenarios(
+  indices = seq_len(nrow(param_grid)),
+  run_one_scenario = run_one,
+  timestep_hours = 0.1,
+  debug = FALSE,
+  parallel = FALSE,
+  show_progress = FALSE
+)
+```
+
+### Results
+
+```{r analyse_results, eval = data_available && is_windows}
+simulation_results <- kwb.raindrop::get_simulation_results_optim_parallel(
+  paths = paths,
+  path_list = path_list,
+  simulation_names = param_grid$scenario_name,
+  debug = FALSE
+)
+
+results <- param_grid |>
+  dplyr::left_join(
+    kwb.raindrop::add_overflow_events_and_waterbalance(
+      simulation_results = simulation_results,
+      event_separation_hours = 4,
+      canonical_variables = kwb.raindrop::default_canonical_wb_variables()
+    ),
+    by = c("scenario_name" = "s_name")
+  )
+
+DT::datatable(
+  results,
+  filter = "top",
+  options = list(pageLength = 7, autoWidth = TRUE, scrollX = TRUE),
+  caption = paste(
+    "Seven-scenario results. WB_* columns are percentage shares of the",
+    "element's total inflow; connectedarea.* is the roof, element.* the swale."
+  )
+)
+```
+
+### Check 1 — recipe plausibility
+
+```{r check_recipe, eval = data_available && is_windows}
+verdict <- function(ok, text) {
+  message(sprintf("[%s] %s", ifelse(is.na(ok), "????", ifelse(ok, "PASS", "FAIL")), text))
+  invisible(ok)
+}
+
+wb <- results |>
+  dplyr::transmute(
+    scenario_name,
+    roof_type,
+    dach_et      = .data$`connectedarea.WB_Evapotranspiration_`,
+    dach_versch  = .data$`connectedarea.WB_Oberflaechenablauf_Verschaltungen_`,
+    mulde_et     = .data$`element.WB_Evapotranspiration_`,
+    dach_et_mm_a = round(.data$`connectedarea.WB_Evapotranspiration_` / 100 * rain_mm_per_year, 1)
+  )
+print(wb)
+
+g <- function(s, col) wb[[col]][wb$scenario_name == s]
+
+verdict(g("conv_legacy", "dach_et") < 0.5 & g("conv", "dach_et") < 0.5,
+        "conventional roof: ET share ~0 % in both frames (sealed roof reproduced)")
+verdict(g("conv", "dach_versch") > 99,
+        "conventional roof: ~100 % discharge via Verschaltung")
+verdict(g("ext", "dach_et") > 5,
+        sprintf("extensive roof evaporates substantially (%.1f %% of roof rain = %.0f mm/a)",
+                g("ext", "dach_et"), g("ext", "dach_et_mm_a")))
+verdict(g("int", "dach_et") > g("ext", "dach_et"),
+        "intensive > extensive roof ET (thicker substrate + higher KC/LAI)")
+message(sprintf(
+  "[INFO] seasonal-curve effect on extensive roof ET: %.1f (seasonal) vs %.1f (flat) %%-points",
+  g("ext", "dach_et"), g("ext_flat", "dach_et")))
+```
+
+### Check 2 — does our engine build read a new named curve?
+
+`ext_namedcurve` modulates the roof via `//Kurven/Growth_Dach` while
+`Growth_1` stays flat. The discriminator is the **summer/winter
+contrast** of the ET0-normalised monthly roof ET: the seasonal factors
+(Jun–Aug 1.35 vs Dez–Feb 0.68) roughly double it relative to a flat
+curve, which separates the two references far more robustly than the
+annual total (the factors average exactly 1.0 over the year, so annual
+ET barely distinguishes them). If the build honours the named curve
+map, the contrast lands near `ext`; if it silently falls back, near
+`ext_flat`.
+
+```{r check_named_curve, eval = data_available && is_windows}
+# ET-rate helpers shared by checks 2 and 3 ----------------------------
+extract_et_rate <- function(rates) {
+  if (is.null(rates)) return(NULL)
+  if ("variable" %in% names(rates)) {
+    v <- grep("Evapo|fET|ET_", unique(rates$variable), value = TRUE)
+    if (length(v) == 0L) return(NULL)
+    message("ET rate variable used: ", v[1])
+    rates |>
+      dplyr::filter(.data$variable == v[1]) |>
+      dplyr::select("time", "value")
+  } else {
+    v <- setdiff(grep("Evapo|fET|ET_", names(rates), value = TRUE), "time")
+    if (length(v) == 0L) return(NULL)
+    message("ET rate variable used: ", v[1])
+    stats::setNames(rates[, c("time", v[1])], c("time", "value"))
+  }
+}
+
+et0_step_h <- c(diff(timeseries_et$time), mean(diff(timeseries_et$time)))
+monthly_et0 <- timeseries_et |>
+  dplyr::mutate(month = lubridate::month(et_origin + lubridate::dhours(.data$time)),
+                mm = .data$value * et0_step_h) |>
+  dplyr::group_by(.data$month) |>
+  dplyr::summarise(et0_mm = sum(.data$mm), .groups = "drop")
+
+monthly_modulation <- function(scenario) {
+  et <- extract_et_rate(simulation_results[[scenario]]$connected_area$rates)
+  if (is.null(et)) return(NULL)
+  step_h <- c(diff(et$time), mean(diff(et$time)))
+  et |>
+    dplyr::mutate(month = lubridate::month(rain_origin + lubridate::dhours(.data$time)),
+                  mm = .data$value * step_h) |>
+    dplyr::group_by(.data$month) |>
+    dplyr::summarise(roof_mm = sum(.data$mm), .groups = "drop") |>
+    dplyr::inner_join(monthly_et0, by = "month") |>
+    dplyr::mutate(modulation = .data$roof_mm / .data$et0_mm)
+}
+
+sw_contrast <- function(mod) {
+  if (is.null(mod)) return(NA_real_)
+  mean(mod$modulation[mod$month %in% c(6, 7, 8)]) /
+    mean(mod$modulation[mod$month %in% c(12, 1, 2)])
+}
+
+c_named    <- sw_contrast(monthly_modulation("ext_namedcurve"))
+c_seasonal <- sw_contrast(monthly_modulation("ext"))
+c_flat     <- sw_contrast(monthly_modulation("ext_flat"))
+message(sprintf(
+  "summer/winter ET contrast: namedcurve %.2f | seasonal ref %.2f | flat ref %.2f",
+  c_named, c_seasonal, c_flat))
+
+if (anyNA(c(c_named, c_seasonal, c_flat))) {
+  verdict(NA, "named-curve check inconclusive: missing roof ET rates for at least one scenario")
+} else if (abs(c_seasonal - c_flat) < 0.1) {
+  verdict(NA, paste(
+    "named-curve check inconclusive: seasonal and flat references barely",
+    "differ -- inspect monthly_modulation() output directly"))
+} else {
+  named_works <- abs(c_named - c_seasonal) < abs(c_named - c_flat)
+  verdict(named_works, sprintf(
+    "Growth_Dach %s by this engine build",
+    ifelse(named_works, "is read", "is NOT read (silent fallback)")))
+}
+
+# Engine error logs for all scenarios (an unknown curve name may be
+# reported here rather than acted on silently).
+kwb.raindrop::read_raindrop_errors(
+  simulation_names = param_grid$scenario_name,
+  path_list = path_list
+)
+```
+
+### Check 3 — step vs. linear curve interpolation
+
+The `ext_stepprobe` curve has only two support points: 1.35 at hour 0
+and 0.68 at the series end. Under **step** interpolation the factor is
+1.35 for the entire 15 years (no trend in the ET0-normalised roof ET);
+under **linear** interpolation it decays to half, so the normalised
+roof ET of the last years is roughly half that of the first years.
+
+```{r check_interpolation, eval = data_available && is_windows}
+et_rate <- extract_et_rate(simulation_results[["ext_stepprobe"]]$connected_area$rates)
+
+if (is.null(et_rate)) {
+  verdict(NA, paste(
+    "interpolation check inconclusive: no ET-like variable found in the roof",
+    "rates -- inspect names(simulation_results[['ext_stepprobe']]$connected_area$rates)"
+  ))
+} else {
+  step_h <- c(diff(et_rate$time), mean(diff(et_rate$time)))
+  annual_roof_et <- et_rate |>
+    dplyr::mutate(year = lubridate::year(rain_origin + lubridate::dhours(.data$time)),
+                  mm = .data$value * step_h) |>
+    dplyr::group_by(.data$year) |>
+    dplyr::summarise(roof_et_mm = sum(.data$mm), .groups = "drop")
+
+  annual_et0 <- timeseries_et |>
+    dplyr::mutate(year = lubridate::year(et_origin + lubridate::dhours(.data$time)),
+                  mm = .data$value * et0_step_h) |>
+    dplyr::group_by(.data$year) |>
+    dplyr::summarise(et0_mm = sum(.data$mm), .groups = "drop")
+
+  norm <- dplyr::inner_join(annual_roof_et, annual_et0, by = "year") |>
+    dplyr::mutate(modulation = .data$roof_et_mm / .data$et0_mm)
+  # Drop the (usually partial) first and last calendar years
+  norm_full <- norm[c(-1, -nrow(norm)), ]
+  print(norm)
+
+  n3 <- min(3L, floor(nrow(norm_full) / 2))
+  ratio <- mean(utils::tail(norm_full$modulation, n3)) /
+    mean(utils::head(norm_full$modulation, n3))
+  verdict(ratio > 0.8, sprintf(
+    paste("interpolation looks like %s (last/first years' ET0-normalised roof ET = %.2f;",
+          "step ~1.0, linear ~0.5; heuristic -- water limitation adds noise)"),
+    ifelse(ratio > 0.8, "STEP (value holds to next support point)", "LINEAR"), ratio
+  ))
+}
+```
+
+### Check 4 — Dach `WB_Evapotranspiration` present?
+
+```{r check_wb_variable, eval = data_available && is_windows}
+has_wb_et <- vapply(param_grid$scenario_name, function(s) {
+  wb_names <- tryCatch(
+    simulation_results[[s]]$connected_area$water_balance$variable,
+    error = function(e) NULL
+  )
+  any(grepl("WB_Evapotranspiration", c(wb_names,
+    names(simulation_results[[s]]$connected_area$water_balance))))
+}, logical(1))
+print(tibble::tibble(scenario_name = param_grid$scenario_name, has_wb_et))
+verdict(all(has_wb_et),
+        "WB_Evapotranspiration present in every roof water balance (May-sweep gap not reproduced)")
+```
+
+### Persist the applied settings
+
+The XLSX dump (base values, per-scenario diffs against `base.h5`, full
+per-scenario views) is the file to send to Daniel / tandler.com for
+review of what exactly each scenario changed.
+
+```{r xlsx_dump, eval = data_available && is_windows}
+format_h5_value <- function(v) {
+  if (is.null(v)) {
+    "<NULL>"
+  } else if (is.data.frame(v)) {
+    sprintf("[time series: %d rows; cols: %s]",
+            nrow(v), paste(names(v), collapse = ", "))
+  } else if (length(v) > 1L) {
+    paste(format(v, trim = TRUE), collapse = ", ")
+  } else {
+    format(v, trim = TRUE)
+  }
+}
+
+vals_to_tibble <- function(vals) {
+  tibble::tibble(
+    parameter = names(vals),
+    value     = vapply(vals, format_h5_value, character(1L))
+  ) |>
+    dplyr::arrange(parameter)
+}
+
+vals_equal <- function(a, b) {
+  if (is.null(a) || is.null(b)) return(identical(a, b))
+  isTRUE(all.equal(a, b))
+}
+
+h5_base <- hdf5r::H5File$new(path_base, mode = "r")
+base_vals <- kwb.raindrop::h5_read_values(h5_base)
+h5_base$close_all()
+
+sheets <- list(base = vals_to_tibble(base_vals))
+applied_rows <- list()
+for (sname in param_grid$scenario_name) {
+  p <- kwb.utils::resolve(path_list, dir_target = sname)
+  h5_s <- hdf5r::H5File$new(p$path_target_input, mode = "r")
+  scenario_vals <- kwb.raindrop::h5_read_values(h5_s)
+  h5_s$close_all()
+  sheets[[sname]] <- vals_to_tibble(scenario_vals)
+  for (k in union(names(base_vals), names(scenario_vals))) {
+    if (!vals_equal(base_vals[[k]], scenario_vals[[k]])) {
+      applied_rows[[length(applied_rows) + 1L]] <- tibble::tibble(
+        scenario       = sname,
+        parameter      = k,
+        base_value     = format_h5_value(base_vals[[k]]),
+        scenario_value = format_h5_value(scenario_vals[[k]])
+      )
+    }
+  }
+}
+sheets$applied_settings <- dplyr::bind_rows(applied_rows) |>
+  dplyr::arrange(parameter, scenario)
+sheets <- c(sheets[c("base", "applied_settings")],
+            sheets[param_grid$scenario_name])
+
+xlsx_path <- file.path(tempdir(), "diagnose_green_roofs_params.xlsx")
+writexl::write_xlsx(sheets, path = xlsx_path)
+message("Wrote XLSX (", length(sheets), " sheets) to:\n  ", xlsx_path)
+```
+
+### What the verdicts decide
+
+* Check 2 **PASS** → the production scenarios may give the roof its own
+  curve (`Growth_Dach`) and e.g. keep the swale on separate grass
+  factors, should Daniel supply any. **FAIL** → both elements share
+  `Growth_1` (the current default design: swale vegetation is
+  seasonally similar anyway).
+* Check 3 **STEP** → monthly support points at month *starts* (what
+  `make_growth_curve()` writes) are correct. **LINEAR** → switch the
+  support points to month midpoints.
+* Check 1 failures stop the roof-type comparison until resolved with
+  tandler.com — the applied-settings XLSX is the reproduction package.

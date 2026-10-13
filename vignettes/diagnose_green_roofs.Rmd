@@ -42,7 +42,7 @@ The recipe itself lives in `roof_type_values()`, the monthly growth
 factors in `default_growth_factors()` / `make_growth_curve()`; the
 production workflows apply exactly the same functions.
 
-This vignette runs an **eight-scenario grid** that validates the recipe
+This vignette runs a **nine-scenario grid** that validates the recipe
 and settles the points that could not be confirmed remotely
 (engine runs on Windows only):
 
@@ -97,9 +97,13 @@ param_grid <- tibble::tribble(
   "ext_namedcurve", "extensive",    1L,              "namedcurve",
   "check 3: new named curve Growth_Dach flat at 0.05 for the roof, Growth_1 stays flat 1.0",
   "ext_stepprobe",  "extensive",    1L,              "stepprobe",
-  "check 4: two-point Growth_1 (1.0 at start, 0.01 at end) -- step keeps ET at the flat level, linear halves it"
+  "check 4: two-point Growth_1 (1.0 at start, 0.01 at end) -- step keeps ET at the flat level, linear halves it",
+  "ext_komplett",   "extensive",    1L,              "seasonal",
+  "like ext, but Ausgabemodus 'komplett' (historic mode name from workflow_eisenstadt-2005.Rmd) -- should make the engine write the ET-component time series"
 ) |>
   dplyr::mutate(
+    ausgabemodus = dplyr::if_else(.data$scenario_name == "ext_komplett",
+                                  "komplett", "Optimierung"),
     connected_area               = 1000,
     mulde_area                   = 75,
     mulde_height                 = 200,
@@ -112,8 +116,8 @@ param_grid <- tibble::tribble(
 
 DT::datatable(
   param_grid,
-  options = list(pageLength = 8, autoWidth = TRUE),
-  caption = "Eight scenarios: three roof types plus the growth-curve diagnostics."
+  options = list(pageLength = 9, autoWidth = TRUE),
+  caption = "Nine scenarios: three roof types plus the growth-curve and output-mode diagnostics."
 )
 ```
 
@@ -246,7 +250,10 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   vals$`//Berechnungsparameter/Zeitschritt_ET` <- timestep_hours
   vals$`//Berechnungsparameter/Zeitschritt_Verschaltungen` <- timestep_hours
   vals$`//Berechnungsparameter/R-Plots` <- 0
-  vals$`//Berechnungsparameter/Ausgabemodus` <- "Optimierung"
+  # "Optimierung" = lean outputs; "komplett" = full outputs incl. the
+  # ET-component time series (mode name recovered from a comment in the
+  # git history of workflow_eisenstadt-2005.Rmd).
+  vals$`//Berechnungsparameter/Ausgabemodus` <- param_grid_tmp$ausgabemodus
   vals$`//Berechnungsparameter/Evapotranspiration_aktiv` <- 1
   # Tandler recommendation (2026-10-08, answer 8): evaporation does occur
   # during rain; effect is small, keep it active.
@@ -515,12 +522,10 @@ if (isTRUE(curve_active) && !is.na(et_step)) {
   verdict(NA, "interpolation check inconclusive (requires check 2 = PASS and a result for ext_stepprobe)")
 }
 
-# Optional monthly deep-dive: the "Zusaetzliche Variablen
-# Evapotranspiration" group of Dach.h5 would allow a monthly ET-component
-# analysis, but the engine does not write it in Ausgabemodus
-# "Optimierung" (checked empty on the 2026-10-15 run). If monthly ET
-# components are ever needed, ask tandler.com which Ausgabemodus
-# enables the group.
+# ET-component deep-dive: the "Zusaetzliche Variablen Evapotranspiration"
+# group of Dach.h5 is not written in Ausgabemodus "Optimierung" (checked
+# empty on the 2026-10-15 run); the ext_komplett scenario runs the same
+# extensive roof with Ausgabemodus "komplett", which should include it.
 read_roof_et <- function(scenario) {
   p <- kwb.utils::resolve(path_list, dir_target = scenario)
   if (!file.exists(p$path_results_hdf5_flaeche)) return(NULL)
@@ -533,12 +538,32 @@ read_roof_et <- function(scenario) {
   if (nrow(out) == 0L) return(NULL)
   out
 }
-et_components <- read_roof_et("ext")
+
+# Sanity check first: the output mode must not change the physics.
+message(sprintf(
+  "[INFO] roof ET share ext (Optimierung) = %.1f %% vs ext_komplett = %.1f %% (should match)",
+  g("ext", "dach_et"), g("ext_komplett", "dach_et")))
+
+et_components <- read_roof_et("ext_komplett")
 if (is.null(et_components)) {
-  message("[INFO] no ET-component time series in Dach.h5 (expected in Ausgabemodus 'Optimierung')")
+  message(paste(
+    "[INFO] no ET-component time series in Dach.h5 even with Ausgabemodus",
+    "'komplett' -- mode name wrong or scenario failed; ask tandler.com"))
 } else {
   message("[INFO] ET components available: ",
           paste(unique(et_components$variable), collapse = ", "))
+  # Annual totals per component: shows which of interception, transpiration,
+  # soil and open-water evaporation carries the (high) roof ET -- the key
+  # input for the plausibility discussion against SWMM-UrbanEVA.
+  comp_totals <- et_components |>
+    dplyr::group_by(.data$variable) |>
+    dplyr::arrange(.data$time, .by_group = TRUE) |>
+    dplyr::summarise(
+      mm_total = sum(.data$value * c(diff(.data$time), mean(diff(.data$time)))),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(mm_per_year = round(.data$mm_total / sim_period_yr, 1))
+  print(comp_totals)
 }
 
 # Engine error logs: totals per scenario plus a breakdown by error

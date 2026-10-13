@@ -584,10 +584,14 @@ if (is.null(et_components)) {
 } else {
   message("[INFO] ET components available: ",
           paste(unique(et_components$variable), collapse = ", "))
-  # Annual totals per component: shows which of interception, transpiration,
-  # soil and open-water evaporation carries the (high) roof ET -- the key
-  # input for the plausibility discussion against SWMM-UrbanEVA.
+  # Run 4 (2026-10-17) showed the group holds potential rates and state
+  # variables, not the actual component fluxes of Gl. 15. Integrate only
+  # the mm/h rates; state-like variables must not be summed over time.
+  rate_vars <- c("ESp_es_PotentialSoilEvaporation",
+                 "ETp_PotentialTranspiration",
+                 "Pnet_PrecipRemainingAfterIntercep")
   comp_totals <- et_components |>
+    dplyr::filter(.data$variable %in% rate_vars) |>
     dplyr::group_by(.data$variable) |>
     dplyr::arrange(.data$time, .by_group = TRUE) |>
     dplyr::summarise(
@@ -596,6 +600,17 @@ if (is.null(et_components)) {
     ) |>
     dplyr::mutate(mm_per_year = round(.data$mm_total / sim_period_yr, 1))
   print(comp_totals)
+  message("[INFO] state-like variables (not integrated): ",
+          paste(setdiff(unique(et_components$variable), rate_vars), collapse = ", "))
+  # Derived interception evaporation: gross roof rain minus the
+  # post-interception net precipitation.
+  pnet <- comp_totals$mm_per_year[
+    comp_totals$variable == "Pnet_PrecipRemainingAfterIntercep"]
+  if (length(pnet) == 1L) {
+    message(sprintf(
+      "[INFO] derived interception evaporation ~ %.0f mm/a (gross roof rain %.0f - Pnet %.0f)",
+      rain_mm_per_year - pnet, rain_mm_per_year, pnet))
+  }
 }
 
 # Engine error logs: totals per scenario plus a breakdown by error

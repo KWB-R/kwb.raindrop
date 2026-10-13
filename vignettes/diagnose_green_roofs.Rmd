@@ -513,9 +513,19 @@ err <- suppressWarnings(kwb.raindrop::read_raindrop_errors(
   path_list = path_list
 ))
 print(dplyr::select(err, "scenario_name", "file_exists", "number_of_errors"))
+# The engine writes its error texts in the Windows codepage (CP1252);
+# the mis-tagged bytes crash the htmlwidgets JSON encoder ("input string
+# 1 is invalid UTF-8"), so normalise them before the datatable.
+to_utf8 <- function(x) {
+  x <- as.character(x)
+  bad <- !is.na(x) & !validUTF8(x)
+  x[bad] <- iconv(x[bad], from = "CP1252", to = "UTF-8", sub = "byte")
+  x
+}
 err_categories <- err |>
   dplyr::select("scenario_name", "errors") |>
   tidyr::unnest("errors") |>
+  dplyr::mutate(Fehlerbeschreibung = to_utf8(.data$Fehlerbeschreibung)) |>
   dplyr::count(.data$scenario_name, .data$Fehlerbeschreibung, sort = TRUE)
 DT::datatable(
   err_categories,

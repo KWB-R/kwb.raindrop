@@ -648,6 +648,15 @@ cat(sprintf(paste0(
   Untergrenze `area_bounds[1]` = 25 m² kleben. Das ist als
   "≤ 25 m² genügen" zu lesen; die Grenze bleibt bewusst bei 25 m², weil
   die Monotonie nur im Rasterbereich geprüft ist.
+- **WB-Anteile über 100 % im 1-Jahres-Modell:** Bei Eisenstadt können
+  `et_pct`/`roof_et_pct` der Gründach-Szenarien 100 % übersteigen
+  (Smoke-Test 2026-11-09: intensiv 106/101 %). Das ist kein
+  Bilanzfehler: Die Anteile sind auf den *Zufluss* bezogen, und bei
+  stark reduziertem Zulauf verdunstet zusätzlich das Anfangswasser der
+  Speicher (Startfeuchte von Substrat, Filter und Speicherschicht) —
+  über ein einzelnes Jahr sichtbar, über die 15-Jahres-Serien
+  (Wien, Bad Aussee) vernachlässigbar. Für Berichte die
+  Eisenstadt-Anteile entsprechend einordnen oder auf mm/a umrechnen.
 - **Frames nicht mischen:** `conv_legacy` (und nur es) ist mit den
   publizierten AU-/Endberichts-Optima vergleichbar; die Kurvenschar
   `conventional`/`extensiv`/`intensiv` ist untereinander vergleichbar.

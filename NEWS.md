@@ -2,6 +2,27 @@
 
 ## New features
 
+* **Roof types in the production optimisation.** `make_swale_runner()`
+  gains `roof_type`, `hoernschemeyer_aktiv` and `growth_curve`: the
+  roof-type overrides from `roof_type_values()` and the UrbanEVA
+  seasonal curve merge into the site master (constant per runner — the
+  optimiser caches key on the swale design only, so the roof type must
+  never become a per-run parameter). The defaults (`"conventional"`,
+  `hoernschemeyer_aktiv = NULL`, no curve) leave the master
+  bit-identical to the previous behaviour. Both optimisers now also
+  report `roof_et_pct` (the roof's own ET share; the Hoernschemeyer
+  path's NaN for a dry sealed roof is reported as 0), and
+  `read_site_timeseries()` returns the calendar `origin` of engine
+  hour 0 that `make_growth_curve()` needs. The vignettes
+  `workflow_optimisation` and `workflow_optimisation_simultaneous` run
+  the sweep per roof type (comparison frame `Hoernschemeyer_aktiv = 1`
+  + seasonal curve for conventional/extensive/intensive, plus a
+  `conv_legacy` anchor task that must reproduce the published optima;
+  exports move to `optimisation_results_roofs_*.csv` so the published
+  CSVs stay untouched). Costs remain pure swale-system costs by
+  design — green-roof costs are out of scope, the roof type acts on
+  the inflow hydrology only.
+
 * **Green-roof scenario layer** for the three-roof-type comparison
   (conventional / extensive / intensive roof feeding the swale) that
   validates the Mulden-Rigolen optimisation results:

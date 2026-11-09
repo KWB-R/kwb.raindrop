@@ -98,7 +98,7 @@ area_bracket_from_prior <- function(prior, type, h_s, h_m, x, bounds) {
 #'
 #' @return Tibble with one row per (storage type, x): the optimal design
 #'   (`mulde_area`, `mulde_height`, `storage_height`), its metrics
-#'   (`n_overflows`, `overflow_volume_m3`, `et_pct`), cost columns from
+#'   (`n_overflows`, `overflow_volume_m3`, `et_pct`, `roof_et_pct`), cost columns from
 #'   [compute_costs()], a `status` (`"ok"` or `"infeasible_within_bounds"`),
 #'   `monotonicity_warning` (volume referee) and `n_runs_new` (fresh engine
 #'   runs spent on this cell). All evaluated designs are attached as
@@ -151,11 +151,21 @@ optimise_swale_design <- function(run_fn,
       vol <- res[["sum_overflows"]] * area / 1000  # mm x m2 / 1000 = m3
     }
     et <- res[["element.WB_Evapotranspiration_"]]
+    # Roof ET share: NaN means the Hoernschemeyer path skipped the dry
+    # sealed roof entirely -- its ET is exactly 0 there.
+    roof_et <- res[["connectedarea.WB_Evapotranspiration_"]]
+    roof_et <- if (is.null(roof_et)) {
+      NA_real_
+    } else {
+      roof_et <- as.numeric(roof_et)
+      ifelse(is.nan(roof_et), 0, roof_et)
+    }
     out <- list(storage_type = type, mulde_area = area, mulde_height = h_m,
                 storage_height = h_s,
                 n_overflows = as.numeric(res$n_overflows),
                 overflow_volume_m3 = if (is.null(vol)) NA_real_ else as.numeric(vol),
-                et_pct = if (is.null(et)) NA_real_ else as.numeric(et))
+                et_pct = if (is.null(et)) NA_real_ else as.numeric(et),
+                roof_et_pct = roof_et)
     runs_executed <<- runs_executed + 1L
     assign(key, out, envir = cache)
     out
@@ -207,6 +217,7 @@ optimise_swale_design <- function(run_fn,
       mulde_area = NA_real_, mulde_height = NA_real_,
       storage_height = NA_real_, n_overflows = NA_real_,
       overflow_volume_m3 = NA_real_, et_pct = NA_real_,
+      roof_et_pct = NA_real_,
       monotonicity_warning = mono_warn,
       n_runs_new = runs_executed - runs_before
     )
@@ -319,6 +330,7 @@ optimise_swale_design <- function(run_fn,
       n_overflows = final$n_overflows,
       overflow_volume_m3 = final$overflow_volume_m3,
       et_pct = final$et_pct,
+      roof_et_pct = final$roof_et_pct,
       monotonicity_warning = mono_warn,
       n_runs_new = runs_executed - runs_before
     )

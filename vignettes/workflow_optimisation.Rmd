@@ -60,10 +60,32 @@ Default-Stufen 300/600/900/1200 mm (`sickerbox_level_presets()` bietet
 Hersteller-Alternativen), der Schotterrigol stufenlos im 3-fachen
 Box-Bereich.
 
+**Neu: Dachvarianten als äußere Szenario-Dimension.** Jede Optimierung
+läuft zusätzlich je **Dachtyp** — die angeschlossene Fläche (1000 m²)
+wird als konventionelles Dach, extensives oder intensives Gründach
+parametriert (`roof_type_values()`, Parametrierung v2 nach
+SWMM-UrbanEVA / D. Wicke; mechanisch validiert in der Vignette
+`diagnose_green_roofs`). Der **Vergleichsrahmen** (Entscheid
+2026-11-09): `Hoernschemeyer_aktiv = 1` plus UrbanEVA-Saisonkurve
+(`make_growth_curve()`, geteilt von Dach und Mulde) für alle drei
+Dachtypen — untereinander sauber vergleichbar. Da der Schalter global
+ist und auch die Mulden-ET verändert, ist dieser Rahmen **nicht
+bitgleich** mit den publizierten Läufen; als Regressions- und
+Frame-Anker läuft deshalb je Standort zusätzlich **`conv_legacy`**
+(konventionelles Dach, `base.h5`-Frame unangetastet), das die
+publizierten Optima reproduzieren muss. Die Leitfrage der
+Gründach-Szenarien: *Wie stark verschiebt ein Gründach die
+Kosten-Wirksamkeits-Kurve der Mulde-Rigole?* **Kosten bleiben dabei
+reine Mulden-Rigolen-Systemkosten** — Gründachkosten sind bewusst nicht
+Teil der Rechnung, der Dachtyp wirkt ausschließlich über die
+Zulauf-Hydrologie.
+
 **Laufzeit:** Ein Engine-Lauf dauert ~2 s (Eisenstadt, 1 Jahr) bzw.
-~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 6 Tasks
-(Standort × Speichertyp) laufen parallel; die Gesamtdauer entspricht
-dem längsten Einzeltask — ca. 15–20 Minuten. `make_swale_runner()`
+~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 24 Tasks
+(Standort × Speichertyp × Dachtyp) laufen parallel; bei mehr Tasks als
+Kernen bearbeitet jeder Worker mehrere Tasks nacheinander — grob
+45–90 Minuten je nach Kernzahl (die Gründach-Tasks starten ohne
+Warmstart und brauchen mehr Läufe je Task). `make_swale_runner()`
 löscht die Szenario-Dateien jedes Laufs standardmäßig direkt nach dem
 Einlesen (`cleanup = TRUE`), damit lange Suchen das Temp-Laufwerk nicht
 füllen.
@@ -101,12 +123,21 @@ if (file.exists("../DESCRIPTION") &&
 
 sites <- list(
  Eisenstadt_2005 = list(dir = "eisenstadt-2005", timeseries = FALSE,
+   # kein externer Regen: Kalender-Ursprung der base.h5-Zeitachse
+   # (Modelljahr 2005) fuer die Saisonkurve
+   origin = "2005-01-01",
    prior = "simulation_results_optimisation_Eisenstadt_2005.csv"),
  Wien = list(dir = "wien", timeseries = TRUE,
    prior = "simulation_results_optimisation_Wien.csv"),
  BadAussee = list(dir = "badaussee", timeseries = TRUE,
    prior = "simulation_results_optimisation_BadAussee.csv")
 )
+
+# Dachvarianten: conv_legacy = base.h5-Frame unangetastet (Hoernschemeyer
+# aus base.h5, flache Growth_1) -- reproduziert die publizierten Laeufe
+# als Regressions-Anker. Die uebrigen drei rechnen im Vergleichsrahmen
+# Hoernschemeyer_aktiv = 1 + UrbanEVA-Saisonkurve.
+roofs <- c("conv_legacy", "conventional", "extensive", "intensive")
 
 fixed <- list(connected_area = 1000,
               filter_height = 300,
@@ -211,24 +242,29 @@ knitr::kable(
 
 ## Optimierung aller Standorte (parallel)
 
-Parallelisiert wird über **Standort × Speichertyp = 6 unabhängige
-Tasks**: Die Bisektion innerhalb einer Suche ist prinzipbedingt
-sequentiell, und die x-Ziele eines Speichertyps teilen sich den
-Evaluations-Cache — aber Box- und Rigol-Läufe teilen keinen einzigen
-Engine-Lauf (der Cache-Schlüssel enthält den Typ). Jeder Worker ist ein
-eigener R-Prozess mit eigenem `tempdir()`, Kollisionen sind damit
-ausgeschlossen. Die Wall-Time entspricht dem längsten Einzeltask
-(Wien/Rigol, ~15–20 min) statt der Summe aller Tasks (~65 min).
+Parallelisiert wird über **Standort × Speichertyp × Dachtyp = 24
+unabhängige Tasks**: Die Bisektion innerhalb einer Suche ist
+prinzipbedingt sequentiell, und die x-Ziele eines Speichertyps teilen
+sich den Evaluations-Cache — aber kein Task teilt mit einem anderen
+einen einzigen Engine-Lauf. **Der Dachtyp ist bewusst je Task fix**
+(ein Runner = ein Dachtyp): Die Cache-Schlüssel der Optimierer
+enthalten ihn nicht, er darf also nie Lauf-Parameter werden. Der
+Modellname trägt den Dachtyp als Suffix, damit Tasks desselben
+Standorts, die nacheinander im selben Worker-Prozess laufen, getrennte
+Master- und Szenariodateien benutzen. Jeder Worker ist ein eigener
+R-Prozess mit eigenem `tempdir()`.
 
 Liegen die Rasterergebnisse der Workflow-Vignetten als CSV neben dieser
 Vignette, verengen sie als Warmstart die erste Flächensuche auf einen
-25-m²-Rasterschritt.
+25-m²-Rasterschritt — **nur für `conv_legacy`**: Die Raster-CSVs
+stammen aus dem Legacy-Frame ohne Dachvarianten und passen weder zum
+neuen Vergleichsrahmen noch zu den Gründach-Szenarien.
 
 ```{r optimise_all, eval = can_run}
 t_opt_start <- Sys.time()
 
 tasks <- expand.grid(site = names(sites), type = names(storage_spec),
-                     stringsAsFactors = FALSE)
+                     roof = roofs, stringsAsFactors = FALSE)
 
 future::plan(future::multisession,
              workers = min(nrow(tasks),
@@ -237,6 +273,7 @@ future::plan(future::multisession,
 opt_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
   site <- tasks$site[i]
   type <- tasks$type[i]
+  roof <- tasks$roof[i]
 
   # Worker = eigener Prozess: Paket dort genauso laden wie im Hauptprozess
   if (file.exists("../DESCRIPTION") &&
@@ -257,11 +294,37 @@ opt_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
     NULL
   }
 
-  run_fn <- make_swale_runner(make_path_list(site, cfg$dir),
-                              timeseries_rain = ts$rain,
-                              timeseries_et = ts$et)
+  # Saisonkurve des Vergleichsrahmens: Endzeit = Ende der Regenreihe
+  # (externe Zeitreihe) bzw. der base.h5-Regenkurve (Eisenstadt);
+  # Kalender-Ursprung aus read_site_timeseries() bzw. Site-Konfiguration.
+  growth <- if (roof == "conv_legacy") {
+    NULL
+  } else {
+    t_end <- if (cfg$timeseries) {
+      max(ts$rain$time)
+    } else {
+      h5t <- hdf5r::H5File$new(extdata_path("models", cfg$dir, "base.h5"),
+                               mode = "r")
+      tr <- h5_read_values(h5t, paths = "//Kurven/Regen")[["//Kurven/Regen"]]
+      h5t$close_all()
+      max(tr$time)
+    }
+    make_growth_curve(
+      origin = if (cfg$timeseries) ts$origin else cfg$origin,
+      end_time_hours = t_end
+    )
+  }
 
-  prior <- if (file.exists(cfg$prior)) {
+  run_fn <- make_swale_runner(
+    make_path_list(paste0(site, "_", roof), cfg$dir),
+    timeseries_rain = ts$rain,
+    timeseries_et = ts$et,
+    roof_type = if (roof == "conv_legacy") "conventional" else roof,
+    hoernschemeyer_aktiv = if (roof == "conv_legacy") NULL else 1L,
+    growth_curve = growth
+  )
+
+  prior <- if (roof == "conv_legacy" && file.exists(cfg$prior)) {
     readr::read_csv(cfg$prior, show_col_types = FALSE)
   } else {
     NULL
@@ -279,6 +342,7 @@ opt_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
                                cost_rates = cost_rates,
                                verbose = FALSE)
   opt$site <- site
+  opt$roof_type <- roof
   opt$n_runs_task <- attr(opt, "n_runs_total")
   opt$minutes_task <- round(as.numeric(
     difftime(Sys.time(), t0, units = "mins")), 1)
@@ -291,46 +355,126 @@ opt_all <- dplyr::bind_rows(opt_list)
 t_opt_end <- Sys.time()
 ```
 
-## Ergebnis: günstigstes Design je Standort und Überlaufziel
+## Ergebnis: günstigstes Design je Standort, Dachtyp und Überlaufziel
+
+`roof_et_pct` ist der ET-Anteil des Dachs an dessen Zufluss (beim
+dichten Dach exakt 0; der Hörnschemeyer-Pfad schreibt dort NaN, das die
+Optimierer als 0 ausweisen).
 
 ```{r results_table, eval = can_run}
 knitr::kable(
-  opt_all[, c("site", "x", "storage_type", "status", "mulde_area",
-              "mulde_height", "storage_height", "n_overflows",
-              "overflow_volume_m3", "et_pct", "cost_total")],
-  digits = c(NA, 0, NA, NA, 1, 0, 0, 0, 1, 1, 0)
+  opt_all[, c("site", "roof_type", "x", "storage_type", "status",
+              "mulde_area", "mulde_height", "storage_height",
+              "n_overflows", "overflow_volume_m3", "et_pct",
+              "roof_et_pct", "cost_total")],
+  digits = c(NA, NA, 0, NA, NA, 1, 0, 0, 0, 1, 1, 1, 0)
 )
 ```
 
-```{r cost_curves, eval = can_run, fig.height = 3.4}
+## Frame-Anker: conv_legacy gegen die publizierten Optima
+
+Zwei Prüfungen in einem: (1) **Regression** — `conv_legacy` muss die
+publizierten Optima reproduzieren (deterministische Engine; der
+Runner-Umbau für die Dachvarianten darf das Legacy-Verhalten nicht
+ändern). Dafür die publizierte `optimisation_results_all_sites.csv`
+als `optimisation_results_all_sites_published.csv` neben diese
+Vignette legen. (2) **Frame-Effekt** — die Differenz
+`conventional` − `conv_legacy` beziffert, was der Wechsel auf
+`Hoernschemeyer_aktiv = 1` + Saisonkurve an der Mulde allein ausmacht
+(gleiches dichtes Dach); nur dieser Effekt trennt die neue
+Kurvenschar von den publizierten Werten.
+
+```{r frame_anchor, eval = can_run}
+key <- c("site", "x", "storage_type")
+
+published_path <- "optimisation_results_all_sites_published.csv"
+if (file.exists(published_path)) {
+  published <- readr::read_csv(published_path, show_col_types = FALSE)
+  regress <- dplyr::inner_join(
+    opt_all[opt_all$roof_type == "conv_legacy",
+            c(key, "mulde_area", "mulde_height", "storage_height",
+              "cost_total")],
+    published[, c(key, "mulde_area", "mulde_height", "storage_height",
+                  "cost_total")],
+    by = key, suffix = c("_legacy", "_publiziert")
+  ) %>%
+    dplyr::mutate(
+      delta_cost_pct = round(100 * (cost_total_legacy - cost_total_publiziert) /
+                               cost_total_publiziert, 2)
+    )
+  knitr::kable(
+    regress, digits = 1,
+    caption = paste("Regressions-Anker: conv_legacy vs. publizierte",
+                    "Optima -- erwartet: identisch (delta_cost_pct = 0)")
+  )
+  if (any(abs(regress$delta_cost_pct) > 0.5, na.rm = TRUE)) {
+    warning("conv_legacy weicht von den publizierten Optima ab -- ",
+            "Runner-Umbau pruefen, bevor die Dachvarianten ",
+            "interpretiert werden!")
+  }
+} else {
+  cat("(Keine", published_path, "neben der Vignette -- ",
+      "Regressions-Anker uebersprungen.)\n")
+}
+
+frame_effect <- dplyr::inner_join(
+  opt_all[opt_all$roof_type == "conv_legacy", c(key, "cost_total")],
+  opt_all[opt_all$roof_type == "conventional", c(key, "cost_total")],
+  by = key, suffix = c("_legacy", "_rahmen")
+) %>%
+  dplyr::mutate(
+    frame_delta_pct = round(100 * (cost_total_rahmen - cost_total_legacy) /
+                              cost_total_legacy, 1)
+  )
+knitr::kable(
+  frame_effect, digits = 1,
+  caption = paste("Frame-Effekt: conventional (Hoernschemeyer + Saisonkurve)",
+                  "vs. conv_legacy -- gleiches dichtes Dach, nur der",
+                  "ET-Pfad der Mulde unterscheidet sich")
+)
+```
+
+```{r cost_curves, eval = can_run, fig.height = 7.5}
 library(ggplot2)
 
-ok <- opt_all[opt_all$status == "ok", ]
+# conv_legacy ist Regressions-Anker, keine Szenariokurve
+ok <- opt_all[opt_all$status == "ok" & opt_all$roof_type != "conv_legacy", ]
+ok$roof_type <- factor(ok$roof_type,
+                       levels = c("conventional", "extensive", "intensive"),
+                       labels = c("konventionell", "extensiv", "intensiv"))
 ggplot(ok, aes(x, cost_total / 1000, colour = storage_type)) +
   geom_line() +
   geom_point(size = 2) +
-  facet_wrap(~ site, scales = "free_y") +
+  facet_grid(roof_type ~ site, scales = "free_y") +
   scale_x_continuous(breaks = 0:5) +
-  labs(title = "Kosten-Wirksamkeits-Kurven: Was kostet ein Ueberlauf weniger?",
+  labs(title = "Kosten-Wirksamkeits-Kurven je Dachtyp",
        x = "Ueberlaufziel x (zulaessige Ereignisse)",
        y = "Kosten Optimum [Tsd. EUR]",
        colour = "Speichertyp",
-       caption = cost_rates_caption("de", cost_rates)) +
+       caption = paste0(
+         cost_rates_caption("de", cost_rates),
+         "\nKosten: Mulden-Rigolen-System -- ",
+         "Gruendachkosten nicht enthalten."
+       )) +
   theme_bw()
 ```
 
 ```{r export, eval = can_run}
-readr::write_csv(opt_all, "optimisation_results_all_sites.csv")
+# Neuer Dateiname: die publizierte optimisation_results_all_sites.csv
+# (ohne roof_type-Spalte) bleibt unberuehrt -- bestehende Leser wie die
+# Simultan-Vignette joinen sonst auf kollabierende Schluessel.
+readr::write_csv(opt_all, "optimisation_results_roofs_all_sites.csv")
 for (site in unique(opt_all$site)) {
   readr::write_csv(opt_all[opt_all$site == site, ],
-                   sprintf("optimisation_results_%s.csv", site))
+                   sprintf("optimisation_results_roofs_%s.csv", site))
 }
 
-task_stats <- unique(opt_all[, c("site", "storage_type", "n_runs_task",
-                                 "minutes_task")])
+task_stats <- unique(opt_all[, c("site", "roof_type", "storage_type",
+                                 "n_runs_task", "minutes_task")])
 knitr::kable(
   task_stats,
-  col.names = c("Standort", "Speichertyp", "Engine-Laeufe", "Minuten")
+  col.names = c("Standort", "Dachtyp", "Speichertyp",
+                "Engine-Laeufe", "Minuten")
 )
 ```
 
@@ -346,6 +490,11 @@ cat(sprintf(paste0(
 ```
 
 ## Monte-Carlo-Analyse: Wie robust ist die Suche selbst?
+
+Die MC-Analyse läuft bewusst **ohne Dachtyp-Dimension** (Legacy-Frame,
+konventionelles Dach): Geprüft wird die Robustheit des *Suchverfahrens*
+gegenüber dem Suchpfad, und die ist vom Zulauf-Szenario unabhängig —
+eine Verdreifachung auf 180 Tasks brächte keine zusätzliche Aussage.
 
 Die Bisektion ist deterministisch: gleiche Eingaben, gleicher Pfad,
 gleiches Ergebnis. Die Monte-Carlo-Frage lautet deshalb: **Hängt das
@@ -493,6 +642,22 @@ cat(sprintf(paste0(
 - **Nebenbedingung Tiefe:** `max_total_depth` (mm) begrenzt
   Muldentiefe + Filter + Speicher analytisch (DWA-A 138 / Überdeckung),
   ohne zusätzliche Läufe.
+- **Gründächer am unteren Flächenrand:** Extensive und vor allem
+  intensive Dächer reduzieren den Zulauf zur Mulde drastisch (Diagnose:
+  19 % bzw. 5 % statt 100 % des Dachregens) — Optima können dann an der
+  Untergrenze `area_bounds[1]` = 25 m² kleben. Das ist als
+  "≤ 25 m² genügen" zu lesen; die Grenze bleibt bewusst bei 25 m², weil
+  die Monotonie nur im Rasterbereich geprüft ist.
+- **Frames nicht mischen:** `conv_legacy` (und nur es) ist mit den
+  publizierten AU-/Endberichts-Optima vergleichbar; die Kurvenschar
+  `conventional`/`extensiv`/`intensiv` ist untereinander vergleichbar.
+  Den Abstand beider Welten beziffert die Frame-Anker-Tabelle.
+- **Offene Einordnung der Gründach-ET:** Die absolute Dach-ET (ext.
+  ~80 %, int. ~94 % des Dachregens) liegt über Literaturwerten; der
+  Abgleich mit SWMM-UrbanEVA-Referenzwerten und die tandler-Rückfrage
+  zur Wachstumsfaktor-Mechanik stehen aus (siehe
+  `diagnose_green_roofs`). Bis dahin sind die Gründach-Kurven als
+  Szenarienvergleich zu lesen, nicht als absolute Retentionsprognose.
 
 ```{r vignette_runtime, echo = FALSE, results = 'asis', eval = can_run}
 cat(sprintf(paste0(

@@ -17,7 +17,10 @@
 #'
 #' @return List with data.frames `rain` and `et` (columns `time` = hours
 #'   since start, `value` = mm/h) ready for
-#'   `make_swale_runner(timeseries_rain = , timeseries_et = )`.
+#'   `make_swale_runner(timeseries_rain = , timeseries_et = )`, plus
+#'   `origin` (`POSIXct`): the calendar timestamp of rain hour 0 --
+#'   the `origin` that [make_growth_curve()] needs to place monthly
+#'   support points on the engine's time axis.
 #'
 #' @seealso [make_swale_runner()]
 #' @export
@@ -45,7 +48,11 @@ read_site_timeseries <- function(path_rain, path_et, verbose = TRUE) {
     dplyr::mutate(
       time = as.double(difftime(.data$datetime, min(.data$datetime),
                                 units = "secs")) / 3600
-    ) %>%
+    )
+  # calendar timestamp of engine hour 0 (before any filtering, so the
+  # origin matches the time axis even if the first value is NA)
+  origin <- min(timeseries_rain$datetime)
+  timeseries_rain <- timeseries_rain %>%
     dplyr::filter(!is.na(.data$value)) %>%
     # robust gegen zusaetzliche Spalten (Bad Aussee hat z.B. "substation"):
     # die Engine erwartet exakt time + value
@@ -79,5 +86,6 @@ read_site_timeseries <- function(path_rain, path_et, verbose = TRUE) {
   timeseries_et$value <- timeseries_et$value / period_et
 
   list(rain = as.data.frame(timeseries_rain),
-       et   = as.data.frame(timeseries_et))
+       et   = as.data.frame(timeseries_et),
+       origin = origin)
 }

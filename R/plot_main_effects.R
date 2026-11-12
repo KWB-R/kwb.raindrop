@@ -70,7 +70,7 @@ plot_main_effects <- function(df,
   param_labels_de <- c(
     "mulde_area" = "Muldenfl\u00e4che [m\u00b2]",
     "mulde_height" = "Muldenh\u00f6he [mm]",
-    "filter_hydraulicconductivity" = "hydr. Leitf\u00e4higkeit des Bodenfilters [mm/h]",
+    "filter_hydraulicconductivity" = "kf-Wert Bodenfilter [mm/h]",
     "storage_height" = "Speicherh\u00f6he [mm]",
     "connected_area" = "Angeschlossene Fl\u00e4che [m\u00b2]",
     "filter_height" = "Filterh\u00f6he [mm]",

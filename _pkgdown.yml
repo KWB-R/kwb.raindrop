@@ -36,6 +36,12 @@ navbar:
         href: https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/
       - text: Optimiser vs. brute force
         href: https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/
+      - text: Green roofs (results)
+        href: https://raindrop.kompetenz-wasser.io/optimisation/gruendach/
+      - text: Green-roof diagnostics
+        href: https://raindrop.kompetenz-wasser.io/optimisation/gruendach/diagnose/index.html
+      - text: UrbanEVA cross-check
+        href: https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/
 development:
   mode: auto
 

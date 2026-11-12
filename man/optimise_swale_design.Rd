@@ -73,7 +73,7 @@ Enforced without any simulation runs.}
 \value{
 Tibble with one row per (storage type, x): the optimal design
 (\code{mulde_area}, \code{mulde_height}, \code{storage_height}), its metrics
-(\code{n_overflows}, \code{overflow_volume_m3}, \code{et_pct}), cost columns from
+(\code{n_overflows}, \code{overflow_volume_m3}, \code{et_pct}, \code{roof_et_pct}), cost columns from
 \code{\link[=compute_costs]{compute_costs()}}, a \code{status} (\code{"ok"} or \code{"infeasible_within_bounds"}),
 \code{monotonicity_warning} (volume referee) and \code{n_runs_new} (fresh engine
 runs spent on this cell). All evaluated designs are attached as

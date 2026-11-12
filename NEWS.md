@@ -1,4 +1,8 @@
-# kwb.raindrop (development version)
+# [kwb.raindrop 0.2.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.2.0) <small>2026-11-12</small>
+
+The green-roof release: roof types as a scenario dimension of the
+production optimisation, validated against SWMM-UrbanEVA, plus the
+plot options used for the figures of the RainDrop final report.
 
 ## New features
 
@@ -40,7 +44,7 @@
     SWMM-UrbanEVA growth factors (annual mean exactly 1.00) expanded
     into the engine's curve layout: hours since simulation start, one
     support point per month boundary, step semantics.
-  - New vignette `diagnose_green_roofs` — a seven-scenario grid that
+  - New vignette `diagnose_green_roofs` — a nine-scenario grid that
     validates the recipe on the Wien model and settles empirically
     what could not be confirmed remotely: does this engine build read
     additional named curves (`Growth_Dach`), does it interpolate
@@ -59,6 +63,39 @@
   `ET0ref_GrasReferenzverdunstung` is inert when a `//Kurven/ET0`
   series is present; the roof-side Verschaltung taps the surface pond
   (`von_Layer = 0`).
+
+* `plot_valid_design_space()` gains `palette = c("threshold", "viridis")`:
+  the viridis mode uses a colour-vision-deficiency-safe ramp (via
+  `grDevices::hcl.colors`, no new dependency) for the valid overflow
+  levels and renders invalid points (`> valid_max`) in neutral grey
+  *and* with their own cross shape, mirrored in the legend keys, so
+  validity is never encoded by colour alone (accessibility requirement
+  of the BMLUK report template). Both `plot_valid_design_space()` and
+  `plot_main_effects()` now label the filter conductivity as
+  "kf-Wert Bodenfilter [mm/h]", matching the terminology of the final
+  report.
+
+## Validation
+
+* **SWMM-UrbanEVA cross-check passed (2026-11-10).** Both climate
+  sites were re-computed directly in SWMM-UrbanEVA (IWARU build,
+  SWMM 5.1.14) with the identical v2 green-roof parameterisation and
+  identical rain/ET0 forcing. Without surface ponding (berm height
+  0 mm — the correct counterpart of the engine's Verschaltung, which
+  drains the surface pond without ponding) the engine and UrbanEVA
+  agree within 0.6 percentage points of roof ET (Wien 79.6/94.2 %
+  engine vs. 79.7/93.9 % UrbanEVA, ext./int.; Bad Aussee 49.1/58.2
+  vs. 49.7/57.8 %); the annual total ET of the extensive Wien roof is
+  identical to the millimetre (516 mm/a both sides). Transpiration
+  dominates in both models and the climate gradient of the roof ET is
+  confirmed quantitatively. A berm-height series (0/0.1/1/2/5/30 mm)
+  documents the ponding sensitivity (monotone, up to +17.6 pp).
+  Setup review by D. Wicke (2026-11-10). Full documentation incl. all
+  SWMM models and reports:
+  <https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/>.
+  Open with tandler.com: the engine-internal ET decomposition
+  (transpiration share) and the growth-factor mechanics (the seasonal
+  modulation barely shapes the annual balance).
 
 # [kwb.raindrop 0.1.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0) <small>2026-08-07</small>
 

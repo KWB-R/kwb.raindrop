@@ -266,8 +266,8 @@ run_one <- function(i,
       vals$`//Massnahmenelemente/Mulde_Rigole/Allgemein/Endversickerungsrate` <- param_grid_tmp$bottom_hydraulicconductivity
       # Pin LAI to the grass value from Hoernschemeyer et al. (Water 2023,
       # 15, 2840, Tab. 6, plant type 5 = grasses/herbs); base.h5 ships 8.5.
-      # Wien and Bad Aussee already use 3.9 (Wien as one of the sweep
-      # levels); this line keeps Eisenstadt 2005 consistent.
+      # Wien and Bad Aussee fix LAI at 3.9 as well; this line keeps
+      # Eisenstadt 2005 consistent.
       vals$`//Massnahmenelemente/Mulde_Rigole/Parameter_Evapotranspiration/LAI_LeafAreaIndex` <- 3.9
 
       vals$`//Bodenarten/Bodenfilter/Ks_HydraulicConductivity` <- param_grid_tmp$filter_hydraulicconductivity

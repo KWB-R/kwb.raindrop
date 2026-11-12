@@ -1,6 +1,6 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/404.html</loc></url>
-<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/articles/diagnose_green_roofs.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/articles/workflow_eisenstadt-2005.html</loc></url>
@@ -17,6 +17,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/cost_rates_caption.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_canonical_wb_variables.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_growth_factors.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_storage_spec.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/default_storage_types.html</loc></url>
@@ -33,6 +34,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/h5_write_values.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/index.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/make_growth_curve.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/make_swale_runner.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design_simultaneous.html</loc></url>
@@ -51,6 +53,7 @@
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_hdf5_timeseries.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_raindrop_errors.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/read_site_timeseries.html</loc></url>
+<url><loc>https://kwb-r.github.io/kwb.raindrop/reference/roof_type_values.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/run_model.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/run_scenarios.html</loc></url>
 <url><loc>https://kwb-r.github.io/kwb.raindrop/reference/sickerbox_level_presets.html</loc></url>

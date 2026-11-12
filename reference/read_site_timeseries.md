@@ -34,7 +34,10 @@ read_site_timeseries(path_rain, path_et, verbose = TRUE)
 
 List with data.frames `rain` and `et` (columns `time` = hours since
 start, `value` = mm/h) ready for
-`make_swale_runner(timeseries_rain = , timeseries_et = )`.
+`make_swale_runner(timeseries_rain = , timeseries_et = )`, plus `origin`
+(`POSIXct`): the calendar timestamp of rain hour 0 – the `origin` that
+[`make_growth_curve()`](https://kwb-r.github.io/kwb.raindrop/reference/make_growth_curve.md)
+needs to place monthly support points on the engine's time axis.
 
 ## See also
 

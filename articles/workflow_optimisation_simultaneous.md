@@ -43,20 +43,25 @@ unterscheiden sich nur darin, wie sie Kandidaten vorschlagen
   schlagen müssen.
 
 **Laufzeit:** Die simultane Suche braucht je (Speichertyp, x)-Zelle mehr
-Engine-Läufe als die Bisektion (typisch 60–120 statt ~15; Suchphase plus
-Feinschliff). Über 6 Überlaufziele summiert sich das auf ~400–700
-Engine-Läufe **je Task**; bei ~15 s je Lauf (Wien / Bad Aussee) sind das
-**2–3 h je Task** — und wenn weniger freie Kerne als 6 Tasks verfügbar
-sind, entsprechend mehr Wandzeit (realistisch **2–5 h** für den
-Nelder-Mead-Sweep). Eisenstadt (~2 s je Lauf) bleibt bei Minuten. Beide
-Rechen-Chunks zeigen deshalb einen **Live-Fortschrittsbalken** (ein Tick
-je Engine-Lauf, über `progressr` aus den Worker-Prozessen heraus) — ein
-über Minuten stehender Balken wäre ein echter Hänger, ein langsam
-wandernder ist Normalbetrieb. Der Methodenvergleich am Ende rechnet nur
-eine Zelle (x = 1) je Standort und Speichertyp. Wer zuerst einen
-schnellen Funktionstest will, rechnet nur Eisenstadt (Kommentar im Chunk
-`site_config`); der Laufzeit-Hebel für den vollen Sweep ist `max_evals`
-(Kommentar im selben Chunk).
+Engine-Läufe als die Bisektion (typisch 60–120; Suchphase plus
+Feinschliff — die Bisektion kommt dank des gemeinsamen Lauf-Caches über
+alle x-Ziele mit rund 5–15 je Zelle aus, im Eisenstadt-Vergleich des
+Endberichts rund das Siebzehnfache: 980 gegenüber 58 Läufen). Über 6
+Überlaufziele summiert sich das auf ~400–700 Engine-Läufe **je Task**;
+bei ~15 s je Lauf (Wien / Bad Aussee) sind das **2–3 h je Task** — und
+wenn weniger freie Kerne als 6 Tasks verfügbar sind, entsprechend mehr
+Wandzeit (realistisch **2–5 h** für den Nelder-Mead-Sweep). Eisenstadt
+(~2 s je Lauf) bleibt bei Minuten. Beide Rechen-Chunks zeigen deshalb
+einen **Live-Fortschrittsbalken** (ein Tick je Engine-Lauf, über
+`progressr` aus den Worker-Prozessen heraus) — ein über Minuten
+stehender Balken wäre ein echter Hänger, ein langsam wandernder ist
+Normalbetrieb. Der Methodenvergleich am Ende rechnet nur eine Zelle (x
+= 1) je Standort und Speichertyp. Die Vignette rechnet standardmäßig
+**nur Eisenstadt** — der Rahmen des Verfahrensvergleichs im Endbericht
+(Abschnitt 5.5). Für den vollen Sweep über Wien und Bad Aussee die Zeile
+`sites <- sites["Eisenstadt_2005"]` im Chunk `site_config` entfernen
+(Laufzeit dann 2–5 h); der Laufzeit-Hebel ist `max_evals` (Kommentar im
+selben Chunk).
 
 **Plattenplatz:** Jeder Engine-Lauf legt ein eigenes Szenario an (Kopie
 der `base.h5` plus Output-HDF5s).
@@ -80,7 +85,10 @@ Abbruch die `raindrop_sim_*`-Verzeichnisse unter
 
 Identisch mit der Vignette `workflow_optimisation` (gleiche Standorte,
 gleiche Suchräume, gleiche Kostensätze — nur so ist der Vergleich
-aussagekräftig):
+aussagekräftig). Die Dach-ET der Gründach-Varianten ist gegen
+SWMM-UrbanEVA gegengeprüft (Abweichung höchstens 0,6 Prozentpunkte ohne
+Oberflächen-Einstau;
+[UrbanEVA-Gegencheck](https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/)):
 
 ``` r
 
@@ -95,14 +103,24 @@ if (file.exists("../DESCRIPTION") &&
 
 sites <- list(
  Eisenstadt_2005 = list(dir = "eisenstadt-2005", timeseries = FALSE,
+   # Kalender-Ursprung der base.h5-Zeitachse (Modelljahr 2005) fuer die
+   # Saisonkurve der Dachvarianten
+   origin = "2005-01-01",
    prior = "simulation_results_optimisation_Eisenstadt_2005.csv"),
  Wien = list(dir = "wien", timeseries = TRUE,
    prior = "simulation_results_optimisation_Wien.csv"),
  BadAussee = list(dir = "badaussee", timeseries = TRUE,
    prior = "simulation_results_optimisation_BadAussee.csv")
 )
-# Schneller Funktionstest (~15-30 min statt Stunden): nur Eisenstadt --
-# 1-Jahres-Modell, ~2 s je Engine-Lauf. Zusaetzlich beschleunigt ein
+
+# Dachvarianten wie in workflow_optimisation: conv_legacy = base.h5-Frame
+# (Anker), die uebrigen im Vergleichsrahmen Hoernschemeyer_aktiv = 1 +
+# UrbanEVA-Saisonkurve (geteilt von Dach und Mulde).
+roofs <- c("conv_legacy", "conventional", "extensive", "intensive")
+# Standard dieser Vignette: nur Eisenstadt (1-Jahres-Modell, ~2 s je
+# Engine-Lauf; ~15-30 min) -- der Rahmen des Verfahrensvergleichs im
+# Endbericht (Abschnitt 5.5). Fuer den vollen Sweep ueber Wien und
+# Bad Aussee die naechste Zeile entfernen. Zusaetzlich beschleunigt ein
 # reduziertes Budget (z. B. max_evals <- 50) und, auf Windows deutlich,
 # eine Virenscanner-Ausnahme fuer %LOCALAPPDATA%\Temp (jede Szenario-
 # Datei und jeder Engine-Start wird sonst einzeln gescannt):
@@ -156,7 +174,7 @@ make_path_list <- function(modelname, model_dir) {
 # der Rest des Task-Kontingents aufgefuellt, damit der Balken exakt
 # bei 100 % endet.
 run_simultaneous_task <- function(site, type, method, x_targets,
-                                  model_suffix,
+                                  model_suffix, roof = "conv_legacy",
                                   tick = NULL, tick_cap = Inf) {
   if (file.exists("../DESCRIPTION") &&
       requireNamespace("pkgload", quietly = TRUE)) {
@@ -176,10 +194,32 @@ run_simultaneous_task <- function(site, type, method, x_targets,
     NULL
   }
 
+  # Saisonkurve des Vergleichsrahmens (wie workflow_optimisation)
+  growth <- if (roof == "conv_legacy") {
+    NULL
+  } else {
+    t_end <- if (cfg$timeseries) {
+      max(ts$rain$time)
+    } else {
+      h5t <- hdf5r::H5File$new(extdata_path("models", cfg$dir, "base.h5"),
+                               mode = "r")
+      tr <- h5_read_values(h5t, paths = "//Kurven/Regen")[["//Kurven/Regen"]]
+      h5t$close_all()
+      max(tr$time)
+    }
+    make_growth_curve(
+      origin = if (cfg$timeseries) ts$origin else cfg$origin,
+      end_time_hours = t_end
+    )
+  }
+
   run_fn <- make_swale_runner(
-    make_path_list(paste0(site, "_", model_suffix), cfg$dir),
+    make_path_list(paste0(site, "_", model_suffix, "_", roof), cfg$dir),
     timeseries_rain = ts$rain,
-    timeseries_et = ts$et
+    timeseries_et = ts$et,
+    roof_type = if (roof == "conv_legacy") "conventional" else roof,
+    hoernschemeyer_aktiv = if (roof == "conv_legacy") NULL else 1L,
+    growth_curve = growth
   )
 
   ticks_sent <- 0L
@@ -194,7 +234,9 @@ run_simultaneous_task <- function(site, type, method, x_targets,
     }
   }
 
-  prior <- if (file.exists(cfg$prior)) {
+  # Warmstart nur im Legacy-Frame: die Raster-CSVs kennen keine
+  # Dachtypen und keinen Hoernschemeyer-Rahmen
+  prior <- if (roof == "conv_legacy" && file.exists(cfg$prior)) {
     readr::read_csv(cfg$prior, show_col_types = FALSE)
   } else {
     NULL
@@ -214,6 +256,7 @@ run_simultaneous_task <- function(site, type, method, x_targets,
     verbose = FALSE
   )
   opt$site <- site
+  opt$roof_type <- roof
   opt$n_runs_task <- attr(opt, "n_runs_total")
   opt$minutes_task <- round(as.numeric(
     difftime(Sys.time(), t0, units = "mins")), 1)
@@ -226,18 +269,20 @@ run_simultaneous_task <- function(site, type, method, x_targets,
 }
 ```
 
-## Simultane Optimierung aller Standorte (Nelder-Mead, parallel)
+## Simultane Optimierung (Nelder-Mead, parallel)
 
-Wie im Bisektions-Workflow laufen **Standort × Speichertyp = 6
-unabhängige Tasks** parallel; innerhalb eines Tasks teilen sich die
-x-Ziele den Evaluations-Cache.
+Wie im Bisektions-Workflow laufen **Standort × Speichertyp × Dachtyp
+unabhängige Tasks** parallel (Standard Eisenstadt: 2 × 4 = 8 Tasks;
+voller Sweep: 3 × 2 × 4 = 24); innerhalb eines Tasks teilen sich die
+x-Ziele den Evaluations-Cache. Der Dachtyp ist je Task fix
+(Cache-Schlüssel enthalten ihn nicht) und steckt im Modellnamen-Suffix.
 
 ``` r
 
 t_nm_start <- Sys.time()
 
 tasks <- expand.grid(site = names(sites), type = names(storage_spec),
-                     stringsAsFactors = FALSE)
+                     roof = roofs, stringsAsFactors = FALSE)
 
 future::plan(future::multisession,
              workers = min(nrow(tasks),
@@ -254,7 +299,7 @@ nm_all <- progressr::with_progress({
   nm_list <- future.apply::future_lapply(seq_len(nrow(tasks)), function(i) {
     run_simultaneous_task(tasks$site[i], tasks$type[i],
                           method = "nelder_mead", x_targets = 0:5,
-                          model_suffix = "NM",
+                          model_suffix = "NM", roof = tasks$roof[i],
                           tick = p, tick_cap = tick_cap_nm)
   }, future.seed = TRUE)
   dplyr::bind_rows(nm_list)
@@ -270,10 +315,11 @@ t_nm_end <- Sys.time()
 ``` r
 
 knitr::kable(
-  nm_all[, c("site", "x", "storage_type", "status", "mulde_area",
-             "mulde_height", "storage_height", "n_overflows",
-             "overflow_volume_m3", "et_pct", "cost_total")],
-  digits = c(NA, 0, NA, NA, 1, 0, 0, 0, 1, 1, 0)
+  nm_all[, c("site", "roof_type", "x", "storage_type", "status",
+             "mulde_area", "mulde_height", "storage_height",
+             "n_overflows", "overflow_volume_m3", "et_pct",
+             "roof_et_pct", "cost_total")],
+  digits = c(NA, NA, 0, NA, NA, 1, 0, 0, 0, 1, 1, 1, 0)
 )
 ```
 
@@ -281,62 +327,84 @@ knitr::kable(
 
 library(ggplot2)
 
-ok <- nm_all[nm_all$status == "ok", ]
+# conv_legacy ist Regressions-Anker, keine Szenariokurve
+ok <- nm_all[nm_all$status == "ok" & nm_all$roof_type != "conv_legacy", ]
+ok$roof_type <- factor(ok$roof_type,
+                       levels = c("conventional", "extensive", "intensive"),
+                       labels = c("konventionell", "extensiv", "intensiv"))
 ggplot(ok, aes(x, cost_total / 1000, colour = storage_type)) +
   geom_line() +
   geom_point(size = 2) +
-  facet_wrap(~ site, scales = "free_y") +
+  facet_grid(roof_type ~ site, scales = "free_y") +
   scale_x_continuous(breaks = 0:5) +
-  labs(title = "Kosten-Wirksamkeits-Kurven (simultane Suche, Nelder-Mead)",
+  labs(title = "Kosten-Wirksamkeits-Kurven je Dachtyp (simultane Suche)",
        x = "Ueberlaufziel x (zulaessige Ereignisse)",
        y = "Kosten Optimum [Tsd. EUR]",
        colour = "Speichertyp",
-       caption = cost_rates_caption("de", cost_rates)) +
+       caption = paste0(
+         cost_rates_caption("de", cost_rates),
+         "\nKosten: Mulden-Rigolen-System -- ",
+         "Gruendachkosten nicht enthalten."
+       )) +
   theme_bw()
 ```
 
 ``` r
 
-readr::write_csv(nm_all, "optimisation_results_simultaneous_all_sites.csv")
+# Export mit roof_type-Spalte; der Export der dachlosen Fassung
+# (optimisation_results_simultaneous_all_sites.csv) bleibt unberuehrt.
+readr::write_csv(nm_all,
+                 "optimisation_results_simultaneous_roofs_all_sites.csv")
 
-nm_stats <- unique(nm_all[, c("site", "storage_type", "n_runs_task",
-                              "minutes_task")])
+nm_stats <- unique(nm_all[, c("site", "roof_type", "storage_type",
+                              "n_runs_task", "minutes_task")])
 knitr::kable(
   nm_stats,
-  col.names = c("Standort", "Speichertyp", "Engine-Laeufe", "Minuten")
+  col.names = c("Standort", "Dachtyp", "Speichertyp",
+                "Engine-Laeufe", "Minuten")
 )
 ```
 
 ## Gegenprobe: Vergleich mit der Bisektion
 
 Liegt der Export der Bisektions-Vignette
-(`optimisation_results_all_sites.csv`) neben dieser Vignette, werden
-beide Optima Zelle für Zelle verglichen. Beide Verfahren müssen — bis
-auf die Suchtoleranzen, also wenige Prozent — auf dieselben Kosten
-kommen. Fände die simultane Suche *systematisch günstigere* Designs,
-wäre das ein Hinweis auf Parameter-Wechselwirkungen, die die
-Koordinatensuche nicht sieht (und ein Fall für die Monotonie-Analyse);
-fände sie nur teurere, hat der Simplex sein Laufbudget nicht
-ausgeschöpft oder klemmt in einem lokalen Tal (`n_starts` / `max_evals`
-erhöhen).
+(`optimisation_results_roofs_all_sites.csv`; Ergebnisse dokumentiert
+unter
+[raindrop.kompetenz-wasser.io/optimisation/gruendach/](https://raindrop.kompetenz-wasser.io/optimisation/gruendach/))
+neben dieser Vignette, werden beide Optima Zelle für Zelle verglichen —
+je Dachtyp. Beide Verfahren müssen — bis auf die Suchtoleranzen, also
+wenige Prozent — auf dieselben Kosten kommen. Fände die simultane Suche
+*systematisch günstigere* Designs, wäre das ein Hinweis auf
+Parameter-Wechselwirkungen, die die Koordinatensuche nicht sieht (und
+ein Fall für die Monotonie-Analyse); fände sie nur teurere, hat der
+Simplex sein Laufbudget nicht ausgeschöpft oder klemmt in einem lokalen
+Tal (`n_starts` / `max_evals` erhöhen).
+
+Referenz (Endbericht, Abschnitt 5.5; Eisenstadt 2005,
+`conv_legacy`-Frame): Die simultane Suche bestätigt die Bisektionsoptima
+in allen zwölf Zellen (x = 0 bis 5, zwei Speichertypen) innerhalb von −2
+% bis +3 %; in fünf Zellen findet sie ein geringfügig günstigeres Design
+— im Rahmen der Suchtoleranzen, kein Hinweis auf verletzte Monotonie.
+Sie benötigt dafür rund das Siebzehnfache an Simulationsläufen (980
+gegenüber 58).
 
 ``` r
 
-bisect_all <- readr::read_csv("optimisation_results_all_sites.csv",
+bisect_all <- readr::read_csv("optimisation_results_roofs_all_sites.csv",
                               show_col_types = FALSE)
 
 vergleich <- dplyr::full_join(
-  dplyr::select(bisect_all, site, storage_type, x,
+  dplyr::select(bisect_all, site, roof_type, storage_type, x,
                 status_bisektion = status, kosten_bisektion = cost_total),
-  dplyr::select(nm_all, site, storage_type, x,
+  dplyr::select(nm_all, site, roof_type, storage_type, x,
                 status_simultan = status, kosten_simultan = cost_total),
-  by = c("site", "storage_type", "x")
+  by = c("site", "roof_type", "storage_type", "x")
 ) %>%
   dplyr::mutate(
     delta_pct = round(100 * (kosten_simultan - kosten_bisektion) /
                         kosten_bisektion, 1)
   ) %>%
-  dplyr::arrange(site, storage_type, x)
+  dplyr::arrange(site, roof_type, storage_type, x)
 
 knitr::kable(
   vergleich, digits = 0,
@@ -354,7 +422,9 @@ Evolution und die Halton-Baseline. Erwartung: Nelder-Mead und DE liegen
 innerhalb weniger Prozent beieinander; die naive Halton-Stichprobe
 bleibt trotz des gemeinsamen Feinschliffs messbar dahinter — der Abstand
 zeigt, wie viel die strukturierte Suche beiträgt. Parallelisiert über
-**Standort × Speichertyp × Methode = 12 Tasks**.
+**Standort × Speichertyp × Methode** Tasks. Der Methodenvergleich läuft
+bewusst **nur im `conv_legacy`-Frame** (Benchmark des Suchverfahrens,
+dachtyp-unabhängig).
 
 ``` r
 
@@ -387,7 +457,7 @@ cmp_all <- progressr::with_progress({
 future::plan(future::sequential)
 
 methoden <- dplyr::bind_rows(
-  dplyr::filter(nm_all, x == 1),
+  dplyr::filter(nm_all, x == 1, roof_type == "conv_legacy"),
   cmp_all
 )
 

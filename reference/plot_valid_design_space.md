@@ -31,6 +31,7 @@ plot_valid_design_space(
   alpha_min = 0.2,
   alpha_max = 1,
   keep_param_grid_limits = TRUE,
+  palette = c("threshold", "viridis"),
   facet_storage_type = FALSE,
   lang = c("de", "en"),
   title = NULL,
@@ -137,6 +138,19 @@ plot_valid_design_space(
   axis limits are fixed to the full range or full set of levels found in
   `param_grid`, so the design-space axes do not shrink after filtering.
   Default `TRUE`.
+
+- palette:
+
+  Character. `"threshold"` (default) keeps the green-orange-red
+  threshold palette described above. `"viridis"` uses a
+  colour-vision-deficiency-safe viridis ramp (via
+  [`hcl.colors`](https://rdrr.io/r/grDevices/palettes.html), no extra
+  dependency) for the levels `0..valid_max`, renders invalid points
+  (`> valid_max`) in neutral grey *and* with their own point shape
+  (cross instead of filled circle), so validity is never encoded by
+  colour alone (accessibility requirement for print reports). In this
+  mode the storage-type point shapes are disabled; use
+  `facet_storage_type = TRUE` to keep the types separable.
 
 - facet_storage_type:
 

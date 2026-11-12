@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">kwb.raindrop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -18,7 +18,7 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, ET-diagnostics scenario grid</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/diagnose_green_roofs.html">Green-roof diagnostics: three roof types (Wien)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_optimisation.html">Workflow Optimierung (Eisenstadt · Wien · Bad Aussee)</a></li>
@@ -30,6 +30,9 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-more-results"><li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/brute-force/">Brute force</a></li>
     <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/">Monotonicity analysis</a></li>
     <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/">Optimiser vs. brute force</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/">Green roofs (results)</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/diagnose/index.html">Green-roof diagnostics</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/">UrbanEVA cross-check</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -47,6 +50,44 @@
       <small>Source: <a href="https://github.com/KWB-R/kwb.raindrop/blob/dev/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="kwbraindrop-020-2026-11-12">
+<a href="https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.2.0" class="external-link">kwb.raindrop 0.2.0</a> <small>2026-11-12</small>
+<a class="anchor" aria-label="anchor" href="#kwbraindrop-020-2026-11-12"></a></h2>
+<p>The green-roof release: roof types as a scenario dimension of the production optimisation, validated against SWMM-UrbanEVA, plus the plot options used for the figures of the RainDrop final report.</p>
+<div class="section level3">
+<h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
+<ul><li>
+<p><strong>Roof types in the production optimisation.</strong> <code><a href="../reference/make_swale_runner.html">make_swale_runner()</a></code> gains <code>roof_type</code>, <code>hoernschemeyer_aktiv</code> and <code>growth_curve</code>: the roof-type overrides from <code><a href="../reference/roof_type_values.html">roof_type_values()</a></code> and the UrbanEVA seasonal curve merge into the site master (constant per runner — the optimiser caches key on the swale design only, so the roof type must never become a per-run parameter). The defaults (<code>"conventional"</code>, <code>hoernschemeyer_aktiv = NULL</code>, no curve) leave the master bit-identical to the previous behaviour. Both optimisers now also report <code>roof_et_pct</code> (the roof’s own ET share; the Hoernschemeyer path’s NaN for a dry sealed roof is reported as 0), and <code><a href="../reference/read_site_timeseries.html">read_site_timeseries()</a></code> returns the calendar <code>origin</code> of engine hour 0 that <code><a href="../reference/make_growth_curve.html">make_growth_curve()</a></code> needs. The vignettes <code>workflow_optimisation</code> and <code>workflow_optimisation_simultaneous</code> run the sweep per roof type (comparison frame <code>Hoernschemeyer_aktiv = 1</code></p>
+<ul><li>seasonal curve for conventional/extensive/intensive, plus a <code>conv_legacy</code> anchor task that must reproduce the published optima; exports move to <code>optimisation_results_roofs_*.csv</code> so the published CSVs stay untouched). Costs remain pure swale-system costs by design — green-roof costs are out of scope, the roof type acts on the inflow hydrology only.</li>
+</ul></li>
+<li>
+<p><strong>Green-roof scenario layer</strong> for the three-roof-type comparison (conventional / extensive / intensive roof feeding the swale) that validates the Mulden-Rigolen optimisation results:</p>
+<ul><li>
+<code><a href="../reference/roof_type_values.html">roof_type_values()</a></code> — the <code>base.h5</code> overrides per roof type. <code>"conventional"</code> keeps the sealed status-quo roof untouched; the two green roofs apply the SWMM-UrbanEVA parameterisation derived by Daniel Wicke (v2, 2026-10-13: extensive 80 mm substrate, KC 0.94, LAI 3.9; intensive 200 mm, KC 1.05, LAI 5.0; LAI values swapped relative to v1 after Tandler review) plus the two switches the engine needs for a roof that actually evaporates: <code>Infiltration_aktiv = 1</code> and <code>Endversickerungsrate = 0</code>. The substrate soil is deliberately identical for both green roofs, consistent with the KWB KEYS parameterisation (<code>KWB-R/keys.lid</code>).</li>
+<li>
+<code><a href="../reference/default_growth_factors.html">default_growth_factors()</a></code> / <code><a href="../reference/make_growth_curve.html">make_growth_curve()</a></code> — the monthly SWMM-UrbanEVA growth factors (annual mean exactly 1.00) expanded into the engine’s curve layout: hours since simulation start, one support point per month boundary, step semantics.</li>
+<li>New vignette <code>diagnose_green_roofs</code> — a nine-scenario grid that validates the recipe on the Wien model and settles empirically what could not be confirmed remotely: does this engine build read additional named curves (<code>Growth_Dach</code>), does it interpolate curves stepwise or linearly, and is the roof’s <code>WB_Evapotranspiration</code> written in the Hoernschemeyer path once infiltration is active.</li>
+</ul><p>Engine behaviour underpinning the recipe was confirmed by tandler.com (mails 2026-10-08/09): per-element <code>Infiltration_aktiv</code> controls pond-to-substrate infiltration (the status-quo roof’s ET is exactly 0 because water never reaches the substrate, interception is off (<code>SL = 0</code>) and the start moisture sits below the wilting point); <code>Endversickerungsrate</code> is the separate exfiltration to the ground; <code>Hoernschemeyer_aktiv</code> exists only globally; referenced curves replace the static <code>gfdoy</code>/<code>KSdoy</code> values completely; <code>ET0ref_GrasReferenzverdunstung</code> is inert when a <code>//Kurven/ET0</code> series is present; the roof-side Verschaltung taps the surface pond (<code>von_Layer = 0</code>).</p>
+</li>
+<li><p><code><a href="../reference/plot_valid_design_space.html">plot_valid_design_space()</a></code> gains <code>palette = c("threshold", "viridis")</code>: the viridis mode uses a colour-vision-deficiency-safe ramp (via <code><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">grDevices::hcl.colors</a></code>, no new dependency) for the valid overflow levels and renders invalid points (<code>&gt; valid_max</code>) in neutral grey <em>and</em> with their own cross shape, mirrored in the legend keys, so validity is never encoded by colour alone (accessibility requirement of the BMLUK report template). Both <code><a href="../reference/plot_valid_design_space.html">plot_valid_design_space()</a></code> and <code><a href="../reference/plot_main_effects.html">plot_main_effects()</a></code> now label the filter conductivity as “kf-Wert Bodenfilter [mm/h]”, matching the terminology of the final report.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="validation-0-2-0">Validation<a class="anchor" aria-label="anchor" href="#validation-0-2-0"></a></h3>
+<ul><li>
+<strong>SWMM-UrbanEVA cross-check passed (2026-11-10).</strong> Both climate sites were re-computed directly in SWMM-UrbanEVA (IWARU build, SWMM 5.1.14) with the identical v2 green-roof parameterisation and identical rain/ET0 forcing. Without surface ponding (berm height 0 mm — the correct counterpart of the engine’s Verschaltung, which drains the surface pond without ponding) the engine and UrbanEVA agree within 0.6 percentage points of roof ET (Wien 79.6/94.2 % engine vs. 79.7/93.9 % UrbanEVA, ext./int.; Bad Aussee 49.1/58.2 vs. 49.7/57.8 %); the annual total ET of the extensive Wien roof is identical to the millimetre (516 mm/a both sides). Transpiration dominates in both models and the climate gradient of the roof ET is confirmed quantitatively. A berm-height series (0/0.1/1/2/5/30 mm) documents the ponding sensitivity (monotone, up to +17.6 pp). Setup review by D. Wicke (2026-11-10). Full documentation incl. all SWMM models and reports: <a href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/" class="external-link uri">https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/</a>. Open with tandler.com: the engine-internal ET decomposition (transpiration share) and the growth-factor mechanics (the seasonal modulation barely shapes the annual balance).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-0"></a></h3>
+<ul><li><p><strong>Vignettes aligned with the RainDrop final report</strong> (Endbericht, chapter 5): the optimisation vignettes now state the passed UrbanEVA cross-check instead of the outdated “comparison pending / read as scenario comparison only” caveat, carry the published key figures (Wien −41 %/−64 % swale cost from x = 1, optimal swale area 93–133 → 29–77 m², Bad Aussee ~2 %, x = 0 −3 %/−17 %) and link the published result pages. The regression-anchor expectation now matches the documented search tolerance (reference run 2026-11-09: at most 1.37 m² / 2.2 % cost; warn threshold raised from 0.5 to 2.5 %). <code>workflow_optimisation_simultaneous</code> documents its Eisenstadt-only default (the report’s method-comparison frame) and cites the published comparison (all twelve cells within −2 % to +3 %, ~17× the engine runs). <code>diagnose_green_roofs</code> fills the UrbanEVA reference values (Wien, berm 0 mm: extensive 516, intensive 608 mm/a), so its ±25 % plausibility anchor now evaluates instead of logging “no reference yet”.</p></li>
+<li><p>The vignette <code>example_wien_minimal</code> is hidden (dot-prefixed, like <code>.workflow.Rmd</code>): it documented the May-2026 ET diagnostics against a reference reading that the ET0 unit fix and the UrbanEVA cross-check have since superseded. The file stays in the repository as the documented diagnostic trail.</p></li>
+<li><p>The pkgdown “More results” menu links the published green-roof pages (results, diagnostics, UrbanEVA cross-check) on raindrop.kompetenz-wasser.io.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="tests-0-2-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-2-0"></a></h3>
+<ul><li>Engine-free unit tests for the green-roof layer (<code>tests/testthat/test-green_roofs.R</code>): the UrbanEVA monthly factors (annual mean exactly 1.00, seasonal shape), the step-curve layout of <code><a href="../reference/make_growth_curve.html">make_growth_curve()</a></code> (hours since origin, month-boundary support points, mid-month clamping, terminal pinning, input validation) and the v2 overrides of <code><a href="../reference/roof_type_values.html">roof_type_values()</a></code> (per-type vegetation, water-path switches, identical substrate for both green roofs, legacy-neutral <code>hoernschemeyer_aktiv = NULL</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="kwbraindrop-010-2026-08-07">
 <a href="https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0" class="external-link">kwb.raindrop 0.1.0</a> <small>2026-08-07</small>

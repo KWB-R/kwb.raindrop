@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">kwb.raindrop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, ET-diagnostics scenario grid</a></li>
+<li><a class="dropdown-item" href="../articles/diagnose_green_roofs.html">Green-roof diagnostics: three roof types (Wien)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_optimisation.html">Workflow Optimierung (Eisenstadt · Wien · Bad Aussee)</a></li>
@@ -47,6 +47,9 @@
 <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/brute-force/">Brute force</a></li>
     <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/">Monotonicity analysis</a></li>
     <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/">Optimiser vs. brute force</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/">Green roofs (results)</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/diagnose/index.html">Green-roof diagnostics</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/">UrbanEVA cross-check</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -103,13 +106,37 @@ und Muldentiefe werden stufenlos gesucht, die Sickerbox in den
 Default-Stufen 300/600/900/1200 mm
 (<code><a href="../reference/sickerbox_level_presets.html">sickerbox_level_presets()</a></code> bietet Hersteller-Alternativen),
 der Schotterrigol stufenlos im 3-fachen Box-Bereich.</p>
+<p><strong>Dachvarianten als äußere Szenario-Dimension.</strong> Jede
+Optimierung läuft zusätzlich je <strong>Dachtyp</strong> — die
+angeschlossene Fläche (1000 m²) wird als konventionelles Dach,
+extensives oder intensives Gründach parametriert
+(<code><a href="../reference/roof_type_values.html">roof_type_values()</a></code>, Parametrisierung v2 nach SWMM-UrbanEVA
+/ D. Wicke; mechanisch validiert in der Vignette
+<code>diagnose_green_roofs</code>, ET-Höhe im <a href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/" class="external-link">SWMM-UrbanEVA-Gegencheck</a>
+bestätigt, 10.11.2026). Der <strong>Vergleichsrahmen</strong> (Entscheid
+2026-11-09): <code>Hoernschemeyer_aktiv = 1</code> plus
+UrbanEVA-Saisonkurve (<code><a href="../reference/make_growth_curve.html">make_growth_curve()</a></code>, geteilt von Dach
+und Mulde) für alle drei Dachtypen — untereinander sauber vergleichbar.
+Da der Schalter global ist und auch die Mulden-ET verändert, ist dieser
+Rahmen <strong>nicht bitgleich</strong> mit den publizierten Läufen; als
+Regressions- und Frame-Anker läuft deshalb je Standort zusätzlich
+<strong><code>conv_legacy</code></strong> (konventionelles Dach,
+<code>base.h5</code>-Frame unangetastet), das die publizierten Optima
+reproduzieren muss. Die Leitfrage der Gründach-Szenarien: <em>Wie stark
+verschiebt ein Gründach die Kosten-Wirksamkeits-Kurve des
+Mulden-Rigolen-Systems?</em> <strong>Kosten bleiben dabei reine
+Mulden-Rigolen-Systemkosten</strong> — Gründachkosten sind bewusst nicht
+Teil der Rechnung, der Dachtyp wirkt ausschließlich über die
+Zulauf-Hydrologie.</p>
 <p><strong>Laufzeit:</strong> Ein Engine-Lauf dauert ~2 s (Eisenstadt, 1
-Jahr) bzw. ~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 6 Tasks
-(Standort × Speichertyp) laufen parallel; die Gesamtdauer entspricht dem
-längsten Einzeltask — ca. 15–20 Minuten.
-<code><a href="../reference/make_swale_runner.html">make_swale_runner()</a></code> löscht die Szenario-Dateien jedes Laufs
-standardmäßig direkt nach dem Einlesen (<code>cleanup = TRUE</code>),
-damit lange Suchen das Temp-Laufwerk nicht füllen.</p>
+Jahr) bzw. ~15 s (Wien / Bad Aussee, 15-Jahres-Serien). Die 24 Tasks
+(Standort × Speichertyp × Dachtyp) laufen parallel; bei mehr Tasks als
+Kernen bearbeitet jeder Worker mehrere Tasks nacheinander — grob 45–90
+Minuten je nach Kernzahl (die Gründach-Tasks starten ohne Warmstart und
+brauchen mehr Läufe je Task). <code><a href="../reference/make_swale_runner.html">make_swale_runner()</a></code> löscht
+die Szenario-Dateien jedes Laufs standardmäßig direkt nach dem Einlesen
+(<code>cleanup = TRUE</code>), damit lange Suchen das Temp-Laufwerk
+nicht füllen.</p>
 <blockquote>
 <p><strong>Hinweis:</strong> Die Rechen-Chunks wurden übersprungen.
 Prüfungen: Windows: TRUE · CI/GitHub Actions: TRUE · base.h5 gefunden:
@@ -142,12 +169,21 @@ Zeitreihen-Aufbereitung (mm/h-Konvention, Serien-Angleichung) übernimmt
 <span></span>
 <span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span> Eisenstadt_2005 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>dir <span class="op">=</span> <span class="st">"eisenstadt-2005"</span>, timeseries <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>   <span class="co"># kein externer Regen: Kalender-Ursprung der base.h5-Zeitachse</span></span>
+<span>   <span class="co"># (Modelljahr 2005) fuer die Saisonkurve</span></span>
+<span>   origin <span class="op">=</span> <span class="st">"2005-01-01"</span>,</span>
 <span>   prior <span class="op">=</span> <span class="st">"simulation_results_optimisation_Eisenstadt_2005.csv"</span><span class="op">)</span>,</span>
 <span> Wien <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>dir <span class="op">=</span> <span class="st">"wien"</span>, timeseries <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>   prior <span class="op">=</span> <span class="st">"simulation_results_optimisation_Wien.csv"</span><span class="op">)</span>,</span>
 <span> BadAussee <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>dir <span class="op">=</span> <span class="st">"badaussee"</span>, timeseries <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>   prior <span class="op">=</span> <span class="st">"simulation_results_optimisation_BadAussee.csv"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Dachvarianten: conv_legacy = base.h5-Frame unangetastet (Hoernschemeyer</span></span>
+<span><span class="co"># aus base.h5, flache Growth_1) -- reproduziert die publizierten Laeufe</span></span>
+<span><span class="co"># als Regressions-Anker. Die uebrigen drei rechnen im Vergleichsrahmen</span></span>
+<span><span class="co"># Hoernschemeyer_aktiv = 1 + UrbanEVA-Saisonkurve.</span></span>
+<span><span class="va">roofs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conv_legacy"</span>, <span class="st">"conventional"</span>, <span class="st">"extensive"</span>, <span class="st">"intensive"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>connected_area <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>              filter_height <span class="op">=</span> <span class="fl">300</span>,</span>
@@ -251,23 +287,28 @@ Hebeln — bleibt die Vignette
 <div class="section level2">
 <h2 id="optimierung-aller-standorte-parallel">Optimierung aller Standorte (parallel)<a class="anchor" aria-label="anchor" href="#optimierung-aller-standorte-parallel"></a>
 </h2>
-<p>Parallelisiert wird über <strong>Standort × Speichertyp = 6
-unabhängige Tasks</strong>: Die Bisektion innerhalb einer Suche ist
+<p>Parallelisiert wird über <strong>Standort × Speichertyp × Dachtyp =
+24 unabhängige Tasks</strong>: Die Bisektion innerhalb einer Suche ist
 prinzipbedingt sequentiell, und die x-Ziele eines Speichertyps teilen
-sich den Evaluations-Cache — aber Box- und Rigol-Läufe teilen keinen
-einzigen Engine-Lauf (der Cache-Schlüssel enthält den Typ). Jeder Worker
-ist ein eigener R-Prozess mit eigenem <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>,
-Kollisionen sind damit ausgeschlossen. Die Wall-Time entspricht dem
-längsten Einzeltask (Wien/Rigol, ~15–20 min) statt der Summe aller Tasks
-(~65 min).</p>
+sich den Evaluations-Cache — aber kein Task teilt mit einem anderen
+einen einzigen Engine-Lauf. <strong>Der Dachtyp ist bewusst je Task
+fix</strong> (ein Runner = ein Dachtyp): Die Cache-Schlüssel der
+Optimierer enthalten ihn nicht, er darf also nie Lauf-Parameter werden.
+Der Modellname trägt den Dachtyp als Suffix, damit Tasks desselben
+Standorts, die nacheinander im selben Worker-Prozess laufen, getrennte
+Master- und Szenariodateien benutzen. Jeder Worker ist ein eigener
+R-Prozess mit eigenem <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>.</p>
 <p>Liegen die Rasterergebnisse der Workflow-Vignetten als CSV neben
 dieser Vignette, verengen sie als Warmstart die erste Flächensuche auf
-einen 25-m²-Rasterschritt.</p>
+einen 25-m²-Rasterschritt — <strong>nur für
+<code>conv_legacy</code></strong>: Die Raster-CSVs stammen aus dem
+Legacy-Frame ohne Dachvarianten und passen weder zum neuen
+Vergleichsrahmen noch zu den Gründach-Szenarien.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t_opt_start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">tasks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span>site <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">sites</span><span class="op">)</span>, type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">storage_spec</span><span class="op">)</span>,</span>
-<span>                     stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>                     roof <span class="op">=</span> <span class="va">roofs</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>,</span>
 <span>             workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tasks</span><span class="op">)</span>,</span>
@@ -276,6 +317,7 @@ einen 25-m²-Rasterschritt.</p>
 <span><span class="va">opt_list</span> <span class="op">&lt;-</span> <span class="fu">future.apply</span><span class="fu">::</span><span class="fu"><a href="https://future.apply.futureverse.org/reference/future_lapply.html" class="external-link">future_lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tasks</span><span class="op">)</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">site</span> <span class="op">&lt;-</span> <span class="va">tasks</span><span class="op">$</span><span class="va">site</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
 <span>  <span class="va">type</span> <span class="op">&lt;-</span> <span class="va">tasks</span><span class="op">$</span><span class="va">type</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
+<span>  <span class="va">roof</span> <span class="op">&lt;-</span> <span class="va">tasks</span><span class="op">$</span><span class="va">roof</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
 <span></span>
 <span>  <span class="co"># Worker = eigener Prozess: Paket dort genauso laden wie im Hauptprozess</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="st">"../DESCRIPTION"</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
@@ -296,11 +338,37 @@ einen 25-m²-Rasterschritt.</p>
 <span>    <span class="cn">NULL</span></span>
 <span>  <span class="op">}</span></span>
 <span></span>
-<span>  <span class="va">run_fn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_swale_runner.html">make_swale_runner</a></span><span class="op">(</span><span class="fu">make_path_list</span><span class="op">(</span><span class="va">site</span>, <span class="va">cfg</span><span class="op">$</span><span class="va">dir</span><span class="op">)</span>,</span>
-<span>                              timeseries_rain <span class="op">=</span> <span class="va">ts</span><span class="op">$</span><span class="va">rain</span>,</span>
-<span>                              timeseries_et <span class="op">=</span> <span class="va">ts</span><span class="op">$</span><span class="va">et</span><span class="op">)</span></span>
+<span>  <span class="co"># Saisonkurve des Vergleichsrahmens: Endzeit = Ende der Regenreihe</span></span>
+<span>  <span class="co"># (externe Zeitreihe) bzw. der base.h5-Regenkurve (Eisenstadt);</span></span>
+<span>  <span class="co"># Kalender-Ursprung aus read_site_timeseries() bzw. Site-Konfiguration.</span></span>
+<span>  <span class="va">growth</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="va">roof</span> <span class="op">==</span> <span class="st">"conv_legacy"</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="cn">NULL</span></span>
+<span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>    <span class="va">t_end</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="va">cfg</span><span class="op">$</span><span class="va">timeseries</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">ts</span><span class="op">$</span><span class="va">rain</span><span class="op">$</span><span class="va">time</span><span class="op">)</span></span>
+<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>      <span class="va">h5t</span> <span class="op">&lt;-</span> <span class="fu">hdf5r</span><span class="fu">::</span><span class="va"><a href="http://hhoeflin.github.io/hdf5r/reference/H5File-class.html" class="external-link">H5File</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="fu">extdata_path</span><span class="op">(</span><span class="st">"models"</span>, <span class="va">cfg</span><span class="op">$</span><span class="va">dir</span>, <span class="st">"base.h5"</span><span class="op">)</span>,</span>
+<span>                               mode <span class="op">=</span> <span class="st">"r"</span><span class="op">)</span></span>
+<span>      <span class="va">tr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/h5_read_values.html">h5_read_values</a></span><span class="op">(</span><span class="va">h5t</span>, paths <span class="op">=</span> <span class="st">"//Kurven/Regen"</span><span class="op">)</span><span class="op">[[</span><span class="st">"//Kurven/Regen"</span><span class="op">]</span><span class="op">]</span></span>
+<span>      <span class="va">h5t</span><span class="op">$</span><span class="fu">close_all</span><span class="op">(</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">tr</span><span class="op">$</span><span class="va">time</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>    <span class="fu"><a href="../reference/make_growth_curve.html">make_growth_curve</a></span><span class="op">(</span></span>
+<span>      origin <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="va">cfg</span><span class="op">$</span><span class="va">timeseries</span><span class="op">)</span> <span class="va">ts</span><span class="op">$</span><span class="va">origin</span> <span class="kw">else</span> <span class="va">cfg</span><span class="op">$</span><span class="va">origin</span>,</span>
+<span>      end_time_hours <span class="op">=</span> <span class="va">t_end</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
 <span></span>
-<span>  <span class="va">prior</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">cfg</span><span class="op">$</span><span class="va">prior</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">run_fn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/make_swale_runner.html">make_swale_runner</a></span><span class="op">(</span></span>
+<span>    <span class="fu">make_path_list</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">site</span>, <span class="st">"_"</span>, <span class="va">roof</span><span class="op">)</span>, <span class="va">cfg</span><span class="op">$</span><span class="va">dir</span><span class="op">)</span>,</span>
+<span>    timeseries_rain <span class="op">=</span> <span class="va">ts</span><span class="op">$</span><span class="va">rain</span>,</span>
+<span>    timeseries_et <span class="op">=</span> <span class="va">ts</span><span class="op">$</span><span class="va">et</span>,</span>
+<span>    roof_type <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="va">roof</span> <span class="op">==</span> <span class="st">"conv_legacy"</span><span class="op">)</span> <span class="st">"conventional"</span> <span class="kw">else</span> <span class="va">roof</span>,</span>
+<span>    hoernschemeyer_aktiv <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="va">roof</span> <span class="op">==</span> <span class="st">"conv_legacy"</span><span class="op">)</span> <span class="cn">NULL</span> <span class="kw">else</span> <span class="fl">1L</span>,</span>
+<span>    growth_curve <span class="op">=</span> <span class="va">growth</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">prior</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="va">roof</span> <span class="op">==</span> <span class="st">"conv_legacy"</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">cfg</span><span class="op">$</span><span class="va">prior</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/read_delim.html" class="external-link">read_csv</a></span><span class="op">(</span><span class="va">cfg</span><span class="op">$</span><span class="va">prior</span>, show_col_types <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>    <span class="cn">NULL</span></span>
@@ -318,6 +386,7 @@ einen 25-m²-Rasterschritt.</p>
 <span>                               cost_rates <span class="op">=</span> <span class="va">cost_rates</span>,</span>
 <span>                               verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span>  <span class="va">opt</span><span class="op">$</span><span class="va">site</span> <span class="op">&lt;-</span> <span class="va">site</span></span>
+<span>  <span class="va">opt</span><span class="op">$</span><span class="va">roof_type</span> <span class="op">&lt;-</span> <span class="va">roof</span></span>
 <span>  <span class="va">opt</span><span class="op">$</span><span class="va">n_runs_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">opt</span>, <span class="st">"n_runs_total"</span><span class="op">)</span></span>
 <span>  <span class="va">opt</span><span class="op">$</span><span class="va">minutes_task</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/difftime.html" class="external-link">difftime</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">t0</span>, units <span class="op">=</span> <span class="st">"mins"</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span>
@@ -330,47 +399,136 @@ einen 25-m²-Rasterschritt.</p>
 <span><span class="va">t_opt_end</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="ergebnis-günstigstes-design-je-standort-und-überlaufziel">Ergebnis: günstigstes Design je Standort und Überlaufziel<a class="anchor" aria-label="anchor" href="#ergebnis-g%C3%BCnstigstes-design-je-standort-und-%C3%BCberlaufziel"></a>
+<h2 id="ergebnis-günstigstes-design-je-standort-dachtyp-und-überlaufziel">Ergebnis: günstigstes Design je Standort, Dachtyp und
+Überlaufziel<a class="anchor" aria-label="anchor" href="#ergebnis-g%C3%BCnstigstes-design-je-standort-dachtyp-und-%C3%BCberlaufziel"></a>
 </h2>
+<p><code>roof_et_pct</code> ist der ET-Anteil des Dachs an dessen
+Zufluss (beim dichten Dach exakt 0; der Hörnschemeyer-Pfad schreibt dort
+NaN, das die Optimierer als 0 ausweisen).</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
-<span>  <span class="va">opt_all</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"site"</span>, <span class="st">"x"</span>, <span class="st">"storage_type"</span>, <span class="st">"status"</span>, <span class="st">"mulde_area"</span>,</span>
-<span>              <span class="st">"mulde_height"</span>, <span class="st">"storage_height"</span>, <span class="st">"n_overflows"</span>,</span>
-<span>              <span class="st">"overflow_volume_m3"</span>, <span class="st">"et_pct"</span>, <span class="st">"cost_total"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>  digits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="fl">0</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="va">opt_all</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"site"</span>, <span class="st">"roof_type"</span>, <span class="st">"x"</span>, <span class="st">"storage_type"</span>, <span class="st">"status"</span>,</span>
+<span>              <span class="st">"mulde_area"</span>, <span class="st">"mulde_height"</span>, <span class="st">"storage_height"</span>,</span>
+<span>              <span class="st">"n_overflows"</span>, <span class="st">"overflow_volume_m3"</span>, <span class="st">"et_pct"</span>,</span>
+<span>              <span class="st">"roof_et_pct"</span>, <span class="st">"cost_total"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">0</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="frame-anker-conv_legacy-gegen-die-publizierten-optima">Frame-Anker: conv_legacy gegen die publizierten Optima<a class="anchor" aria-label="anchor" href="#frame-anker-conv_legacy-gegen-die-publizierten-optima"></a>
+</h2>
+<p>Zwei Prüfungen in einem: (1) <strong>Regression</strong> —
+<code>conv_legacy</code> muss die publizierten Optima innerhalb der
+Suchtoleranz reproduzieren (Referenzlauf 09.11.2026: höchstens 1,37 m²
+Muldenfläche bzw. 2,2 % Kosten; der Runner-Umbau für die Dachvarianten
+darf das Legacy-Verhalten nicht ändern). Dafür die publizierte
+<code>optimisation_results_all_sites.csv</code> als
+<code>optimisation_results_all_sites_published.csv</code> neben diese
+Vignette legen. (2) <strong>Frame-Effekt</strong> — die Differenz
+<code>conventional</code> − <code>conv_legacy</code> beziffert, was der
+Wechsel auf <code>Hoernschemeyer_aktiv = 1</code> + Saisonkurve an der
+Mulde allein ausmacht (gleiches dichtes Dach); nur dieser Effekt trennt
+die neue Kurvenschar von den publizierten Werten. Im Referenzlauf war
+der Vergleichsrahmen praktisch wirkungsgleich: 35 von 36 Zellen
+kostenidentisch, maximal 0,18 %.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">key</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"site"</span>, <span class="st">"x"</span>, <span class="st">"storage_type"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">published_path</span> <span class="op">&lt;-</span> <span class="st">"optimisation_results_all_sites_published.csv"</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">published_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">published</span> <span class="op">&lt;-</span> <span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/read_delim.html" class="external-link">read_csv</a></span><span class="op">(</span><span class="va">published_path</span>, show_col_types <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="va">regress</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
+<span>    <span class="va">opt_all</span><span class="op">[</span><span class="va">opt_all</span><span class="op">$</span><span class="va">roof_type</span> <span class="op">==</span> <span class="st">"conv_legacy"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">key</span>, <span class="st">"mulde_area"</span>, <span class="st">"mulde_height"</span>, <span class="st">"storage_height"</span>,</span>
+<span>              <span class="st">"cost_total"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>    <span class="va">published</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">key</span>, <span class="st">"mulde_area"</span>, <span class="st">"mulde_height"</span>, <span class="st">"storage_height"</span>,</span>
+<span>                  <span class="st">"cost_total"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>    by <span class="op">=</span> <span class="va">key</span>, suffix <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"_legacy"</span>, <span class="st">"_publiziert"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>      delta_cost_pct <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">cost_total_legacy</span> <span class="op">-</span> <span class="va">cost_total_publiziert</span><span class="op">)</span> <span class="op">/</span></span>
+<span>                               <span class="va">cost_total_publiziert</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>    <span class="va">regress</span>, digits <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>    caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Regressions-Anker: conv_legacy vs. publizierte"</span>,</span>
+<span>                    <span class="st">"Optima -- erwartet: innerhalb der Suchtoleranz"</span>,</span>
+<span>                    <span class="st">"(Referenzlauf 09.11.2026: max. 2,2 % Kosten)"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">regress</span><span class="op">$</span><span class="va">delta_cost_pct</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">2.5</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning</a></span><span class="op">(</span><span class="st">"conv_legacy weicht von den publizierten Optima ab -- "</span>,</span>
+<span>            <span class="st">"Runner-Umbau pruefen, bevor die Dachvarianten "</span>,</span>
+<span>            <span class="st">"interpretiert werden!"</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"(Keine"</span>, <span class="va">published_path</span>, <span class="st">"neben der Vignette -- "</span>,</span>
+<span>      <span class="st">"Regressions-Anker uebersprungen.)\n"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">frame_effect</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
+<span>  <span class="va">opt_all</span><span class="op">[</span><span class="va">opt_all</span><span class="op">$</span><span class="va">roof_type</span> <span class="op">==</span> <span class="st">"conv_legacy"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">key</span>, <span class="st">"cost_total"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>  <span class="va">opt_all</span><span class="op">[</span><span class="va">opt_all</span><span class="op">$</span><span class="va">roof_type</span> <span class="op">==</span> <span class="st">"conventional"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">key</span>, <span class="st">"cost_total"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>  by <span class="op">=</span> <span class="va">key</span>, suffix <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"_legacy"</span>, <span class="st">"_rahmen"</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    frame_delta_pct <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="op">(</span><span class="va">cost_total_rahmen</span> <span class="op">-</span> <span class="va">cost_total_legacy</span><span class="op">)</span> <span class="op">/</span></span>
+<span>                              <span class="va">cost_total_legacy</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
+<span>  <span class="va">frame_effect</span>, digits <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Frame-Effekt: conventional (Hoernschemeyer + Saisonkurve)"</span>,</span>
+<span>                  <span class="st">"vs. conv_legacy -- gleiches dichtes Dach, nur der"</span>,</span>
+<span>                  <span class="st">"ET-Pfad der Mulde unterscheidet sich"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">ok</span> <span class="op">&lt;-</span> <span class="va">opt_all</span><span class="op">[</span><span class="va">opt_all</span><span class="op">$</span><span class="va">status</span> <span class="op">==</span> <span class="st">"ok"</span>, <span class="op">]</span></span>
+<span><span class="co"># conv_legacy ist Regressions-Anker, keine Szenariokurve</span></span>
+<span><span class="va">ok</span> <span class="op">&lt;-</span> <span class="va">opt_all</span><span class="op">[</span><span class="va">opt_all</span><span class="op">$</span><span class="va">status</span> <span class="op">==</span> <span class="st">"ok"</span> <span class="op">&amp;</span> <span class="va">opt_all</span><span class="op">$</span><span class="va">roof_type</span> <span class="op">!=</span> <span class="st">"conv_legacy"</span>, <span class="op">]</span></span>
+<span><span class="va">ok</span><span class="op">$</span><span class="va">roof_type</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">ok</span><span class="op">$</span><span class="va">roof_type</span>,</span>
+<span>                       levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conventional"</span>, <span class="st">"extensive"</span>, <span class="st">"intensive"</span><span class="op">)</span>,</span>
+<span>                       labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"konventionell"</span>, <span class="st">"extensiv"</span>, <span class="st">"intensiv"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">ok</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">cost_total</span> <span class="op">/</span> <span class="fl">1000</span>, colour <span class="op">=</span> <span class="va">storage_type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span> <span class="va">site</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">roof_type</span> <span class="op">~</span> <span class="va">site</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>breaks <span class="op">=</span> <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Kosten-Wirksamkeits-Kurven: Was kostet ein Ueberlauf weniger?"</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Kosten-Wirksamkeits-Kurven je Dachtyp"</span>,</span>
 <span>       x <span class="op">=</span> <span class="st">"Ueberlaufziel x (zulaessige Ereignisse)"</span>,</span>
 <span>       y <span class="op">=</span> <span class="st">"Kosten Optimum [Tsd. EUR]"</span>,</span>
 <span>       colour <span class="op">=</span> <span class="st">"Speichertyp"</span>,</span>
-<span>       caption <span class="op">=</span> <span class="fu"><a href="../reference/cost_rates_caption.html">cost_rates_caption</a></span><span class="op">(</span><span class="st">"de"</span>, <span class="va">cost_rates</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>       caption <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
+<span>         <span class="fu"><a href="../reference/cost_rates_caption.html">cost_rates_caption</a></span><span class="op">(</span><span class="st">"de"</span>, <span class="va">cost_rates</span><span class="op">)</span>,</span>
+<span>         <span class="st">"\nKosten: Mulden-Rigolen-System -- "</span>,</span>
+<span>         <span class="st">"Gruendachkosten nicht enthalten."</span></span>
+<span>       <span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/write_delim.html" class="external-link">write_csv</a></span><span class="op">(</span><span class="va">opt_all</span>, <span class="st">"optimisation_results_all_sites.csv"</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Neuer Dateiname: die publizierte optimisation_results_all_sites.csv</span></span>
+<span><span class="co"># (ohne roof_type-Spalte) bleibt unberuehrt -- bestehende Leser wie die</span></span>
+<span><span class="co"># Simultan-Vignette joinen sonst auf kollabierende Schluessel.</span></span>
+<span><span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/write_delim.html" class="external-link">write_csv</a></span><span class="op">(</span><span class="va">opt_all</span>, <span class="st">"optimisation_results_roofs_all_sites.csv"</span><span class="op">)</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">site</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">opt_all</span><span class="op">$</span><span class="va">site</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu">readr</span><span class="fu">::</span><span class="fu"><a href="https://readr.tidyverse.org/reference/write_delim.html" class="external-link">write_csv</a></span><span class="op">(</span><span class="va">opt_all</span><span class="op">[</span><span class="va">opt_all</span><span class="op">$</span><span class="va">site</span> <span class="op">==</span> <span class="va">site</span>, <span class="op">]</span>,</span>
-<span>                   <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"optimisation_results_%s.csv"</span>, <span class="va">site</span><span class="op">)</span><span class="op">)</span></span>
+<span>                   <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"optimisation_results_roofs_%s.csv"</span>, <span class="va">site</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">task_stats</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">opt_all</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"site"</span>, <span class="st">"storage_type"</span>, <span class="st">"n_runs_task"</span>,</span>
-<span>                                 <span class="st">"minutes_task"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">task_stats</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">opt_all</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"site"</span>, <span class="st">"roof_type"</span>, <span class="st">"storage_type"</span>,</span>
+<span>                                 <span class="st">"n_runs_task"</span>, <span class="st">"minutes_task"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu">knitr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">kable</a></span><span class="op">(</span></span>
 <span>  <span class="va">task_stats</span>,</span>
-<span>  col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Standort"</span>, <span class="st">"Speichertyp"</span>, <span class="st">"Engine-Laeufe"</span>, <span class="st">"Minuten"</span><span class="op">)</span></span>
+<span>  col.names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Standort"</span>, <span class="st">"Dachtyp"</span>, <span class="st">"Speichertyp"</span>,</span>
+<span>                <span class="st">"Engine-Laeufe"</span>, <span class="st">"Minuten"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="monte-carlo-analyse-wie-robust-ist-die-suche-selbst">Monte-Carlo-Analyse: Wie robust ist die Suche selbst?<a class="anchor" aria-label="anchor" href="#monte-carlo-analyse-wie-robust-ist-die-suche-selbst"></a>
 </h2>
+<p>Die MC-Analyse läuft bewusst <strong>ohne Dachtyp-Dimension</strong>
+(Legacy-Frame, konventionelles Dach): Geprüft wird die Robustheit des
+<em>Suchverfahrens</em> gegenüber dem Suchpfad, und die ist vom
+Zulauf-Szenario unabhängig — eine Verdreifachung auf 180 Tasks brächte
+keine zusätzliche Aussage.</p>
 <p>Die Bisektion ist deterministisch: gleiche Eingaben, gleicher Pfad,
 gleiches Ergebnis. Die Monte-Carlo-Frage lautet deshalb: <strong>Hängt
 das gefundene Optimum vom Suchpfad ab?</strong> Dazu wird der
@@ -392,10 +550,10 @@ als 2 × <code>height_tol</code>: Sie ist über die Hydraulik an die
 gefundene Fläche gekoppelt (eine um <code>area_tol</code> größere Fläche
 erlaubt eine entsprechend geringere Tiefe), sodass sich dort die
 Toleranzen beider Suchen addieren.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">n_mc</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
 <span><span class="va">mc_seeds</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="va">n_mc</span></span></code></pre></div>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t_mc_start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mc_tasks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span>site <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">sites</span><span class="op">)</span>, type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">storage_spec</span><span class="op">)</span>,</span>
@@ -451,7 +609,7 @@ Toleranzen beider Suchen addieren.</p>
 <span><span class="va">mc_search</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">mc_search</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">t_mc_end</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ok_mc</span> <span class="op">&lt;-</span> <span class="va">mc_search</span><span class="op">[</span><span class="va">mc_search</span><span class="op">$</span><span class="va">status</span> <span class="op">==</span> <span class="st">"ok"</span>, <span class="op">]</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">ok_mc</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">rep</span>, <span class="va">cost_total</span> <span class="op">/</span> <span class="fl">1000</span>, colour <span class="op">=</span> <span class="va">storage_type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -509,6 +667,56 @@ ihn ab.</li>
 <strong>Nebenbedingung Tiefe:</strong> <code>max_total_depth</code>
 (mm) begrenzt Muldentiefe + Filter + Speicher analytisch (DWA-A 138 /
 Überdeckung), ohne zusätzliche Läufe.</li>
+<li>
+<strong>Gründächer am unteren Flächenrand:</strong> Extensive und
+vor allem intensive Dächer reduzieren den Zulauf zur Mulde drastisch
+(Diagnose: 19 % bzw. 5 % statt 100 % des Dachregens) — Optima können
+dann an der Untergrenze <code>area_bounds[1]</code> = 25 m² kleben. Das
+ist als “≤ 25 m² genügen” zu lesen; die Grenze bleibt bewusst bei 25 m²,
+weil die Monotonie nur im Rasterbereich geprüft ist.</li>
+<li>
+<strong>WB-Anteile über 100 % im 1-Jahres-Modell:</strong> Bei
+Eisenstadt können <code>et_pct</code>/<code>roof_et_pct</code> der
+Gründach-Szenarien 100 % übersteigen (Smoke-Test 2026-11-09: intensiv
+106/101 %). Das ist kein Bilanzfehler: Die Anteile sind auf den
+<em>Zufluss</em> bezogen, und bei stark reduziertem Zulauf verdunstet
+zusätzlich das Anfangswasser der Speicher (Startfeuchte von Substrat,
+Filter und Speicherschicht) — über ein einzelnes Jahr sichtbar, über die
+15-Jahres-Serien (Wien, Bad Aussee) vernachlässigbar. Eisenstadt dient
+deshalb — wie im Endbericht — nur als Rechentest und wird nicht
+ausgewertet (Dach-ET dort 95/101 % ext./int.; &gt;100 % ist das
+beschriebene Anfangswasser-Artefakt, kein Bilanzfehler).</li>
+<li>
+<strong>Frames nicht mischen:</strong> <code>conv_legacy</code> (und
+nur es) ist mit den publizierten AU-/Endberichts-Optima vergleichbar;
+die Kurvenschar
+<code>conventional</code>/<code>extensiv</code>/<code>intensiv</code>
+ist untereinander vergleichbar. Den Abstand beider Welten beziffert die
+Frame-Anker-Tabelle.</li>
+<li>
+<strong>Referenzlauf (09.11.2026), Kernzahlen des
+Endberichts:</strong> In Wien senken Gründächer die Kosten des
+Mulden-Rigolen-Systems ab x = 1 im Mittel um rund 41 % (extensiv) bzw.
+64 % (intensiv); die optimale Muldenfläche sinkt von rund 93–133 m² auf
+29–77 m². In Bad Aussee bleibt die Ersparnis bei rund 2 %; beim Ziel x =
+0 schrumpft sie auch in Wien (−3 % / −17 %). Kosten:
+Mulden-Rigolen-System — Gründachkosten nicht enthalten.
+Detailauswertung: <a href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/" class="external-link uri">https://raindrop.kompetenz-wasser.io/optimisation/gruendach/</a>.</li>
+<li>
+<strong>Einordnung der Gründach-ET (Gegencheck bestanden):</strong>
+Die absolute Dach-ET (Wien ext. ~80 %, int. ~94 %; Bad Aussee 49/58 %
+des Dachregens) ist durch den SWMM-UrbanEVA-Gegencheck bestätigt
+(10.11.2026, Setup-Review D. Wicke): Ohne Oberflächen-Einstau
+(Aufkantung 0 mm — das Gegenstück zur Engine-Verschaltung) stimmen
+Engine und UrbanEVA auf höchstens 0,6 Prozentpunkte Dach-ET überein
+(Wien 79,6/94,2 % vs. 79,7/93,9 %; Bad Aussee 49,1/58,2 % vs. 49,7/57,8
+%); Wien extensiv liefert beidseitig exakt 516 mm/a Jahres-Gesamt-ET,
+und die Aufkantungsserie 0/0,1/1/2/5/30 mm zeigt monoton steigende ET
+(bis +17,6 Prozentpunkte). Doku: <a href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/" class="external-link uri">https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/</a>.
+Offen bleiben nur die Mechanik der saisonalen Wachstumsmodulation (prägt
+die Jahresbilanz kaum; Rückfrage bei tandler.com läuft) und die
+Engine-interne Bestätigung der ET-Zerlegung (~370 mm/a Transpiration,
+durch UrbanEVA gestützt) — siehe <code>diagnose_green_roofs</code>.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

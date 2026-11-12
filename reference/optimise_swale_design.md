@@ -111,7 +111,8 @@ optimise_swale_design(
 
 Tibble with one row per (storage type, x): the optimal design
 (`mulde_area`, `mulde_height`, `storage_height`), its metrics
-(`n_overflows`, `overflow_volume_m3`, `et_pct`), cost columns from
+(`n_overflows`, `overflow_volume_m3`, `et_pct`, `roof_et_pct`), cost
+columns from
 [`compute_costs()`](https://kwb-r.github.io/kwb.raindrop/reference/compute_costs.md),
 a `status` (`"ok"` or `"infeasible_within_bounds"`),
 `monotonicity_warning` (volume referee) and `n_runs_new` (fresh engine

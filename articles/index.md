@@ -2,8 +2,8 @@
 
 ### All vignettes
 
-- [Minimal example: Wien, ET-diagnostics scenario
-  grid](https://kwb-r.github.io/kwb.raindrop/articles/example_wien_minimal.md):
+- [Green-roof diagnostics: three roof types
+  (Wien)](https://kwb-r.github.io/kwb.raindrop/articles/diagnose_green_roofs.md):
 - [Workflow Bad Aussee (2011 -
   2025)](https://kwb-r.github.io/kwb.raindrop/articles/workflow_badaussee.md):
 - [Workflow Eisenstadt

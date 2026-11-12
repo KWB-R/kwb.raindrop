@@ -13,6 +13,8 @@
   : Canonical water-balance variable names emitted by the Tandler engine
 - [`default_cost_rates()`](https://kwb-r.github.io/kwb.raindrop/reference/default_cost_rates.md)
   : Default unit-cost rates for infiltration-swale installations
+- [`default_growth_factors()`](https://kwb-r.github.io/kwb.raindrop/reference/default_growth_factors.md)
+  : Monthly growth factors for green-roof vegetation (SWMM-UrbanEVA)
 - [`default_param_labels()`](https://kwb-r.github.io/kwb.raindrop/reference/default_param_labels.md)
   : German / English labels for optimisation parameter-grid columns
 - [`default_storage_spec()`](https://kwb-r.github.io/kwb.raindrop/reference/default_storage_spec.md)
@@ -46,6 +48,8 @@
   your hdf5r build)
 - [`list_h5_datasets()`](https://kwb-r.github.io/kwb.raindrop/reference/list_h5_datasets.md)
   : List all datasets (recursive)
+- [`make_growth_curve()`](https://kwb-r.github.io/kwb.raindrop/reference/make_growth_curve.md)
+  : Build a monthly step growth curve on the engine's time axis
 - [`make_swale_runner()`](https://kwb-r.github.io/kwb.raindrop/reference/make_swale_runner.md)
   : Create a site-specific single-scenario runner for the optimiser
 - [`optimise_swale_design()`](https://kwb-r.github.io/kwb.raindrop/reference/optimise_swale_design.md)
@@ -85,6 +89,8 @@
   : Read RainDrop error logs into a nested tibble
 - [`read_site_timeseries()`](https://kwb-r.github.io/kwb.raindrop/reference/read_site_timeseries.md)
   : Read and prepare site rain/ET0 time series for the engine (mm/h)
+- [`roof_type_values()`](https://kwb-r.github.io/kwb.raindrop/reference/roof_type_values.md)
+  : H5 overrides that turn the base.h5 roof into a roof-type scenario
 - [`run_model()`](https://kwb-r.github.io/kwb.raindrop/reference/run_model.md)
   : Run an rainwater management model executable with an input file
 - [`run_scenarios()`](https://kwb-r.github.io/kwb.raindrop/reference/run_scenarios.md)

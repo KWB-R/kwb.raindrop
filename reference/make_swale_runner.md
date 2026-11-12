@@ -15,6 +15,9 @@ make_swale_runner(
   timestep_hours = 0.1,
   timeseries_rain = NULL,
   timeseries_et = NULL,
+  roof_type = c("conventional", "extensive", "intensive"),
+  hoernschemeyer_aktiv = NULL,
+  growth_curve = NULL,
   storage_types = default_storage_types(),
   event_separation_hours = 4,
   scenario_prefix = "o",
@@ -51,6 +54,36 @@ make_swale_runner(
 - timeseries_et:
 
   Optional data.frame `time`/`value` (mm/h) written to `//Kurven/ET0`.
+
+- roof_type:
+
+  One of `"conventional"` (default), `"extensive"`, `"intensive"`:
+  parametrises the `Dach` element via
+  [`roof_type_values()`](https://kwb-r.github.io/kwb.raindrop/reference/roof_type_values.md)
+  in the site master. The default together with
+  `hoernschemeyer_aktiv = NULL` leaves the master exactly as before this
+  argument existed (bit-compatible with the published runs).
+
+- hoernschemeyer_aktiv:
+
+  Passed to
+  [`roof_type_values()`](https://kwb-r.github.io/kwb.raindrop/reference/roof_type_values.md):
+  `1`/`0` set the global ET-path switch in the master, `NULL` (default)
+  leaves the `base.h5` value untouched (legacy path). Note the switch is
+  global and also changes the swale's ET path, so compare runs only
+  within the same frame.
+
+- growth_curve:
+
+  Optional data.frame `time`/`value` (hours since simulation start, step
+  interpolation) written to `//Kurven/Growth_1` in the master – e.g. the
+  UrbanEVA monthly factors from
+  [`make_growth_curve()`](https://kwb-r.github.io/kwb.raindrop/reference/make_growth_curve.md).
+  Overrides the plain end-time pinning of the template curve; the
+  dataset is created if the template does not ship it. `NULL` (default)
+  keeps the previous behaviour. The curve is shared by Dach and
+  Mulde_Rigole (both reference `Growth_1`), which keeps the swale
+  treatment identical across roof types.
 
 - storage_types:
 

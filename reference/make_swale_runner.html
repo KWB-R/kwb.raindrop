@@ -17,7 +17,7 @@ the input parameters and the overflow volume in m3."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">kwb.raindrop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,7 +28,7 @@ the input parameters and the overflow volume in m3."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/example_wien_minimal.html">Minimal example: Wien, ET-diagnostics scenario grid</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/diagnose_green_roofs.html">Green-roof diagnostics: three roof types (Wien)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_badaussee.html">Workflow Bad Aussee (2011 - 2025)</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_eisenstadt-2005.html">Workflow Eisenstadt 2005</a></li>
     <li><a class="dropdown-item" href="../articles/workflow_optimisation.html">Workflow Optimierung (Eisenstadt · Wien · Bad Aussee)</a></li>
@@ -40,6 +40,9 @@ the input parameters and the overflow volume in m3."></head><body>
   <ul class="dropdown-menu" aria-labelledby="dropdown-more-results"><li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/brute-force/">Brute force</a></li>
     <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/monotonicity_analysis/">Monotonicity analysis</a></li>
     <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/optimiser_vs_brute-force/">Optimiser vs. brute force</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/">Green roofs (results)</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/diagnose/index.html">Green-roof diagnostics</a></li>
+    <li><a class="external-link dropdown-item" href="https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/">UrbanEVA cross-check</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -74,6 +77,9 @@ the input parameters and the overflow volume in m3.</p>
 <span>  timestep_hours <span class="op">=</span> <span class="fl">0.1</span>,</span>
 <span>  timeseries_rain <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  timeseries_et <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  roof_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conventional"</span>, <span class="st">"extensive"</span>, <span class="st">"intensive"</span><span class="op">)</span>,</span>
+<span>  hoernschemeyer_aktiv <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  growth_curve <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  storage_types <span class="op">=</span> <span class="fu"><a href="default_storage_types.html">default_storage_types</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  event_separation_hours <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  scenario_prefix <span class="op">=</span> <span class="st">"o"</span>,</span>
@@ -112,6 +118,34 @@ error is thrown otherwise.</p></dd>
 <dt id="arg-timeseries-et">timeseries_et<a class="anchor" aria-label="anchor" href="#arg-timeseries-et"></a></dt>
 <dd><p>Optional data.frame <code>time</code>/<code>value</code> (mm/h) written
 to <code>//Kurven/ET0</code>.</p></dd>
+
+
+<dt id="arg-roof-type">roof_type<a class="anchor" aria-label="anchor" href="#arg-roof-type"></a></dt>
+<dd><p>One of <code>"conventional"</code> (default), <code>"extensive"</code>,
+<code>"intensive"</code>: parametrises the <code>Dach</code> element via
+<code><a href="roof_type_values.html">roof_type_values()</a></code> in the site master. The default together with
+<code>hoernschemeyer_aktiv = NULL</code> leaves the master exactly as before
+this argument existed (bit-compatible with the published runs).</p></dd>
+
+
+<dt id="arg-hoernschemeyer-aktiv">hoernschemeyer_aktiv<a class="anchor" aria-label="anchor" href="#arg-hoernschemeyer-aktiv"></a></dt>
+<dd><p>Passed to <code><a href="roof_type_values.html">roof_type_values()</a></code>: <code>1</code>/<code>0</code>
+set the global ET-path switch in the master, <code>NULL</code> (default)
+leaves the <code>base.h5</code> value untouched (legacy path). Note the switch
+is global and also changes the swale's ET path, so compare runs
+only within the same frame.</p></dd>
+
+
+<dt id="arg-growth-curve">growth_curve<a class="anchor" aria-label="anchor" href="#arg-growth-curve"></a></dt>
+<dd><p>Optional data.frame <code>time</code>/<code>value</code> (hours since
+simulation start, step interpolation) written to
+<code>//Kurven/Growth_1</code> in the master – e.g. the UrbanEVA monthly
+factors from <code><a href="make_growth_curve.html">make_growth_curve()</a></code>. Overrides the plain end-time
+pinning of the template curve; the dataset is created if the
+template does not ship it. <code>NULL</code> (default) keeps the previous
+behaviour. The curve is shared by Dach and Mulde_Rigole (both
+reference <code>Growth_1</code>), which keeps the swale treatment identical
+across roof types.</p></dd>
 
 
 <dt id="arg-storage-types">storage_types<a class="anchor" aria-label="anchor" href="#arg-storage-types"></a></dt>

@@ -2,13 +2,13 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
-  example_wien_minimal: example_wien_minimal.html
+  diagnose_green_roofs: diagnose_green_roofs.html
   workflow_badaussee: workflow_badaussee.html
   workflow_eisenstadt-2005: workflow_eisenstadt-2005.html
   workflow_optimisation: workflow_optimisation.html
   workflow_optimisation_simultaneous: workflow_optimisation_simultaneous.html
   workflow_wien: workflow_wien.html
-last_built: 2026-09-25T06:12Z
+last_built: 2026-11-12T18:05Z
 urls:
   reference: https://kwb-r.github.io/kwb.raindrop/reference
   article: https://kwb-r.github.io/kwb.raindrop/articles

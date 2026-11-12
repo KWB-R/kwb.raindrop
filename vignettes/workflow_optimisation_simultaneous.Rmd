@@ -75,8 +75,10 @@ unterscheiden sich nur darin, wie sie Kandidaten vorschlagen
   schlagen müssen.
 
 **Laufzeit:** Die simultane Suche braucht je (Speichertyp, x)-Zelle mehr
-Engine-Läufe als die Bisektion (typisch 60–120 statt ~15; Suchphase plus
-Feinschliff). Über 6 Überlaufziele summiert sich das auf ~400–700
+Engine-Läufe als die Bisektion (typisch 60–120; Suchphase plus
+Feinschliff — die Bisektion kommt dank des gemeinsamen Lauf-Caches über
+alle x-Ziele mit rund 5–15 je Zelle aus, im Eisenstadt-Vergleich des
+Endberichts rund das Siebzehnfache: 980 gegenüber 58 Läufen). Über 6 Überlaufziele summiert sich das auf ~400–700
 Engine-Läufe **je Task**; bei ~15 s je Lauf (Wien / Bad Aussee) sind das
 **2–3 h je Task** — und wenn weniger freie Kerne als 6 Tasks verfügbar
 sind, entsprechend mehr Wandzeit (realistisch **2–5 h** für den
@@ -85,9 +87,11 @@ Rechen-Chunks zeigen deshalb einen **Live-Fortschrittsbalken** (ein Tick
 je Engine-Lauf, über `progressr` aus den Worker-Prozessen heraus) — ein
 über Minuten stehender Balken wäre ein echter Hänger, ein langsam
 wandernder ist Normalbetrieb. Der Methodenvergleich am Ende rechnet nur
-eine Zelle (x = 1) je Standort und Speichertyp. Wer zuerst einen
-schnellen Funktionstest will, rechnet nur Eisenstadt (Kommentar im
-Chunk `site_config`); der Laufzeit-Hebel für den vollen Sweep ist
+eine Zelle (x = 1) je Standort und Speichertyp. Die Vignette rechnet
+standardmäßig **nur Eisenstadt** — der Rahmen des Verfahrensvergleichs
+im Endbericht (Abschnitt 5.5). Für den vollen Sweep über Wien und
+Bad Aussee die Zeile `sites <- sites["Eisenstadt_2005"]` im Chunk
+`site_config` entfernen (Laufzeit dann 2–5 h); der Laufzeit-Hebel ist
 `max_evals` (Kommentar im selben Chunk).
 
 **Plattenplatz:** Jeder Engine-Lauf legt ein eigenes Szenario an (Kopie
@@ -115,7 +119,10 @@ cat(sprintf(paste0(
 
 Identisch mit der Vignette `workflow_optimisation` (gleiche Standorte,
 gleiche Suchräume, gleiche Kostensätze — nur so ist der Vergleich
-aussagekräftig):
+aussagekräftig). Die Dach-ET der Gründach-Varianten ist gegen
+SWMM-UrbanEVA gegengeprüft (Abweichung höchstens 0,6 Prozentpunkte
+ohne Oberflächen-Einstau;
+[UrbanEVA-Gegencheck](https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/)):
 
 ```{r site_config, eval = can_run}
 # Im Quellbaum die Entwicklungsversion laden (immer aktuell, auch wenn
@@ -143,8 +150,10 @@ sites <- list(
 # (Anker), die uebrigen im Vergleichsrahmen Hoernschemeyer_aktiv = 1 +
 # UrbanEVA-Saisonkurve (geteilt von Dach und Mulde).
 roofs <- c("conv_legacy", "conventional", "extensive", "intensive")
-# Schneller Funktionstest (~15-30 min statt Stunden): nur Eisenstadt --
-# 1-Jahres-Modell, ~2 s je Engine-Lauf. Zusaetzlich beschleunigt ein
+# Standard dieser Vignette: nur Eisenstadt (1-Jahres-Modell, ~2 s je
+# Engine-Lauf; ~15-30 min) -- der Rahmen des Verfahrensvergleichs im
+# Endbericht (Abschnitt 5.5). Fuer den vollen Sweep ueber Wien und
+# Bad Aussee die naechste Zeile entfernen. Zusaetzlich beschleunigt ein
 # reduziertes Budget (z. B. max_evals <- 50) und, auf Windows deutlich,
 # eine Virenscanner-Ausnahme fuer %LOCALAPPDATA%\Temp (jede Szenario-
 # Datei und jeder Engine-Start wird sonst einzeln gescannt):
@@ -293,10 +302,11 @@ run_simultaneous_task <- function(site, type, method, x_targets,
 }
 ```
 
-## Simultane Optimierung aller Standorte (Nelder-Mead, parallel)
+## Simultane Optimierung (Nelder-Mead, parallel)
 
 Wie im Bisektions-Workflow laufen **Standort × Speichertyp × Dachtyp
-unabhängige Tasks** parallel (im Eisenstadt-Funktionstest: 2 × 4 = 8);
+unabhängige Tasks** parallel (Standard Eisenstadt: 2 × 4 = 8 Tasks;
+voller Sweep: 3 × 2 × 4 = 24);
 innerhalb eines Tasks teilen sich die x-Ziele den Evaluations-Cache.
 Der Dachtyp ist je Task fix (Cache-Schlüssel enthalten ihn nicht) und
 steckt im Modellnamen-Suffix.
@@ -371,8 +381,8 @@ ggplot(ok, aes(x, cost_total / 1000, colour = storage_type)) +
 ```
 
 ```{r export, eval = can_run}
-# Neuer Dateiname (roof_type-Spalte): der publizierte Export
-# optimisation_results_simultaneous_all_sites.csv bleibt unberuehrt.
+# Export mit roof_type-Spalte; der Export der dachlosen Fassung
+# (optimisation_results_simultaneous_all_sites.csv) bleibt unberuehrt.
 readr::write_csv(nm_all,
                  "optimisation_results_simultaneous_roofs_all_sites.csv")
 
@@ -388,7 +398,10 @@ knitr::kable(
 ## Gegenprobe: Vergleich mit der Bisektion
 
 Liegt der Export der Bisektions-Vignette
-(`optimisation_results_roofs_all_sites.csv`) neben dieser Vignette,
+(`optimisation_results_roofs_all_sites.csv`; Ergebnisse dokumentiert
+unter
+[raindrop.kompetenz-wasser.io/optimisation/gruendach/](https://raindrop.kompetenz-wasser.io/optimisation/gruendach/))
+neben dieser Vignette,
 werden beide Optima Zelle für Zelle verglichen — je Dachtyp. Beide Verfahren müssen — bis
 auf die Suchtoleranzen, also wenige Prozent — auf dieselben Kosten
 kommen. Fände die simultane Suche *systematisch günstigere* Designs,
@@ -397,6 +410,14 @@ Koordinatensuche nicht sieht (und ein Fall für die Monotonie-Analyse);
 fände sie nur teurere, hat der Simplex sein Laufbudget nicht
 ausgeschöpft oder klemmt in einem lokalen Tal (`n_starts` / `max_evals`
 erhöhen).
+
+Referenz (Endbericht, Abschnitt 5.5; Eisenstadt 2005,
+`conv_legacy`-Frame): Die simultane Suche bestätigt die
+Bisektionsoptima in allen zwölf Zellen (x = 0 bis 5, zwei
+Speichertypen) innerhalb von −2 % bis +3 %; in fünf Zellen findet sie
+ein geringfügig günstigeres Design — im Rahmen der Suchtoleranzen,
+kein Hinweis auf verletzte Monotonie. Sie benötigt dafür rund das
+Siebzehnfache an Simulationsläufen (980 gegenüber 58).
 
 ```{r bisection_available, echo = FALSE, eval = can_run}
 has_bisection <- file.exists("optimisation_results_roofs_all_sites.csv")

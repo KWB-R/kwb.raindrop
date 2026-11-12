@@ -74,8 +74,8 @@ variable should be present everywhere — the results table shows it.
 
 ### Scenario grid
 
-Geometry is fixed at Daniel's reference design (as in
-`example_wien_minimal`); `keineVerdunstungBeiRegen` stays `0` on
+Geometry is fixed at Daniel's reference design (the values are set
+explicitly in the `run_one()` chunk below); `keineVerdunstungBeiRegen` stays `0` on
 tandler.com's recommendation (evaporation does occur during rain, and
 the effect is small).
 
@@ -226,7 +226,7 @@ seasonal_curve <- kwb.raindrop::make_growth_curve(rain_origin, t_end)
 stepprobe_curve <- data.frame(time = c(0, t_end), value = c(1, 0.01))
 ```
 
-### Run the seven scenarios
+### Run the nine scenarios
 
 ```{r run_model, eval = data_available && is_windows}
 run_one <- function(i, timestep_hours, debug = FALSE, ...) {
@@ -259,7 +259,7 @@ run_one <- function(i, timestep_hours, debug = FALSE, ...) {
   # during rain; effect is small, keep it active.
   vals$`//Berechnungsparameter/keineVerdunstungBeiRegen` <- 0
 
-  # Daniel's reference geometry (identical to example_wien_minimal)
+  # Daniel's reference geometry
   vals$`//Massnahmenelemente/Dach/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
   vals$`//Massnahmenelemente/Dach/Allgemein/Flaeche` <- param_grid_tmp$connected_area
   vals$`//Massnahmenelemente/Mulde_Rigole/Berechnungsparameter/Evapotranspiration_aktiv` <- 1
@@ -356,7 +356,7 @@ DT::datatable(
   filter = "top",
   options = list(pageLength = 7, autoWidth = TRUE, scrollX = TRUE),
   caption = paste(
-    "Seven-scenario results. WB_* columns are percentage shares of the",
+    "Nine-scenario results. WB_* columns are percentage shares of the",
     "element's total inflow; connectedarea.* is the roof, element.* the swale."
   )
 )
@@ -403,14 +403,23 @@ message(sprintf(
   "[INFO] seasonal-curve effect on extensive roof ET: %.1f (seasonal) vs %.1f (flat) %%-points",
   g("ext", "dach_et"), g("ext_flat", "dach_et")))
 
-# Plausibility anchor: Daniel's SWMM-UrbanEVA reference simulations.
-# Typical literature annual retention for Central-European extensive
-# green roofs is ~45-60 %; a first run of this vignette modelled
-# 516 mm/a (~80 % of roof rain) extensive and 610 mm/a (~94 %)
-# intensive, which sits above that range -- fill in the UrbanEVA
-# reference values below once Daniel supplies them, before the roof-type
-# comparison is run in production.
-urbaneva_reference_et_mm_a <- c(extensive = NA_real_, intensive = NA_real_)
+# Plausibility anchor: the SWMM-UrbanEVA cross-check was run on
+# 2026-11-10 and PASSED (setup review D. Wicke). Without surface
+# ponding (berm height 0 mm -- the counterpart of the engine-side
+# Verschaltung, which drains the surface pond without ponding), engine
+# and UrbanEVA agree to at most 0.6 percentage points of roof ET
+# (Wien 79.6/94.2 % engine vs 79.7/93.9 % UrbanEVA ext./int.;
+# Bad Aussee 49.1/58.2 vs 49.7/57.8); the Wien extensive annual total
+# ET is exactly 516 mm/a on both sides, and a berm-height series
+# 0/0.1/1/2/5/30 mm shows monotonically rising ET (up to +17.6 pp).
+# The modelled ~80 %/~94 % roof ET sits above typical literature
+# retention for Central-European extensive green roofs (~45-60 %) but
+# is reproduced by UrbanEVA under identical parameterisation -- the
+# literature range describes the wet end of the climate gradient,
+# which both models hit in Bad Aussee. Documentation:
+# https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/
+# Reference values below: UrbanEVA annual roof ET, Wien, berm 0 mm.
+urbaneva_reference_et_mm_a <- c(extensive = 516, intensive = 608)
 for (rt in names(urbaneva_reference_et_mm_a)) {
   mod <- g(c(extensive = "ext", intensive = "int")[[rt]], "dach_et_mm_a")
   ref <- urbaneva_reference_et_mm_a[[rt]]
@@ -439,18 +448,23 @@ caps the growth-modulated ET far below the water supply. Three
 outcomes: no shift at all — the curve is not evaluated (static
 `gfdoy_GrowthFactor` fallback, contradicting the Tandler answer of
 2026-10-08); a small but deterministic shift (run 3, 2026-10-13: roof
-−0.2 pp, swale −0.5 pp) — the curve is read but the growth-modulated
-transpiration is a minor ET component, so the UrbanEVA monthly factors
-cannot shape the result; a collapse — the curve works and transpiration
-matters.
+−0.2 pp, swale −0.5 pp) — the curve is read but the seasonal growth
+modulation barely shapes the annual balance, so the UrbanEVA monthly
+factors cannot shape the result (transpiration itself is large,
+~370 mm/a per the ET decomposition below, supported by the passed
+UrbanEVA cross-check — why the gf modulation still washes out is an
+open mechanics question with tandler.com); a collapse — the curve
+works and the modulation matters.
 
 ```{r check_growth_curve, eval = data_available && is_windows}
 # The engine is deterministic, so differences well below 1 %-point are
 # real signal, not noise. Run 3 (2026-10-13) showed the growth factor
 # 0.05 shifts the roof ET by only ~0.2 pp and the swale ET by ~0.5 pp:
-# the curve IS read, but the growth-modulated component (transpiration)
-# is a tiny share of the total ET. Use both elements as sensors and a
-# deterministic threshold.
+# the curve IS read, but the seasonal modulation barely shapes the
+# annual balance (transpiration itself is ~370 mm/a per the ET
+# decomposition; the gf-insensitivity is an open mechanics question
+# with tandler.com). Use both elements as sensors and a deterministic
+# threshold.
 et_flat    <- g("ext_flat", "dach_et")
 et_low     <- g("ext_growthlow", "dach_et")
 mulde_flat <- g("ext_flat", "mulde_et")
@@ -474,10 +488,12 @@ if (is.na(curve_active)) {
   verdict(TRUE, sprintf(
     paste("the growth curve IS evaluated (deterministic shift: roof %.2f,",
           "swale %.2f pp), BUT even factor 0.05 barely moves the total --",
-          "the growth-modulated transpiration is a minor ET component;",
-          "the UrbanEVA monthly factors cannot shape the result. See the",
-          "ET-component decomposition (ext_komplett) and raise with",
-          "tandler.com/Daniel why transpiration contributes so little"),
+          "the seasonal growth modulation barely shapes the annual",
+          "balance; the UrbanEVA monthly factors cannot shape the result.",
+          "Transpiration itself is large (~370 mm/a per the ext_komplett",
+          "decomposition, supported by the passed UrbanEVA cross-check);",
+          "why the gf modulation washes out is an open mechanics question",
+          "with tandler.com (query pending)"),
     d_dach, d_mulde))
 } else {
   verdict(TRUE, "the growth curve is evaluated (extreme-low curve collapses the roof ET)")
@@ -728,12 +744,15 @@ message("Wrote XLSX (", length(sheets), " sheets) to:\n  ", xlsx_path)
 
 * Check 2 **FAIL** → the growth curve is dead in this build — escalate
   to tandler.com (contradicts their answer 5 of 2026-10-08) before any
-  production roof-type run. **PASS with the "minor component" note**
-  (the run-3 outcome) → the curve mechanics work, but the seasonal
-  UrbanEVA factors barely influence the totals; the real question
-  becomes why transpiration contributes so little to the ~80 % roof
-  ET — take the ext_komplett ET-component decomposition to
-  tandler.com/Daniel together with the UrbanEVA reference values.
+  production roof-type run. **PASS with the "barely moves the total"
+  note** (the run-3 outcome) → the curve mechanics work, but the
+  seasonal UrbanEVA factors barely influence the totals. The
+  SWMM-UrbanEVA cross-check (2026-11-10, passed, see
+  <https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/>)
+  confirms the ET totals, and the decomposition puts transpiration at
+  roughly 370 mm/a; what remains open is only why the seasonal growth
+  modulation barely shapes the annual balance (query with tandler.com
+  pending) and the engine-internal confirmation of the ET split.
 * Check 3 **PASS** → the production scenarios may give the roof its own
   curve (`Growth_Dach`) and e.g. keep the swale on separate grass
   factors, should Daniel supply any. **FAIL** → both elements share

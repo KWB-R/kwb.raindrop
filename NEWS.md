@@ -97,6 +97,46 @@ plot options used for the figures of the RainDrop final report.
   (transpiration share) and the growth-factor mechanics (the seasonal
   modulation barely shapes the annual balance).
 
+## Documentation
+
+* **Vignettes aligned with the RainDrop final report** (Endbericht,
+  chapter 5): the optimisation vignettes now state the passed
+  UrbanEVA cross-check instead of the outdated "comparison pending /
+  read as scenario comparison only" caveat, carry the published key
+  figures (Wien −41 %/−64 % swale cost from x = 1, optimal swale area
+  93–133 → 29–77 m², Bad Aussee ~2 %, x = 0 −3 %/−17 %) and link the
+  published result pages. The regression-anchor expectation now
+  matches the documented search tolerance (reference run 2026-11-09:
+  at most 1.37 m² / 2.2 % cost; warn threshold raised from 0.5 to
+  2.5 %). `workflow_optimisation_simultaneous` documents its
+  Eisenstadt-only default (the report's method-comparison frame) and
+  cites the published comparison (all twelve cells within −2 % to
+  +3 %, ~17× the engine runs). `diagnose_green_roofs` fills the
+  UrbanEVA reference values (Wien, berm 0 mm: extensive 516,
+  intensive 608 mm/a), so its ±25 % plausibility anchor now
+  evaluates instead of logging "no reference yet".
+
+* The vignette `example_wien_minimal` is hidden (dot-prefixed, like
+  `.workflow.Rmd`): it documented the May-2026 ET diagnostics against
+  a reference reading that the ET0 unit fix and the UrbanEVA
+  cross-check have since superseded. The file stays in the repository
+  as the documented diagnostic trail.
+
+* The pkgdown "More results" menu links the published green-roof
+  pages (results, diagnostics, UrbanEVA cross-check) on
+  raindrop.kompetenz-wasser.io.
+
+## Tests
+
+* Engine-free unit tests for the green-roof layer
+  (`tests/testthat/test-green_roofs.R`): the UrbanEVA monthly factors
+  (annual mean exactly 1.00, seasonal shape), the step-curve layout of
+  `make_growth_curve()` (hours since origin, month-boundary support
+  points, mid-month clamping, terminal pinning, input validation) and
+  the v2 overrides of `roof_type_values()` (per-type vegetation,
+  water-path switches, identical substrate for both green roofs,
+  legacy-neutral `hoernschemeyer_aktiv = NULL`).
+
 # [kwb.raindrop 0.1.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0) <small>2026-08-07</small>
 
 ## New features

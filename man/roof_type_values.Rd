@@ -24,6 +24,8 @@ global switch when \code{roof_type = "conventional"}.
 Returns a named list of \code{base.h5} parameter overrides (same layout as
 \code{\link[=h5_read_values]{h5_read_values()}} output, merge via \code{utils::modifyList()}) that
 parametrises the \code{Dach} element as one of three roof variants:
+}
+\details{
 \itemize{
 \item \code{"conventional"} -- the \code{base.h5} defaults, untouched. The sealed
 roof of the published status-quo runs, whose ET is exactly 0 even
@@ -37,8 +39,7 @@ interception and transpiration (Tandler, 2026-10-08, answers 1-2).
 \item \code{"intensive"} -- green roof, 200 mm substrate, \code{KC = 1.05},
 \code{LAI = 5.0}.
 }
-}
-\details{
+
 Green-roof values were derived by Daniel Wicke (KWB) from
 SWMM-UrbanEVA (Hoernschemeyer et al.), v2 of 2026-10-13: the LAI
 values of the two variants were swapped relative to v1 (they were

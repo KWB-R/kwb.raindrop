@@ -1,4 +1,4 @@
-# [kwb.raindrop 0.2.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.2.0) <small>2026-11-12</small>
+# [kwb.raindrop 0.2.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.2.0) <small>2026-11-13</small>
 
 The green-roof release: roof types as a scenario dimension of the
 production optimisation, validated against SWMM-UrbanEVA, plus the

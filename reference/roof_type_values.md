@@ -6,19 +6,6 @@ output, merge via
 [`utils::modifyList()`](https://rdrr.io/r/utils/modifyList.html)) that
 parametrises the `Dach` element as one of three roof variants:
 
-- `"conventional"` – the `base.h5` defaults, untouched. The sealed roof
-  of the published status-quo runs, whose ET is exactly 0 even when the
-  workflows switch `Evapotranspiration_aktiv` on, because (a)
-  `Infiltration_aktiv = 0` keeps water out of the substrate while the
-  Verschaltung empties the pond before pond evaporation acts, and (b)
-  `SL = 0` plus a start moisture below the wilting point disable
-  interception and transpiration (Tandler, 2026-10-08, answers 1-2).
-
-- `"extensive"` – green roof, 80 mm substrate, `KC = 0.94`, `LAI = 3.9`.
-
-- `"intensive"` – green roof, 200 mm substrate, `KC = 1.05`,
-  `LAI = 5.0`.
-
 ## Usage
 
 ``` r
@@ -45,6 +32,19 @@ Named list of `base.h5` overrides; empty except for the global switch
 when `roof_type = "conventional"`.
 
 ## Details
+
+- `"conventional"` – the `base.h5` defaults, untouched. The sealed roof
+  of the published status-quo runs, whose ET is exactly 0 even when the
+  workflows switch `Evapotranspiration_aktiv` on, because (a)
+  `Infiltration_aktiv = 0` keeps water out of the substrate while the
+  Verschaltung empties the pond before pond evaporation acts, and (b)
+  `SL = 0` plus a start moisture below the wilting point disable
+  interception and transpiration (Tandler, 2026-10-08, answers 1-2).
+
+- `"extensive"` – green roof, 80 mm substrate, `KC = 0.94`, `LAI = 3.9`.
+
+- `"intensive"` – green roof, 200 mm substrate, `KC = 1.05`,
+  `LAI = 5.0`.
 
 Green-roof values were derived by Daniel Wicke (KWB) from SWMM-UrbanEVA
 (Hoernschemeyer et al.), v2 of 2026-10-13: the LAI values of the two

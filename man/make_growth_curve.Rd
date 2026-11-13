@@ -7,10 +7,9 @@
 make_growth_curve(origin, end_time_hours, factors = default_growth_factors())
 }
 \arguments{
-\item{origin}{\code{POSIXct}/\code{Date} (or anything
-\code{lubridate::as_datetime()} accepts): the calendar timestamp of
-simulation hour 0, i.e. the first timestamp of the rain series fed to
-\verb{//Kurven/Regen}.}
+\item{origin}{\code{POSIXct}/\code{Date} (or anything \code{lubridate::as_datetime()}
+accepts): the calendar timestamp of simulation hour 0, i.e. the
+first timestamp of the rain series fed to \verb{//Kurven/Regen}.}
 
 \item{end_time_hours}{Numeric. End of the curve in hours since
 \code{origin}; pin this to \code{max(timeseries_rain$time)} exactly as the

@@ -1,4 +1,4 @@
-#' Read Raindrop optimisation simulation results from HDF5
+#' Read RainDrop optimisation simulation results from HDF5
 #' (parallel via future.apply + progress)
 #'
 #' Parallel variant of \code{get_simulation_results_optim()} using

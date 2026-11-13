@@ -15,7 +15,7 @@ psi_s_mm <- function(kf_mmh) {
 #'
 #' Factors the `run_one()` function that was duplicated across the three
 #' workflow vignettes (Eisenstadt 2005, Wien, Bad Aussee) into one
-#' package-level closure factory. The returned function runs the RAINDROP
+#' package-level closure factory. The returned function runs the RainDrop
 #' engine for one parameter set and returns the thinned one-row
 #' optimisation result (overflow events + water balance), augmented with
 #' the input parameters and the overflow volume in m3.
@@ -51,6 +51,25 @@ psi_s_mm <- function(kf_mmh) {
 #'   error is thrown otherwise.
 #' @param timeseries_et Optional data.frame `time`/`value` (mm/h) written
 #'   to `//Kurven/ET0`.
+#' @param roof_type One of `"conventional"` (default), `"extensive"`,
+#'   `"intensive"`: parametrises the `Dach` element via
+#'   [roof_type_values()] in the site master. The default together with
+#'   `hoernschemeyer_aktiv = NULL` leaves the master exactly as before
+#'   this argument existed (bit-compatible with the published runs).
+#' @param hoernschemeyer_aktiv Passed to [roof_type_values()]: `1`/`0`
+#'   set the global ET-path switch in the master, `NULL` (default)
+#'   leaves the `base.h5` value untouched (legacy path). Note the switch
+#'   is global and also changes the swale's ET path, so compare runs
+#'   only within the same frame.
+#' @param growth_curve Optional data.frame `time`/`value` (hours since
+#'   simulation start, step interpolation) written to
+#'   `//Kurven/Growth_1` in the master -- e.g. the UrbanEVA monthly
+#'   factors from [make_growth_curve()]. Overrides the plain end-time
+#'   pinning of the template curve; the dataset is created if the
+#'   template does not ship it. `NULL` (default) keeps the previous
+#'   behaviour. The curve is shared by Dach and Mulde_Rigole (both
+#'   reference `Growth_1`), which keeps the swale treatment identical
+#'   across roof types.
 #' @param storage_types Soil presets of the storage layer per storage type,
 #'   see [default_storage_types()].
 #' @param event_separation_hours Event separation for overflow counting
@@ -83,11 +102,23 @@ make_swale_runner <- function(path_list,
                               timestep_hours = 0.1,
                               timeseries_rain = NULL,
                               timeseries_et = NULL,
+                              roof_type = c("conventional", "extensive",
+                                            "intensive"),
+                              hoernschemeyer_aktiv = NULL,
+                              growth_curve = NULL,
                               storage_types = default_storage_types(),
                               event_separation_hours = 4,
                               scenario_prefix = "o",
                               cleanup = TRUE,
                               debug = FALSE) {
+
+  roof_type <- match.arg(roof_type)
+  if (!is.null(growth_curve) &&
+      !(is.data.frame(growth_curve) &&
+        all(c("time", "value") %in% names(growth_curve)))) {
+    stop("make_swale_runner(): growth_curve must be NULL or a ",
+         "data.frame with columns time and value")
+  }
 
   counter <- 0L
   master_path <- NULL
@@ -145,6 +176,25 @@ make_swale_runner <- function(path_list,
       template_rain <<- h5_read_values(
         h5m, paths = "//Kurven/Regen"
       )[["//Kurven/Regen"]]
+    }
+
+    # Roof-type scenario layer: overrides from roof_type_values() merge
+    # into the master (the roof set-up is constant per runner -- the
+    # optimiser cache keys do not contain the roof type, so it must
+    # never become a per-run parameter). With the defaults
+    # (conventional + hoernschemeyer_aktiv = NULL) this adds nothing.
+    static_vals <- utils::modifyList(
+      static_vals, roof_type_values(roof_type, hoernschemeyer_aktiv)
+    )
+    if (!is.null(growth_curve)) {
+      # replaces the end-time pinning above for Growth_1
+      static_vals$`//Kurven/Growth_1` <- growth_curve
+    }
+    # Green-roof overrides may touch datasets a template does not ship
+    # (e.g. SL_LeafStorageCoefficient, or Growth_1 itself); create those
+    # first -- h5_write_values() does not create missing datasets.
+    if (roof_type != "conventional" || !is.null(growth_curve)) {
+      h5_ensure_datasets_from_values(h5m, static_vals, strict = FALSE)
     }
 
     h5_write_values(h5m, static_vals, resize = TRUE,

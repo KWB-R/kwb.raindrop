@@ -6,7 +6,7 @@
 #' @param h5 Open hdf5r::H5File (mode "a" or "r+").
 #' @param values Named list; names are dataset paths (leading // allowed).
 #' @param ts_cols Character(2). Column names for TS (default time/value).
-#' @param ts_layout One of "2xN" or "Nx2". For RAINDROP typically "2xN" in HDF5.
+#' @param ts_layout One of "2xN" or "Nx2". For RainDrop typically "2xN" in HDF5.
 #' @param ts_dtype Either an H5T object or a string ("double","integer","logical","float").
 #' @param strict Stop if creation fails.
 #' @return Invisibly, the character vector of created dataset paths.
@@ -50,7 +50,7 @@ h5_ensure_datasets_from_values <- function(h5, values,
   }
   
   .infer_dims <- function(v) {
-    # TS: 2-col df/tibble -> create as 2xN (RAINDROP) or Nx2
+    # TS: 2-col df/tibble -> create as 2xN (RainDrop) or Nx2
     if (is.data.frame(v) && ncol(v) == 2L) {
       n <- nrow(v)
       if (ts_layout == "2xN") return(c(2L, as.integer(n)))

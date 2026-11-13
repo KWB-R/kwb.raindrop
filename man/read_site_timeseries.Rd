@@ -16,7 +16,10 @@ read_site_timeseries(path_rain, path_et, verbose = TRUE)
 \value{
 List with data.frames \code{rain} and \code{et} (columns \code{time} = hours
 since start, \code{value} = mm/h) ready for
-\code{make_swale_runner(timeseries_rain = , timeseries_et = )}.
+\code{make_swale_runner(timeseries_rain = , timeseries_et = )}, plus
+\code{origin} (\code{POSIXct}): the calendar timestamp of rain hour 0 --
+the \code{origin} that \code{\link[=make_growth_curve]{make_growth_curve()}} needs to place monthly
+support points on the engine's time axis.
 }
 \description{
 Factors the time-series preparation duplicated in the Wien and Bad

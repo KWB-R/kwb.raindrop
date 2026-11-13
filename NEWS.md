@@ -1,3 +1,142 @@
+# [kwb.raindrop 0.2.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.2.0) <small>2026-11-13</small>
+
+The green-roof release: roof types as a scenario dimension of the
+production optimisation, validated against SWMM-UrbanEVA, plus the
+plot options used for the figures of the RainDrop final report.
+
+## New features
+
+* **Roof types in the production optimisation.** `make_swale_runner()`
+  gains `roof_type`, `hoernschemeyer_aktiv` and `growth_curve`: the
+  roof-type overrides from `roof_type_values()` and the UrbanEVA
+  seasonal curve merge into the site master (constant per runner — the
+  optimiser caches key on the swale design only, so the roof type must
+  never become a per-run parameter). The defaults (`"conventional"`,
+  `hoernschemeyer_aktiv = NULL`, no curve) leave the master
+  bit-identical to the previous behaviour. Both optimisers now also
+  report `roof_et_pct` (the roof's own ET share; the Hoernschemeyer
+  path's NaN for a dry sealed roof is reported as 0), and
+  `read_site_timeseries()` returns the calendar `origin` of engine
+  hour 0 that `make_growth_curve()` needs. The vignettes
+  `workflow_optimisation` and `workflow_optimisation_simultaneous` run
+  the sweep per roof type (comparison frame `Hoernschemeyer_aktiv = 1`
+  + seasonal curve for conventional/extensive/intensive, plus a
+  `conv_legacy` anchor task that must reproduce the published optima;
+  exports move to `optimisation_results_roofs_*.csv` so the published
+  CSVs stay untouched). Costs remain pure swale-system costs by
+  design — green-roof costs are out of scope, the roof type acts on
+  the inflow hydrology only.
+
+* **Green-roof scenario layer** for the three-roof-type comparison
+  (conventional / extensive / intensive roof feeding the swale) that
+  validates the Mulden-Rigolen optimisation results:
+  - `roof_type_values()` — the `base.h5` overrides per roof type.
+    `"conventional"` keeps the sealed status-quo roof untouched; the
+    two green roofs apply the SWMM-UrbanEVA parameterisation derived
+    by Daniel Wicke (v2, 2026-10-13: extensive 80 mm substrate,
+    KC 0.94, LAI 3.9; intensive 200 mm, KC 1.05, LAI 5.0; LAI values
+    swapped relative to v1 after Tandler review) plus the two switches
+    the engine needs for a roof that actually evaporates:
+    `Infiltration_aktiv = 1` and `Endversickerungsrate = 0`. The
+    substrate soil is deliberately identical for both green roofs,
+    consistent with the KWB KEYS parameterisation (`KWB-R/keys.lid`).
+  - `default_growth_factors()` / `make_growth_curve()` — the monthly
+    SWMM-UrbanEVA growth factors (annual mean exactly 1.00) expanded
+    into the engine's curve layout: hours since simulation start, one
+    support point per month boundary, step semantics.
+  - New vignette `diagnose_green_roofs` — a nine-scenario grid that
+    validates the recipe on the Wien model and settles empirically
+    what could not be confirmed remotely: does this engine build read
+    additional named curves (`Growth_Dach`), does it interpolate
+    curves stepwise or linearly, and is the roof's
+    `WB_Evapotranspiration` written in the Hoernschemeyer path once
+    infiltration is active.
+
+  Engine behaviour underpinning the recipe was confirmed by
+  tandler.com (mails 2026-10-08/09): per-element `Infiltration_aktiv`
+  controls pond-to-substrate infiltration (the status-quo roof's ET is
+  exactly 0 because water never reaches the substrate, interception is
+  off (`SL = 0`) and the start moisture sits below the wilting point);
+  `Endversickerungsrate` is the separate exfiltration to the ground;
+  `Hoernschemeyer_aktiv` exists only globally; referenced curves
+  replace the static `gfdoy`/`KSdoy` values completely;
+  `ET0ref_GrasReferenzverdunstung` is inert when a `//Kurven/ET0`
+  series is present; the roof-side Verschaltung taps the surface pond
+  (`von_Layer = 0`).
+
+* `plot_valid_design_space()` gains `palette = c("threshold", "viridis")`:
+  the viridis mode uses a colour-vision-deficiency-safe ramp (via
+  `grDevices::hcl.colors`, no new dependency) for the valid overflow
+  levels and renders invalid points (`> valid_max`) in neutral grey
+  *and* with their own cross shape, mirrored in the legend keys, so
+  validity is never encoded by colour alone (accessibility requirement
+  of the BMLUK report template). Both `plot_valid_design_space()` and
+  `plot_main_effects()` now label the filter conductivity as
+  "kf-Wert Bodenfilter [mm/h]", matching the terminology of the final
+  report.
+
+## Validation
+
+* **SWMM-UrbanEVA cross-check passed (2026-11-10).** Both climate
+  sites were re-computed directly in SWMM-UrbanEVA (IWARU build,
+  SWMM 5.1.14) with the identical v2 green-roof parameterisation and
+  identical rain/ET0 forcing. Without surface ponding (berm height
+  0 mm — the correct counterpart of the engine's Verschaltung, which
+  drains the surface pond without ponding) the engine and UrbanEVA
+  agree within 0.6 percentage points of roof ET (Wien 79.6/94.2 %
+  engine vs. 79.7/93.9 % UrbanEVA, ext./int.; Bad Aussee 49.1/58.2
+  vs. 49.7/57.8 %); the annual total ET of the extensive Wien roof is
+  identical to the millimetre (516 mm/a both sides). Transpiration
+  dominates in both models and the climate gradient of the roof ET is
+  confirmed quantitatively. A berm-height series (0/0.1/1/2/5/30 mm)
+  documents the ponding sensitivity (monotone, up to +17.6 pp).
+  Setup review by D. Wicke (2026-11-10). Full documentation incl. all
+  SWMM models and reports:
+  <https://raindrop.kompetenz-wasser.io/optimisation/gruendach/urbaneva-gegencheck/>.
+  Open with tandler.com: the engine-internal ET decomposition
+  (transpiration share) and the growth-factor mechanics (the seasonal
+  modulation barely shapes the annual balance).
+
+## Documentation
+
+* **Vignettes aligned with the RainDrop final report** (Endbericht,
+  chapter 5): the optimisation vignettes now state the passed
+  UrbanEVA cross-check instead of the outdated "comparison pending /
+  read as scenario comparison only" caveat, carry the published key
+  figures (Wien −41 %/−64 % swale cost from x = 1, optimal swale area
+  93–133 → 29–77 m², Bad Aussee ~2 %, x = 0 −3 %/−17 %) and link the
+  published result pages. The regression-anchor expectation now
+  matches the documented search tolerance (reference run 2026-11-09:
+  at most 1.37 m² / 2.2 % cost; warn threshold raised from 0.5 to
+  2.5 %). `workflow_optimisation_simultaneous` documents its
+  Eisenstadt-only default (the report's method-comparison frame) and
+  cites the published comparison (all twelve cells within −2 % to
+  +3 %, ~17× the engine runs). `diagnose_green_roofs` fills the
+  UrbanEVA reference values (Wien, berm 0 mm: extensive 516,
+  intensive 608 mm/a), so its ±25 % plausibility anchor now
+  evaluates instead of logging "no reference yet".
+
+* The vignette `example_wien_minimal` is hidden (dot-prefixed, like
+  `.workflow.Rmd`): it documented the May-2026 ET diagnostics against
+  a reference reading that the ET0 unit fix and the UrbanEVA
+  cross-check have since superseded. The file stays in the repository
+  as the documented diagnostic trail.
+
+* The pkgdown "More results" menu links the published green-roof
+  pages (results, diagnostics, UrbanEVA cross-check) on
+  raindrop.kompetenz-wasser.io.
+
+## Tests
+
+* Engine-free unit tests for the green-roof layer
+  (`tests/testthat/test-green_roofs.R`): the UrbanEVA monthly factors
+  (annual mean exactly 1.00, seasonal shape), the step-curve layout of
+  `make_growth_curve()` (hours since origin, month-boundary support
+  points, mid-month clamping, terminal pinning, input validation) and
+  the v2 overrides of `roof_type_values()` (per-type vegetation,
+  water-path switches, identical substrate for both green roofs,
+  legacy-neutral `hoernschemeyer_aktiv = NULL`).
+
 # [kwb.raindrop 0.1.0](https://github.com/KWB-R/kwb.raindrop/releases/tag/v0.1.0) <small>2026-08-07</small>
 
 ## New features

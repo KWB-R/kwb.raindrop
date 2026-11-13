@@ -25,6 +25,7 @@ plot_valid_design_space(
   alpha_min = 0.2,
   alpha_max = 1,
   keep_param_grid_limits = TRUE,
+  palette = c("threshold", "viridis"),
   facet_storage_type = FALSE,
   lang = c("de", "en"),
   title = NULL,
@@ -96,6 +97,17 @@ same x/y. Default \code{"none"}.}
 \code{drop_overflow_gt_valid_max = TRUE}, the x/y axis limits are fixed to
 the full range or full set of levels found in \code{param_grid}, so the
 design-space axes do not shrink after filtering. Default \code{TRUE}.}
+
+\item{palette}{Character. \code{"threshold"} (default) keeps the
+green-orange-red threshold palette described above. \code{"viridis"}
+uses a colour-vision-deficiency-safe viridis ramp (via
+\code{\link[grDevices]{hcl.colors}}, no extra dependency) for the levels
+\code{0..valid_max}, renders invalid points (\code{> valid_max}) in
+neutral grey \emph{and} with their own point shape (cross instead of
+filled circle), so validity is never encoded by colour alone
+(accessibility requirement for print reports). In this mode the
+storage-type point shapes are disabled; use
+\code{facet_storage_type = TRUE} to keep the types separable.}
 
 \item{facet_storage_type}{Logical. If \code{TRUE}, the design space is
 split by \code{storage_type} into two stacked panels (infiltration box on

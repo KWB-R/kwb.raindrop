@@ -484,7 +484,7 @@ htmlwidgets::saveWidget(DT::datatable(simulation_results_optimisation,
                                                      autoWidth = TRUE)), 
                         file = sprintf("simulation_results_optimisation_%s.html",
                                        paths$modelname),
-                        title = sprintf("RAINDROP - '%s': Solution Space",
+                        title = sprintf("RainDrop - '%s': Solution Space",
                                         paths$modelname)
 )
 ### Plot results
@@ -575,7 +575,7 @@ htmlwidgets::saveWidget(
   file = sprintf("simulation_results_optimisation_%s_main-effects.html",
                  paths$modelname),
   selfcontained = TRUE,
-  title = sprintf("RAINDROP - '%s': Main Effects",
+  title = sprintf("RainDrop - '%s': Main Effects",
                   paths$modelname)
 )
 

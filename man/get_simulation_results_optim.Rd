@@ -2,7 +2,7 @@
 % Please edit documentation in R/get_simulation_results_optim.R
 \name{get_simulation_results_optim}
 \alias{get_simulation_results_optim}
-\title{Read Raindrop optimisation simulation results from HDF5}
+\title{Read RainDrop optimisation simulation results from HDF5}
 \usage{
 get_simulation_results_optim(
   paths,

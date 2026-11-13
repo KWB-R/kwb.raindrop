@@ -73,6 +73,16 @@
 #'   \code{drop_overflow_gt_valid_max = TRUE}, the x/y axis limits are fixed to
 #'   the full range or full set of levels found in \code{param_grid}, so the
 #'   design-space axes do not shrink after filtering. Default \code{TRUE}.
+#' @param palette Character. \code{"threshold"} (default) keeps the
+#'   green-orange-red threshold palette described above. \code{"viridis"}
+#'   uses a colour-vision-deficiency-safe viridis ramp (via
+#'   \code{\link[grDevices]{hcl.colors}}, no extra dependency) for the levels
+#'   \code{0..valid_max}, renders invalid points (\code{> valid_max}) in
+#'   neutral grey \emph{and} with their own point shape (cross instead of
+#'   filled circle), so validity is never encoded by colour alone
+#'   (accessibility requirement for print reports). In this mode the
+#'   storage-type point shapes are disabled; use
+#'   \code{facet_storage_type = TRUE} to keep the types separable.
 #' @param facet_storage_type Logical. If \code{TRUE}, the design space is
 #'   split by \code{storage_type} into two stacked panels (infiltration box on
 #'   top, gravel trench below) with free y-scales, so disjoint per-type levels
@@ -123,6 +133,7 @@ plot_valid_design_space <- function(param_grid,
                                     alpha_min = 0.20,
                                     alpha_max = 1.00,
                                     keep_param_grid_limits = TRUE,
+                                    palette = c("threshold", "viridis"),
                                     facet_storage_type = FALSE,
                                     lang = c("de", "en"),
                                     title = NULL,
@@ -130,12 +141,13 @@ plot_valid_design_space <- function(param_grid,
                                     legend_position = "top") {
   
   alpha_mode <- match.arg(alpha_mode)
+  palette <- match.arg(palette)
   lang <- match.arg(lang)
   
   axis_labels_de <- c(
     "mulde_area" = "Muldenfl\u00e4che [m\u00b2]",
     "mulde_height" = "Muldenh\u00f6he [mm]",
-    "filter_hydraulicconductivity" = "hydr. Leitf\u00e4higkeit des Bodenfilters: hydr. Leitf\u00e4higkeit [mm/h]",
+    "filter_hydraulicconductivity" = "kf-Wert Bodenfilter [mm/h]",
     "storage_height" = "Speicherh\u00f6he [mm]"
   )
   
@@ -254,9 +266,15 @@ plot_valid_design_space <- function(param_grid,
     st <- storage_type_shapes(d$storage_type, lang)
     d$storage_type_disp <- st$display
   }
-  use_shapes <- has_storage_type && !isTRUE(facet_storage_type)
+  # In viridis mode the point shape encodes validity (circle = valid, cross =
+  # invalid), so the storage-type shapes are disabled to keep one shape scale.
+  viridis_shapes <- palette == "viridis"
+  use_shapes <- has_storage_type && !isTRUE(facet_storage_type) &&
+    !viridis_shapes
   add_shape <- function(mapping) {
-    if (use_shapes) {
+    if (viridis_shapes) {
+      utils::modifyList(mapping, ggplot2::aes(shape = .data$valid))
+    } else if (use_shapes) {
       utils::modifyList(mapping, ggplot2::aes(shape = .data$storage_type_disp))
     } else {
       mapping
@@ -319,7 +337,16 @@ plot_valid_design_space <- function(param_grid,
     overflow_cat = factor(.data$overflow_cat, levels = levs)
   )
   
-  if (valid_max_int == 0L) {
+  if (palette == "viridis") {
+    # CVD-safe ramp for the valid levels 0..valid_max; the brightest step is
+    # dropped (yellow on white has too little contrast in print). Invalid
+    # points are neutral grey -- their identity is carried by the cross shape
+    # (see viridis_shapes), not by colour.
+    pal_valid <- grDevices::hcl.colors(valid_max_int + 2L, "viridis")[
+      seq_len(valid_max_int + 1L)
+    ]
+    pal <- stats::setNames(c(pal_valid, "grey60"), c(base_levels, hi_lab))
+  } else if (valid_max_int == 0L) {
     pal <- c("0" = "orange", ">0" = "red")
   } else if (valid_max_int == 1L) {
     pal <- c("0" = "darkgreen", "1" = "orange", ">1" = "red")
@@ -328,6 +355,14 @@ plot_valid_design_space <- function(param_grid,
     pal_vals <- c(pal_green, "orange", "red")
     pal_names <- c(base_levels, hi_lab)
     pal <- stats::setNames(pal_vals, pal_names)
+  }
+
+  # Legend keys mirror the per-level point shape in viridis mode (filled
+  # circle for 0..valid_max, cross for the invalid class) at full opacity.
+  colour_override <- if (viridis_shapes) {
+    list(shape = c(rep(16, valid_max_int + 1L), 4), alpha = 1)
+  } else {
+    list()
   }
   
   legend_breaks <- levs
@@ -405,7 +440,8 @@ plot_valid_design_space <- function(param_grid,
           direction = legend_direction,
           nrow = legend_nrow,
           ncol = legend_ncol,
-          byrow = TRUE
+          byrow = TRUE,
+          override.aes = colour_override
         )
       ) +
       ggplot2::scale_alpha_identity(guide = "none") +
@@ -454,7 +490,8 @@ plot_valid_design_space <- function(param_grid,
           direction = legend_direction,
           nrow = legend_nrow,
           ncol = legend_ncol,
-          byrow = TRUE
+          byrow = TRUE,
+          override.aes = colour_override
         )
       ) +
       ggplot2::scale_alpha_identity(guide = "none") +
@@ -471,6 +508,12 @@ plot_valid_design_space <- function(param_grid,
       )
   }
   
+  if (viridis_shapes) {
+    p <- p + ggplot2::scale_shape_manual(
+      values = c(`TRUE` = 16, `FALSE` = 4),
+      guide = "none"
+    )
+  }
   if (use_shapes) {
     p <- p +
       # Square = infiltration box, triangle = gravel trench.

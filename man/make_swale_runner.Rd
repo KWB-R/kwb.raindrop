@@ -9,6 +9,9 @@ make_swale_runner(
   timestep_hours = 0.1,
   timeseries_rain = NULL,
   timeseries_et = NULL,
+  roof_type = c("conventional", "extensive", "intensive"),
+  hoernschemeyer_aktiv = NULL,
+  growth_curve = NULL,
   storage_types = default_storage_types(),
   event_separation_hours = 4,
   scenario_prefix = "o",
@@ -36,6 +39,28 @@ error is thrown otherwise.}
 
 \item{timeseries_et}{Optional data.frame \code{time}/\code{value} (mm/h) written
 to \verb{//Kurven/ET0}.}
+
+\item{roof_type}{One of \code{"conventional"} (default), \code{"extensive"},
+\code{"intensive"}: parametrises the \code{Dach} element via
+\code{\link[=roof_type_values]{roof_type_values()}} in the site master. The default together with
+\code{hoernschemeyer_aktiv = NULL} leaves the master exactly as before
+this argument existed (bit-compatible with the published runs).}
+
+\item{hoernschemeyer_aktiv}{Passed to \code{\link[=roof_type_values]{roof_type_values()}}: \code{1}/\code{0}
+set the global ET-path switch in the master, \code{NULL} (default)
+leaves the \code{base.h5} value untouched (legacy path). Note the switch
+is global and also changes the swale's ET path, so compare runs
+only within the same frame.}
+
+\item{growth_curve}{Optional data.frame \code{time}/\code{value} (hours since
+simulation start, step interpolation) written to
+\verb{//Kurven/Growth_1} in the master -- e.g. the UrbanEVA monthly
+factors from \code{\link[=make_growth_curve]{make_growth_curve()}}. Overrides the plain end-time
+pinning of the template curve; the dataset is created if the
+template does not ship it. \code{NULL} (default) keeps the previous
+behaviour. The curve is shared by Dach and Mulde_Rigole (both
+reference \code{Growth_1}), which keeps the swale treatment identical
+across roof types.}
 
 \item{storage_types}{Soil presets of the storage layer per storage type,
 see \code{\link[=default_storage_types]{default_storage_types()}}.}
@@ -71,7 +96,7 @@ scenario name and the optimisation metrics (\code{n_overflows},
 \description{
 Factors the \code{run_one()} function that was duplicated across the three
 workflow vignettes (Eisenstadt 2005, Wien, Bad Aussee) into one
-package-level closure factory. The returned function runs the RAINDROP
+package-level closure factory. The returned function runs the RainDrop
 engine for one parameter set and returns the thinned one-row
 optimisation result (overflow events + water balance), augmented with
 the input parameters and the overflow volume in m3.

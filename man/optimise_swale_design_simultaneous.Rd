@@ -91,7 +91,7 @@ Enforced without any simulation runs.}
 Tibble with one row per (storage type, x), same schema as
 \code{\link[=optimise_swale_design]{optimise_swale_design()}} plus a \code{method} column: the optimal design
 (\code{mulde_area}, \code{mulde_height}, \code{storage_height}), its metrics
-(\code{n_overflows}, \code{overflow_volume_m3}, \code{et_pct}), cost columns from
+(\code{n_overflows}, \code{overflow_volume_m3}, \code{et_pct}, \code{roof_et_pct}), cost columns from
 \code{\link[=compute_costs]{compute_costs()}}, a \code{status} (\code{"ok"} or
 \code{"infeasible_within_bounds"}), \code{monotonicity_warning} (\code{TRUE} if a
 strictly larger design produced more overflows \emph{and} more overflow
